@@ -101,6 +101,15 @@ from lib.adaptive_agents import (
 )
 from lib.validation_agents import ValidationLoopManager, FeedbackLoopResult
 
+# 2026-01-14 독립 스크립트 (--full mode)
+from lib.intraday_collector import IntradayCollector
+from lib.crypto_collector import CryptoCollector
+from lib.event_predictor import EventPredictor
+from lib.event_attribution import EventAttributor
+from lib.event_backtester import EventBacktester
+from lib.news_correlator import NewsCorrelator
+import subprocess
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -234,6 +243,14 @@ class EIMASResult:
     # Correlation Analysis (v2.1.4 - 상관관계 히트맵)
     correlation_matrix: List[List[float]] = field(default_factory=list)  # NxN 상관관계 매트릭스
     correlation_tickers: List[str] = field(default_factory=list)  # 티커 목록
+
+    # Extended Standalone Scripts (--full mode only)
+    intraday_summary: Dict = field(default_factory=dict)  # 장중 데이터 집계
+    crypto_monitoring: Dict = field(default_factory=dict)  # 24/7 암호화폐 모니터링
+    event_predictions: List[Dict] = field(default_factory=list)  # 경제 이벤트 예측
+    event_attributions: List[Dict] = field(default_factory=list)  # 이벤트 원인 분석
+    event_backtest_results: Dict = field(default_factory=dict)  # 이벤트 백테스트
+    news_correlations: List[Dict] = field(default_factory=list)  # 뉴스 상관관계
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -706,6 +723,92 @@ class EIMASResult:
             if self.fact_check_grade != "N/A":
                 md.append(f"### Fact Check Grade: {self.fact_check_grade}")
             md.append("")
+
+        # 11. Standalone Scripts Results (--full mode)
+        has_standalone_results = (
+            self.intraday_summary or self.crypto_monitoring or
+            self.event_predictions or self.event_attributions or
+            self.event_backtest_results or self.news_correlations
+        )
+
+        if has_standalone_results:
+            md.append("## 11. Standalone Scripts Results (--full mode)")
+            md.append("")
+
+            # 11.1 Intraday Data Collection
+            if self.intraday_summary and 'error' not in self.intraday_summary:
+                md.append("### 11.1 Intraday Data Collection")
+                md.append(f"- **Date**: {self.intraday_summary.get('date', 'N/A')}")
+                md.append(f"- **Tickers Collected**: {self.intraday_summary.get('tickers_collected', 0)}")
+                md.append(f"- **Anomalies Detected**: {self.intraday_summary.get('anomalies_detected', 0)}")
+                if self.intraday_summary.get('top_anomalies'):
+                    md.append("- **Top Anomalies**:")
+                    for anom in self.intraday_summary['top_anomalies']:
+                        ticker = anom.get('ticker', 'N/A')
+                        severity = anom.get('severity', 'N/A')
+                        md.append(f"  - {ticker} ({severity})")
+                md.append("")
+
+            # 11.2 Cryptocurrency Monitoring
+            if self.crypto_monitoring and 'error' not in self.crypto_monitoring:
+                md.append("### 11.2 24/7 Cryptocurrency Monitoring")
+                md.append(f"- **Symbols Monitored**: {self.crypto_monitoring.get('symbols_monitored', 0)}")
+                md.append(f"- **Anomalies Detected**: {self.crypto_monitoring.get('anomalies_detected', 0)}")
+                md.append(f"- **Overall Risk Level**: {self.crypto_monitoring.get('risk_level', 'UNKNOWN')}")
+                if self.crypto_monitoring.get('top_anomalies'):
+                    md.append("- **Top Anomalies**:")
+                    for anom in self.crypto_monitoring['top_anomalies']:
+                        symbol = anom.get('symbol', 'N/A')
+                        risk = anom.get('risk', 'N/A')
+                        md.append(f"  - {symbol} (Risk: {risk})")
+                md.append("")
+
+            # 11.3 Event Predictions
+            if self.event_predictions:
+                md.append("### 11.3 Economic Event Predictions")
+                md.append("")
+                md.append("| Event Type | Date | Expected Impact | Confidence |")
+                md.append("|------------|------|-----------------|------------|")
+                for pred in self.event_predictions[:5]:
+                    if 'error' not in pred:
+                        event_type = pred.get('event_type', 'N/A')
+                        date = pred.get('date', 'N/A')
+                        impact = pred.get('expected_impact', 'N/A')
+                        confidence = pred.get('confidence', 0)
+                        md.append(f"| {event_type} | {date} | {impact} | {confidence:.0%} |")
+                md.append("")
+
+            # 11.4 Event Attributions
+            if self.event_attributions:
+                md.append("### 11.4 Event Cause Analysis")
+                for i, attr in enumerate(self.event_attributions[:3], 1):
+                    if 'error' not in attr:
+                        event = attr.get('event', 'N/A')
+                        summary = attr.get('summary', 'N/A')
+                        md.append(f"{i}. **{event}**: {summary}")
+                md.append("")
+
+            # 11.5 Event Backtest
+            if self.event_backtest_results and 'error' not in self.event_backtest_results:
+                md.append("### 11.5 Historical Event Backtesting")
+                md.append(f"- **Events Tested**: {self.event_backtest_results.get('events_tested', 0)}")
+                md.append(f"- **Average Accuracy**: {self.event_backtest_results.get('avg_accuracy', 0):.1%}")
+                md.append(f"- **Best Performing Event**: {self.event_backtest_results.get('best_performing_event', 'N/A')}")
+                md.append("")
+
+            # 11.6 News Correlations
+            if self.news_correlations:
+                md.append("### 11.6 Anomaly-News Correlations")
+                md.append("")
+                md.append("| Ticker | Headline | Correlation Score |")
+                md.append("|--------|----------|-------------------|")
+                for corr in self.news_correlations[:5]:
+                    if 'error' not in corr:
+                        ticker = corr.get('ticker', 'N/A')
+                        headline = corr.get('headline', 'N/A')[:50]  # Truncate
+                        score = corr.get('correlation_score', 0)
+                        md.append(f"| {ticker} | {headline}... | {score:.2f} |")
+                md.append("")
 
         md.append("---")
         md.append("*Generated by EIMAS (Economic Intelligence Multi-Agent System)*")
@@ -1206,7 +1309,8 @@ async def run_integrated_pipeline(
     realtime_duration: int = 30,
     quick_mode: bool = False,
     output_dir: str = 'outputs',
-    cron_mode: bool = False
+    cron_mode: bool = False,
+    full_mode: bool = False
 ) -> EIMASResult:
     """
     EIMAS 통합 파이프라인 실행
@@ -1217,6 +1321,7 @@ async def run_integrated_pipeline(
         output_dir: 출력 디렉토리
         cron_mode: 서버 자동화 모드
         quick_mode: 빠른 분석 모드 (일부 생략)
+        full_mode: 전체 모드 (독립 스크립트 포함)
 
     Returns:
         EIMASResult: 통합 분석 결과
@@ -1227,8 +1332,11 @@ async def run_integrated_pipeline(
     print("=" * 70)
     print("  EIMAS - Integrated Analysis Pipeline")
     print("=" * 70)
-    print(f"  Mode: {'Quick' if quick_mode else 'Full'}")
+    mode_str = 'Full' if full_mode else ('Quick' if quick_mode else 'Standard')
+    print(f"  Mode: {mode_str}")
     print(f"  Realtime: {'Enabled' if enable_realtime else 'Disabled'}")
+    if full_mode:
+        print(f"  Standalone Scripts: Enabled (7 scripts)")
     print("=" * 70)
 
     # ========================================================================
@@ -2708,7 +2816,8 @@ async def run_full_pipeline(
     generate_report: bool = False,
     target_ticker: str = None,
     output_dir: str = 'outputs',
-    cron_mode: bool = False
+    cron_mode: bool = False,
+    full_mode: bool = False
 ):
     """
     전체 파이프라인 실행 (분석 + 리포트)
@@ -2721,16 +2830,18 @@ async def run_full_pipeline(
         target_ticker: 특정 티커 중심 분석
         output_dir: 출력 디렉토리
         cron_mode: 서버 자동화 모드 (시각화 없음)
+        full_mode: 독립 스크립트 포함 모드
     """
     start_time = datetime.now()
 
-    # Phase 1-5: 분석 실행
+    # Phase 1-8: 분석 실행 (full_mode일 경우 Phase 8 포함)
     result, market_data, output_file, md_file = await run_integrated_pipeline(
         enable_realtime=enable_realtime,
         realtime_duration=realtime_duration,
         quick_mode=quick_mode,
         output_dir=output_dir,
-        cron_mode=cron_mode
+        cron_mode=cron_mode,
+        full_mode=full_mode
     )
 
     # Phase 6: AI 리포트 생성 (옵션)
@@ -2787,6 +2898,147 @@ async def run_full_pipeline(
         except Exception as e:
             print(f"      ✗ Fact check error: {e}")
 
+    # ========================================================================
+    # Phase 8: Standalone Scripts (--full mode only)
+    # ========================================================================
+    if full_mode:
+        print("\n" + "=" * 50)
+        print("PHASE 8: STANDALONE SCRIPTS EXECUTION")
+        print("=" * 50)
+        print("Running 7 independent scripts for comprehensive data collection...")
+
+        # 8.1 Intraday Collector - 장중 1분봉 데이터 수집
+        print("\n[8.1] Intraday data collection...")
+        try:
+            from datetime import date, timedelta
+            intraday = IntradayCollector()
+            # 어제 날짜의 장중 데이터 수집 (백필)
+            yesterday = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+            intraday_result = intraday.collect_and_analyze(target_date=yesterday)
+
+            result.intraday_summary = {
+                'date': yesterday,
+                'tickers_collected': intraday_result.get('tickers_count', 0),
+                'anomalies_detected': len(intraday_result.get('anomalies', [])),
+                'top_anomalies': intraday_result.get('anomalies', [])[:3]  # Top 3
+            }
+            print(f"      ✓ Date: {yesterday}")
+            print(f"      ✓ Tickers: {result.intraday_summary['tickers_collected']}")
+            print(f"      ✓ Anomalies: {result.intraday_summary['anomalies_detected']}")
+        except Exception as e:
+            print(f"      ✗ Intraday collector error: {e}")
+            result.intraday_summary = {'error': str(e)}
+
+        # 8.2 Crypto Collector - 24/7 암호화폐 모니터링
+        print("\n[8.2] 24/7 Cryptocurrency monitoring...")
+        try:
+            crypto_monitor = CryptoCollector()
+            crypto_result = crypto_monitor.monitor_and_detect()
+
+            result.crypto_monitoring = {
+                'symbols_monitored': len(crypto_result.get('symbols', [])),
+                'anomalies_detected': len(crypto_result.get('anomalies', [])),
+                'risk_level': crypto_result.get('overall_risk', 'UNKNOWN'),
+                'top_anomalies': crypto_result.get('anomalies', [])[:3]
+            }
+            print(f"      ✓ Symbols: {result.crypto_monitoring['symbols_monitored']}")
+            print(f"      ✓ Anomalies: {result.crypto_monitoring['anomalies_detected']}")
+            print(f"      ✓ Risk: {result.crypto_monitoring['risk_level']}")
+        except Exception as e:
+            print(f"      ✗ Crypto collector error: {e}")
+            result.crypto_monitoring = {'error': str(e)}
+
+        # 8.3 Market Data Pipeline - 다중 API 데이터 수집 (CLI 실행)
+        print("\n[8.3] Multi-source data pipeline...")
+        try:
+            # CLI로 실행 (subprocess)
+            pipeline_cmd = ['python', 'lib/market_data_pipeline.py', '--all']
+            pipeline_proc = subprocess.run(
+                pipeline_cmd,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                cwd='/home/tj/projects/autoai/eimas'
+            )
+
+            if pipeline_proc.returncode == 0:
+                # 성공 메시지 파싱
+                output_lines = pipeline_proc.stdout.strip().split('\n')
+                collected_count = sum(1 for line in output_lines if '✓' in line or 'collected' in line.lower())
+                print(f"      ✓ Data sources collected: {collected_count}")
+                result.intraday_summary['market_pipeline_status'] = 'SUCCESS'
+            else:
+                print(f"      ✗ Pipeline failed: {pipeline_proc.stderr[:100]}")
+                result.intraday_summary['market_pipeline_status'] = 'FAILED'
+        except Exception as e:
+            print(f"      ✗ Market pipeline error: {e}")
+
+        # 8.4 Event Predictor - 경제 이벤트 예측 (NFP, CPI, FOMC)
+        print("\n[8.4] Economic event predictions...")
+        try:
+            predictor = EventPredictor()
+            predictions = predictor.generate_predictions()
+
+            result.event_predictions = predictions[:5]  # Top 5 predictions
+            print(f"      ✓ Events predicted: {len(predictions)}")
+            if predictions:
+                print(f"      ✓ Next event: {predictions[0].get('event_type', 'N/A')} on {predictions[0].get('date', 'N/A')}")
+        except Exception as e:
+            print(f"      ✗ Event predictor error: {e}")
+            result.event_predictions = [{'error': str(e)}]
+
+        # 8.5 Event Attribution - 이벤트 원인 분석 (Perplexity 연동)
+        print("\n[8.5] Event cause analysis...")
+        try:
+            attributor = EventAttributor()
+            # 최근 7일간의 이벤트 분석
+            attributions = attributor.analyze_recent_events(days=7)
+
+            result.event_attributions = attributions[:5]  # Top 5
+            print(f"      ✓ Events analyzed: {len(attributions)}")
+            if attributions:
+                print(f"      ✓ Recent attribution: {attributions[0].get('summary', 'N/A')[:50]}...")
+        except Exception as e:
+            print(f"      ✗ Event attributor error: {e}")
+            result.event_attributions = [{'error': str(e)}]
+
+        # 8.6 Event Backtester - 역사적 이벤트 백테스트
+        print("\n[8.6] Historical event backtesting...")
+        try:
+            backtester = EventBacktester()
+            backtest_results = backtester.run_backtest()
+
+            result.event_backtest_results = {
+                'events_tested': len(backtest_results.get('events', [])),
+                'avg_accuracy': backtest_results.get('avg_accuracy', 0.0),
+                'best_performing_event': backtest_results.get('best_event', 'N/A'),
+                'summary': backtest_results.get('summary', {})
+            }
+            print(f"      ✓ Events tested: {result.event_backtest_results['events_tested']}")
+            print(f"      ✓ Avg accuracy: {result.event_backtest_results['avg_accuracy']:.1%}")
+        except Exception as e:
+            print(f"      ✗ Event backtester error: {e}")
+            result.event_backtest_results = {'error': str(e)}
+
+        # 8.7 News Correlator - 이상-뉴스 자동 귀인
+        print("\n[8.7] Anomaly-news correlation analysis...")
+        try:
+            correlator = NewsCorrelator()
+            # 최근 24시간 이상 이벤트와 뉴스 연결
+            correlations = correlator.correlate_anomalies_with_news(hours=24)
+
+            result.news_correlations = correlations[:5]  # Top 5
+            print(f"      ✓ Correlations found: {len(correlations)}")
+            if correlations:
+                print(f"      ✓ Top correlation: {correlations[0].get('ticker', 'N/A')} - {correlations[0].get('headline', 'N/A')[:40]}...")
+        except Exception as e:
+            print(f"      ✗ News correlator error: {e}")
+            result.news_correlations = [{'error': str(e)}]
+
+        print("\n" + "=" * 50)
+        print("PHASE 8 COMPLETE: All standalone scripts executed")
+        print("=" * 50)
+
     # Summary
     elapsed = (datetime.now() - start_time).total_seconds()
 
@@ -2830,6 +3082,24 @@ async def run_full_pipeline(
         print(f"   Whitening: {result.whitening_summary[:60]}...")
     if result.fact_check_grade != "N/A":
         print(f"   Fact Check Grade: {result.fact_check_grade}")
+
+    # Standalone Scripts Summary (--full mode)
+    if full_mode:
+        print()
+        print("🚀 STANDALONE SCRIPTS (--full mode)")
+        if result.intraday_summary and 'error' not in result.intraday_summary:
+            print(f"   Intraday: {result.intraday_summary.get('tickers_collected', 0)} tickers, {result.intraday_summary.get('anomalies_detected', 0)} anomalies")
+        if result.crypto_monitoring and 'error' not in result.crypto_monitoring:
+            print(f"   Crypto: {result.crypto_monitoring.get('symbols_monitored', 0)} symbols, Risk: {result.crypto_monitoring.get('risk_level', 'N/A')}")
+        if result.event_predictions:
+            print(f"   Events: {len(result.event_predictions)} predictions")
+        if result.event_attributions:
+            print(f"   Attributions: {len(result.event_attributions)} analyzed")
+        if result.event_backtest_results and 'error' not in result.event_backtest_results:
+            print(f"   Backtest: {result.event_backtest_results.get('events_tested', 0)} events, {result.event_backtest_results.get('avg_accuracy', 0):.0%} accuracy")
+        if result.news_correlations:
+            print(f"   News: {len(result.news_correlations)} correlations")
+
     print()
     print("🎯 FINAL RECOMMENDATION")
     print(f"   Action: {result.final_recommendation}")
@@ -2923,6 +3193,13 @@ Terminal Automation:
         help='Real-time streaming duration in seconds (default: 30)'
     )
 
+    # Full 모드 (독립 스크립트 포함)
+    parser.add_argument(
+        '--full', '-f',
+        action='store_true',
+        help='Full mode: include standalone scripts (intraday, crypto, events, news)'
+    )
+
     # 빠른 모드 (하위 호환)
     parser.add_argument(
         '--quick', '-q',
@@ -2992,7 +3269,8 @@ async def main():
         generate_report=generate_report,
         target_ticker=target_ticker,
         output_dir=output_dir,
-        cron_mode=args.cron
+        cron_mode=args.cron,
+        full_mode=args.full
     )
 
     # Cron 모드: 완료 메시지
