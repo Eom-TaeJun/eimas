@@ -1,0 +1,125 @@
+{
+  "timestamp": "2025-12-25T17:10:04.719246",
+  "forecast_results": [
+    {
+      "horizon": "VeryShort",
+      "selected_variables": [
+        "Term_Spread",
+        "Ret_Commodity_Idx",
+        "Ret_Dollar_Idx",
+        "Ret_NatGas",
+        "Ret_USDJPY",
+        "Ret_Sector_Comm",
+        "Ret_Sector_Energy",
+        "Ret_Dow",
+        "Ret_Nasdaq",
+        "d_Baa_Yield",
+        "d_Breakeven5Y",
+        "d_Spread_Baa",
+        "d_Spread_HighYield",
+        "d_VIX"
+      ],
+      "coefficients": {
+        "Term_Spread": -0.48171004760993524,
+        "Ret_Commodity_Idx": 0.14654744519867782,
+        "Ret_Dollar_Idx": 1.0262761782998073,
+        "Ret_NatGas": 0.07711320235495012,
+        "Ret_USDJPY": -0.050846737504047314,
+        "Ret_Sector_Comm": 0.2712296603623919,
+        "Ret_Sector_Energy": 0.4821170785979438,
+        "Ret_Dow": 0.31918027096806595,
+        "Ret_Nasdaq": 0.14279591977210668,
+        "d_Baa_Yield": 1.414445390960974,
+        "d_Breakeven5Y": 0.2555095301512416,
+        "d_Spread_Baa": -0.7561230938165335,
+        "d_Spread_HighYield": -0.7357696217487902,
+        "d_VIX": -0.004437102040076116
+      },
+      "r_squared": 0.7644218960588145,
+      "n_observations": 131,
+      "lambda_optimal": 0.2434446664509204,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T17:10:01.197156"
+    },
+    {
+      "horizon": "Short",
+      "selected_variables": [
+        "USDKRW",
+        "Ret_Commodity_Idx",
+        "Ret_Dollar_Idx",
+        "Ret_Copper",
+        "Ret_Corp_InvGrade",
+        "Ret_Copper_Gold",
+        "d_Breakeven5Y",
+        "d_Spread_Baa",
+        "d_Spread_HighYield"
+      ],
+      "coefficients": {
+        "USDKRW": 0.01443787031551933,
+        "Ret_Commodity_Idx": 0.37788094093093094,
+        "Ret_Dollar_Idx": 0.18567988628682572,
+        "Ret_Copper": -0.08933393363176173,
+        "Ret_Corp_InvGrade": -1.6631661881602218,
+        "Ret_Copper_Gold": -0.03939372521028579,
+        "d_Breakeven5Y": 0.15842554657152583,
+        "d_Spread_Baa": -0.5851734519905066,
+        "d_Spread_HighYield": -2.189522087914353
+      },
+      "r_squared": 0.7352862312270934,
+      "n_observations": 80,
+      "lambda_optimal": 0.4081870518659913,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T17:10:03.366646"
+    },
+    {
+      "horizon": "Long",
+      "selected_variables": [
+        "Copper",
+        "Ret_GBPUSD",
+        "Ret_HighYield_ETF",
+        "d_Spread_HighYield"
+      ],
+      "coefficients": {
+        "Copper": 0.7416608967300233,
+        "Ret_GBPUSD": -0.45381477750221066,
+        "Ret_HighYield_ETF": -1.3285550848077337,
+        "d_Spread_HighYield": -3.5751295143756914
+      },
+      "r_squared": 0.6829200675061151,
+      "n_observations": 40,
+      "lambda_optimal": 1.0145590073741884,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T17:10:03.870895"
+    }
+  ],
+  "analysis": {
+    "total_risk_score": 12.112379382339158,
+    "risk_level": "LOW",
+    "current_regime": "BULL",
+    "regime_confidence": 90.0,
+    "transition_probability": 0.25,
+    "primary_risk_path": "crypto",
+    "path_contributions": {
+      "liquidity": 7.2878409645862385,
+      "concentration": 14.76671781867566,
+      "credit": 11.837933595901225,
+      "volatility": 12.146401607643732,
+      "rotation": 14.0919272619688,
+      "crypto": 20.0
+    },
+    "active_warnings": []
+  },
+  "debate": {},
+  "recommendations": [
+    "LOW RISK (12.1/100): Favorable conditions for growth-oriented strategies"
+  ]
+}

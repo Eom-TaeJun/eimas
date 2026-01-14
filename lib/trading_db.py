@@ -1,0 +1,871 @@
+#!/usr/bin/env python3
+"""
+EIMAS Trading Database
+======================
+트레이딩 실행, 시그널, 포트폴리오, 성과 추적 DB
+
+Usage:
+    from lib.trading_db import TradingDB, Signal, PortfolioCandidate
+
+    db = TradingDB()
+    db.save_signal(signal)
+    db.save_portfolio(portfolio)
+    db.update_performance(portfolio_id, actual_returns)
+"""
+
+import sys
+sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+
+import sqlite3
+import json
+from datetime import datetime, date, timedelta
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from pathlib import Path
+
+
+# ============================================================================
+# Constants & Enums
+# ============================================================================
+
+class SignalSource(str, Enum):
+    """시그널 소스"""
+    REGIME_DETECTOR = "regime_detector"
+    CRITICAL_PATH = "critical_path"
+    ETF_FLOW = "etf_flow"
+    FEAR_GREED = "fear_greed"
+    FRED_INDICATOR = "fred_indicator"
+    VIX_STRUCTURE = "vix_structure"
+    BACKTESTER = "backtester"
+    MANUAL = "manual"
+
+
+class SignalAction(str, Enum):
+    """시그널 액션"""
+    BUY = "buy"
+    SELL = "sell"
+    HOLD = "hold"
+    REDUCE = "reduce"
+    HEDGE = "hedge"
+
+
+class InvestorProfile(str, Enum):
+    """투자자 프로파일"""
+    CONSERVATIVE = "conservative"
+    MODERATE = "moderate"
+    AGGRESSIVE = "aggressive"
+    TACTICAL = "tactical"
+
+
+class SessionType(str, Enum):
+    """거래 세션"""
+    PRE_MARKET = "pre_market"
+    OPENING = "opening"
+    MID_DAY = "mid_day"
+    POWER_HOUR = "power_hour"
+    AFTER_HOURS = "after_hours"
+
+
+# ============================================================================
+# Data Classes
+# ============================================================================
+
+@dataclass
+class Signal:
+    """시그널 데이터"""
+    source: SignalSource
+    action: SignalAction
+    ticker: str = "SPY"
+    conviction: float = 0.5  # 0.0 - 1.0
+    reasoning: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+    id: Optional[int] = None
+
+    @property
+    def confidence(self) -> float:
+        """Alias for conviction"""
+        return self.conviction
+
+    def to_dict(self) -> Dict:
+        return {
+            'source': self.source.value,
+            'action': self.action.value,
+            'ticker': self.ticker,
+            'conviction': self.conviction,
+            'reasoning': self.reasoning,
+            'metadata': self.metadata,
+            'timestamp': self.timestamp.isoformat(),
+        }
+
+
+@dataclass
+class PortfolioCandidate:
+    """포트폴리오 후보"""
+    profile: InvestorProfile
+    allocations: Dict[str, float]  # {"SPY": 0.4, "TLT": 0.3, "GLD": 0.2, "CASH": 0.1}
+    expected_return: float  # 연환산 예상 수익률
+    expected_risk: float    # 연환산 예상 변동성
+    expected_sharpe: float
+    signals_used: List[int]  # 사용된 시그널 ID
+    reasoning: str = ""
+    rank: int = 1
+    timestamp: datetime = field(default_factory=datetime.now)
+    id: Optional[int] = None
+
+    def to_dict(self) -> Dict:
+        return {
+            'profile': self.profile.value,
+            'allocations': self.allocations,
+            'expected_return': round(self.expected_return, 4),
+            'expected_risk': round(self.expected_risk, 4),
+            'expected_sharpe': round(self.expected_sharpe, 2),
+            'signals_used': self.signals_used,
+            'reasoning': self.reasoning,
+            'rank': self.rank,
+            'timestamp': self.timestamp.isoformat(),
+        }
+
+
+@dataclass
+class Execution:
+    """실행 기록"""
+    portfolio_id: int
+    ticker: str
+    action: SignalAction
+    session: SessionType
+    target_price: float
+    executed_price: float
+    shares: float
+    commission: float = 0.0
+    slippage: float = 0.0
+    timestamp: datetime = field(default_factory=datetime.now)
+    id: Optional[int] = None
+
+
+@dataclass
+class PerformanceRecord:
+    """성과 기록"""
+    portfolio_id: int
+    date: date
+    # 예측값
+    predicted_return_1d: float = 0.0
+    predicted_return_1w: float = 0.0
+    predicted_return_1m: float = 0.0
+    # 실제값 (나중에 업데이트)
+    actual_return_1d: Optional[float] = None
+    actual_return_1w: Optional[float] = None
+    actual_return_1m: Optional[float] = None
+    # 평가
+    mape: Optional[float] = None
+    id: Optional[int] = None
+
+
+@dataclass
+class SignalPerformance:
+    """시그널 성과"""
+    signal_id: int
+    evaluation_date: date
+    return_1d: float
+    return_5d: float
+    return_20d: float
+    max_gain: float
+    max_loss: float
+    signal_accuracy: bool
+    id: Optional[int] = None
+
+
+@dataclass
+class SessionAnalysis:
+    """세션별 분석"""
+    date: date
+    ticker: str
+    pre_market_return: float = 0.0
+    opening_hour_return: float = 0.0
+    mid_day_return: float = 0.0
+    power_hour_return: float = 0.0
+    after_hours_return: float = 0.0
+    overnight_return: float = 0.0
+    best_buy_time: Optional[str] = None
+    best_sell_time: Optional[str] = None
+    volume_distribution: Dict[str, float] = field(default_factory=dict)
+    id: Optional[int] = None
+
+
+# ============================================================================
+# Database Class
+# ============================================================================
+
+class TradingDB:
+    """트레이딩 데이터베이스"""
+
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = str(Path(__file__).parent.parent / "data" / "trading.db")
+
+        self.db_path = db_path
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def _init_db(self):
+        """테이블 초기화"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        # 1. Signals 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS signals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME NOT NULL,
+                signal_source VARCHAR(50) NOT NULL,
+                signal_action VARCHAR(20) NOT NULL,
+                ticker VARCHAR(10),
+                conviction FLOAT,
+                reasoning TEXT,
+                metadata JSON,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 2. Portfolio Candidates 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS portfolio_candidates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME NOT NULL,
+                profile_type VARCHAR(20) NOT NULL,
+                candidate_rank INTEGER,
+                allocations JSON,
+                expected_return FLOAT,
+                expected_risk FLOAT,
+                expected_sharpe FLOAT,
+                signals_used JSON,
+                reasoning TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 3. Executions 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS executions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                portfolio_id INTEGER,
+                execution_time DATETIME NOT NULL,
+                session_type VARCHAR(20),
+                ticker VARCHAR(10) NOT NULL,
+                action VARCHAR(10) NOT NULL,
+                target_price FLOAT,
+                executed_price FLOAT,
+                slippage FLOAT,
+                shares FLOAT,
+                commission FLOAT,
+                status VARCHAR(20) DEFAULT 'filled',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (portfolio_id) REFERENCES portfolio_candidates(id)
+            )
+        """)
+
+        # 4. Performance Tracking 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS performance_tracking (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                portfolio_id INTEGER,
+                date DATE NOT NULL,
+                predicted_return_1d FLOAT,
+                predicted_return_1w FLOAT,
+                predicted_return_1m FLOAT,
+                predicted_volatility FLOAT,
+                actual_return_1d FLOAT,
+                actual_return_1w FLOAT,
+                actual_return_1m FLOAT,
+                actual_volatility FLOAT,
+                prediction_error_1d FLOAT,
+                prediction_error_1w FLOAT,
+                prediction_error_1m FLOAT,
+                mape FLOAT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME,
+                FOREIGN KEY (portfolio_id) REFERENCES portfolio_candidates(id)
+            )
+        """)
+
+        # 5. Signal Performance 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS signal_performance (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signal_id INTEGER,
+                evaluation_date DATE,
+                return_1d FLOAT,
+                return_5d FLOAT,
+                return_20d FLOAT,
+                return_60d FLOAT,
+                max_gain FLOAT,
+                max_loss FLOAT,
+                signal_accuracy BOOLEAN,
+                profit_factor FLOAT,
+                information_ratio FLOAT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (signal_id) REFERENCES signals(id)
+            )
+        """)
+
+        # 6. Session Analysis 테이블
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS session_analysis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date DATE NOT NULL,
+                ticker VARCHAR(10) NOT NULL,
+                pre_market_return FLOAT,
+                opening_hour_return FLOAT,
+                mid_day_return FLOAT,
+                power_hour_return FLOAT,
+                after_hours_return FLOAT,
+                overnight_return FLOAT,
+                best_buy_time TIME,
+                best_sell_time TIME,
+                volume_distribution JSON,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 인덱스 생성
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_source ON signals(signal_source)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_portfolio_profile ON portfolio_candidates(profile_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_performance_date ON performance_tracking(date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_signal_perf_date ON signal_performance(evaluation_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_date_ticker ON session_analysis(date, ticker)")
+
+        conn.commit()
+        conn.close()
+
+    # ========================================================================
+    # Signal Methods
+    # ========================================================================
+
+    def save_signal(self, signal: Signal) -> int:
+        """시그널 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO signals (timestamp, signal_source, signal_action, ticker,
+                                conviction, reasoning, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            signal.timestamp.isoformat(),
+            signal.source.value,
+            signal.action.value,
+            signal.ticker,
+            signal.conviction,
+            signal.reasoning,
+            json.dumps(signal.metadata),
+        ))
+
+        signal_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return signal_id
+
+    def get_signals(
+        self,
+        source: SignalSource = None,
+        start_date: date = None,
+        end_date: date = None,
+        limit: int = 100
+    ) -> List[Dict]:
+        """시그널 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM signals WHERE 1=1"
+        params = []
+
+        if source:
+            query += " AND signal_source = ?"
+            params.append(source.value)
+
+        if start_date:
+            query += " AND DATE(timestamp) >= ?"
+            params.append(start_date.isoformat())
+
+        if end_date:
+            query += " AND DATE(timestamp) <= ?"
+            params.append(end_date.isoformat())
+
+        query += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [dict(row) for row in rows]
+
+    def get_recent_signals(self, hours: int = 24) -> List[Dict]:
+        """최근 시그널 조회"""
+        cutoff = datetime.now() - timedelta(hours=hours)
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM signals
+            WHERE timestamp >= ?
+            ORDER BY timestamp DESC
+        """, (cutoff.isoformat(),))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    # ========================================================================
+    # Portfolio Methods
+    # ========================================================================
+
+    def save_portfolio(self, portfolio: PortfolioCandidate) -> int:
+        """포트폴리오 후보 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO portfolio_candidates
+            (timestamp, profile_type, candidate_rank, allocations,
+             expected_return, expected_risk, expected_sharpe, signals_used, reasoning)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            portfolio.timestamp.isoformat(),
+            portfolio.profile.value,
+            portfolio.rank,
+            json.dumps(portfolio.allocations),
+            portfolio.expected_return,
+            portfolio.expected_risk,
+            portfolio.expected_sharpe,
+            json.dumps(portfolio.signals_used),
+            portfolio.reasoning,
+        ))
+
+        portfolio_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return portfolio_id
+
+    def get_portfolios(
+        self,
+        profile: InvestorProfile = None,
+        start_date: date = None,
+        limit: int = 50
+    ) -> List[Dict]:
+        """포트폴리오 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM portfolio_candidates WHERE 1=1"
+        params = []
+
+        if profile:
+            query += " AND profile_type = ?"
+            params.append(profile.value)
+
+        if start_date:
+            query += " AND DATE(timestamp) >= ?"
+            params.append(start_date.isoformat())
+
+        query += " ORDER BY timestamp DESC, candidate_rank ASC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for row in rows:
+            d = dict(row)
+            d['allocations'] = json.loads(d['allocations']) if d['allocations'] else {}
+            d['signals_used'] = json.loads(d['signals_used']) if d['signals_used'] else []
+            results.append(d)
+
+        return results
+
+    # ========================================================================
+    # Execution Methods
+    # ========================================================================
+
+    def save_execution(self, execution: Execution) -> int:
+        """실행 기록 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO executions
+            (portfolio_id, execution_time, session_type, ticker, action,
+             target_price, executed_price, slippage, shares, commission)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            execution.portfolio_id,
+            execution.timestamp.isoformat(),
+            execution.session.value,
+            execution.ticker,
+            execution.action.value,
+            execution.target_price,
+            execution.executed_price,
+            execution.slippage,
+            execution.shares,
+            execution.commission,
+        ))
+
+        exec_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return exec_id
+
+    # ========================================================================
+    # Performance Methods
+    # ========================================================================
+
+    def save_prediction(
+        self,
+        portfolio_id: int,
+        pred_1d: float,
+        pred_1w: float,
+        pred_1m: float
+    ) -> int:
+        """예측값 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO performance_tracking
+            (portfolio_id, date, predicted_return_1d, predicted_return_1w, predicted_return_1m)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            portfolio_id,
+            date.today().isoformat(),
+            pred_1d,
+            pred_1w,
+            pred_1m,
+        ))
+
+        perf_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return perf_id
+
+    def update_actual_returns(
+        self,
+        portfolio_id: int,
+        record_date: date,
+        actual_1d: float = None,
+        actual_1w: float = None,
+        actual_1m: float = None
+    ):
+        """실제 수익률 업데이트"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        updates = []
+        params = []
+
+        if actual_1d is not None:
+            updates.append("actual_return_1d = ?")
+            params.append(actual_1d)
+
+        if actual_1w is not None:
+            updates.append("actual_return_1w = ?")
+            params.append(actual_1w)
+
+        if actual_1m is not None:
+            updates.append("actual_return_1m = ?")
+            params.append(actual_1m)
+
+        if not updates:
+            return
+
+        updates.append("updated_at = ?")
+        params.append(datetime.now().isoformat())
+        params.extend([portfolio_id, record_date.isoformat()])
+
+        query = f"""
+            UPDATE performance_tracking
+            SET {', '.join(updates)}
+            WHERE portfolio_id = ? AND date = ?
+        """
+
+        cursor.execute(query, params)
+
+        # MAPE 계산
+        cursor.execute("""
+            UPDATE performance_tracking
+            SET
+                prediction_error_1d = actual_return_1d - predicted_return_1d,
+                prediction_error_1w = actual_return_1w - predicted_return_1w,
+                prediction_error_1m = actual_return_1m - predicted_return_1m,
+                mape = (
+                    ABS(actual_return_1d - predicted_return_1d) / NULLIF(ABS(actual_return_1d), 0) +
+                    ABS(actual_return_1w - predicted_return_1w) / NULLIF(ABS(actual_return_1w), 0) +
+                    ABS(actual_return_1m - predicted_return_1m) / NULLIF(ABS(actual_return_1m), 0)
+                ) / 3
+            WHERE portfolio_id = ? AND date = ?
+        """, (portfolio_id, record_date.isoformat()))
+
+        conn.commit()
+        conn.close()
+
+    def get_performance_history(
+        self,
+        portfolio_id: int = None,
+        days: int = 30
+    ) -> List[Dict]:
+        """성과 이력 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        query = """
+            SELECT * FROM performance_tracking
+            WHERE date >= ?
+        """
+        params = [(date.today() - timedelta(days=days)).isoformat()]
+
+        if portfolio_id:
+            query += " AND portfolio_id = ?"
+            params.append(portfolio_id)
+
+        query += " ORDER BY date DESC"
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        return [dict(row) for row in rows]
+
+    # ========================================================================
+    # Signal Performance Methods
+    # ========================================================================
+
+    def save_signal_performance(self, perf: SignalPerformance) -> int:
+        """시그널 성과 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO signal_performance
+            (signal_id, evaluation_date, return_1d, return_5d, return_20d,
+             max_gain, max_loss, signal_accuracy)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            perf.signal_id,
+            perf.evaluation_date.isoformat(),
+            perf.return_1d,
+            perf.return_5d,
+            perf.return_20d,
+            perf.max_gain,
+            perf.max_loss,
+            perf.signal_accuracy,
+        ))
+
+        perf_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return perf_id
+
+    def get_signal_accuracy_by_source(self) -> Dict[str, float]:
+        """소스별 시그널 정확도"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                s.signal_source,
+                COUNT(*) as total,
+                SUM(CASE WHEN sp.signal_accuracy = 1 THEN 1 ELSE 0 END) as correct,
+                AVG(CASE WHEN sp.signal_accuracy = 1 THEN 1.0 ELSE 0.0 END) as accuracy
+            FROM signals s
+            LEFT JOIN signal_performance sp ON s.id = sp.signal_id
+            WHERE sp.id IS NOT NULL
+            GROUP BY s.signal_source
+        """)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        return {row['signal_source']: round(row['accuracy'] * 100, 1) for row in rows}
+
+    # ========================================================================
+    # Session Analysis Methods
+    # ========================================================================
+
+    def save_session_analysis(self, analysis: SessionAnalysis) -> int:
+        """세션 분석 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT OR REPLACE INTO session_analysis
+            (date, ticker, pre_market_return, opening_hour_return, mid_day_return,
+             power_hour_return, after_hours_return, overnight_return,
+             best_buy_time, best_sell_time, volume_distribution)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            analysis.date.isoformat(),
+            analysis.ticker,
+            analysis.pre_market_return,
+            analysis.opening_hour_return,
+            analysis.mid_day_return,
+            analysis.power_hour_return,
+            analysis.after_hours_return,
+            analysis.overnight_return,
+            analysis.best_buy_time,
+            analysis.best_sell_time,
+            json.dumps(analysis.volume_distribution),
+        ))
+
+        analysis_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return analysis_id
+
+    def get_session_stats(self, ticker: str = "SPY", days: int = 30) -> Dict:
+        """세션별 통계"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                AVG(pre_market_return) as avg_pre_market,
+                AVG(opening_hour_return) as avg_opening,
+                AVG(mid_day_return) as avg_mid_day,
+                AVG(power_hour_return) as avg_power_hour,
+                AVG(after_hours_return) as avg_after_hours,
+                AVG(overnight_return) as avg_overnight
+            FROM session_analysis
+            WHERE ticker = ? AND date >= ?
+        """, (ticker, (date.today() - timedelta(days=days)).isoformat()))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            return {
+                'pre_market': round(row['avg_pre_market'] or 0, 4),
+                'opening_hour': round(row['avg_opening'] or 0, 4),
+                'mid_day': round(row['avg_mid_day'] or 0, 4),
+                'power_hour': round(row['avg_power_hour'] or 0, 4),
+                'after_hours': round(row['avg_after_hours'] or 0, 4),
+                'overnight': round(row['avg_overnight'] or 0, 4),
+            }
+        return {}
+
+    # ========================================================================
+    # Utility Methods
+    # ========================================================================
+
+    def get_summary(self) -> Dict:
+        """DB 요약 정보"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        summary = {}
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM signals")
+        summary['total_signals'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM portfolio_candidates")
+        summary['total_portfolios'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM executions")
+        summary['total_executions'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM signal_performance")
+        summary['total_signal_evaluations'] = cursor.fetchone()['cnt']
+
+        cursor.execute("""
+            SELECT signal_source, COUNT(*) as cnt
+            FROM signals GROUP BY signal_source
+        """)
+        summary['signals_by_source'] = {
+            row['signal_source']: row['cnt'] for row in cursor.fetchall()
+        }
+
+        conn.close()
+        return summary
+
+    def print_summary(self):
+        """요약 출력"""
+        summary = self.get_summary()
+        print("\n" + "=" * 50)
+        print("EIMAS Trading DB Summary")
+        print("=" * 50)
+        print(f"Total Signals:      {summary['total_signals']}")
+        print(f"Total Portfolios:   {summary['total_portfolios']}")
+        print(f"Total Executions:   {summary['total_executions']}")
+        print(f"Signal Evaluations: {summary['total_signal_evaluations']}")
+
+        if summary['signals_by_source']:
+            print("\nSignals by Source:")
+            for source, cnt in summary['signals_by_source'].items():
+                print(f"  {source}: {cnt}")
+
+        print("=" * 50)
+
+
+# ============================================================================
+# Test
+# ============================================================================
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("EIMAS Trading DB Test")
+    print("=" * 60)
+
+    # DB 초기화
+    db = TradingDB()
+    print(f"✅ DB initialized: {db.db_path}")
+
+    # 테스트 시그널 저장
+    test_signal = Signal(
+        source=SignalSource.REGIME_DETECTOR,
+        action=SignalAction.BUY,
+        ticker="SPY",
+        conviction=0.75,
+        reasoning="Bull + Low Vol regime detected",
+        metadata={"regime": "bull_low_vol", "confidence": 0.8}
+    )
+    signal_id = db.save_signal(test_signal)
+    print(f"✅ Signal saved: ID={signal_id}")
+
+    # 테스트 포트폴리오 저장
+    test_portfolio = PortfolioCandidate(
+        profile=InvestorProfile.MODERATE,
+        allocations={"SPY": 0.5, "TLT": 0.3, "GLD": 0.1, "CASH": 0.1},
+        expected_return=0.12,
+        expected_risk=0.15,
+        expected_sharpe=0.80,
+        signals_used=[signal_id],
+        reasoning="Balanced allocation for moderate risk profile",
+        rank=1
+    )
+    portfolio_id = db.save_portfolio(test_portfolio)
+    print(f"✅ Portfolio saved: ID={portfolio_id}")
+
+    # 예측 저장
+    db.save_prediction(portfolio_id, pred_1d=0.003, pred_1w=0.015, pred_1m=0.04)
+    print(f"✅ Prediction saved")
+
+    # 시그널 조회
+    signals = db.get_recent_signals(hours=24)
+    print(f"✅ Recent signals: {len(signals)}")
+
+    # 포트폴리오 조회
+    portfolios = db.get_portfolios(limit=10)
+    print(f"✅ Recent portfolios: {len(portfolios)}")
+
+    # 요약 출력
+    db.print_summary()
+
+    print("\n" + "=" * 60)
+    print("Test Complete!")
+    print("=" * 60)

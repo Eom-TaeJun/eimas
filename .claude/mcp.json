@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "v0-mcp": {
+      "command": "node",
+      "args": ["/home/tj/v0-mcp/dist/main.js"],
+      "env": {
+        "V0_API_KEY": "v1:qMIpFmfXeBAD7qZPdB0WhbaY:ozbQzMAeB5S0taqluE0MhD2t"
+      }
+    }
+  }
+}

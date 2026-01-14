@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-12-25T16:33:00.395576",
+  "forecast_results": [
+    {
+      "horizon": "VeryShort",
+      "selected_variables": [],
+      "coefficients": {},
+      "r_squared": 0.0,
+      "n_observations": 0,
+      "lambda_optimal": 0.0,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T16:32:59.633528"
+    },
+    {
+      "horizon": "Short",
+      "selected_variables": [],
+      "coefficients": {},
+      "r_squared": 0.0,
+      "n_observations": 0,
+      "lambda_optimal": 0.0,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T16:32:59.635482"
+    },
+    {
+      "horizon": "Long",
+      "selected_variables": [],
+      "coefficients": {},
+      "r_squared": 0.0,
+      "n_observations": 0,
+      "lambda_optimal": 0.0,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T16:32:59.637075"
+    }
+  ],
+  "analysis": {
+    "total_risk_score": 12.112379382337458,
+    "risk_level": "LOW",
+    "current_regime": "BULL",
+    "regime_confidence": 90.0,
+    "transition_probability": 0.25,
+    "primary_risk_path": "crypto",
+    "path_contributions": {
+      "liquidity": 7.2878409645862385,
+      "concentration": 14.766717818670879,
+      "credit": 11.837933595902522,
+      "volatility": 12.146401607643732,
+      "rotation": 14.09192726196115,
+      "crypto": 20.0
+    },
+    "active_warnings": []
+  },
+  "debate": {},
+  "recommendations": [
+    "LOW RISK (12.1/100): Favorable conditions for growth-oriented strategies"
+  ]
+}

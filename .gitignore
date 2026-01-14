@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Environment Variables (IMPORTANT: Never commit API keys!)
+.env
+.env.local
+.env.*.local
+
+# Outputs & Data
+outputs/*.json
+outputs/*.md
+outputs/*.db
+outputs/report_images/
+data/events.db
+data/*.db
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.DS_Store?
+
+# Node.js (Frontend)
+node_modules/
+.next/
+.turbo/
+out/
+build/
+*.tsbuildinfo
+
+# Cache
+.cache/
+*.cache
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+~*
+
+# Keep example config
+!configs/default.yaml

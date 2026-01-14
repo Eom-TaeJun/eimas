@@ -1,0 +1,33 @@
+======================================================================
+EIMAS Daily Analysis Report
+Generated: 2026-01-12 01:16
+======================================================================
+
+📊 Signals Collected: 8
+   Consensus: HEDGE (52%)
+
+💼 Portfolios Generated: 4
+   CONSERVATIVE: Sharpe 0.87
+   MODERATE: Sharpe 0.97
+   AGGRESSIVE: Sharpe 0.96
+   TACTICAL: Sharpe 0.99
+
+⏰ Session Analysis (2026-01-09):
+   Total Return: +0.69%
+   Best Buy:  opening
+   Best Sell: power_hour
+
+📈 Feedback Update:
+   Signals Evaluated: 58
+   Portfolios Updated: 17
+   Source Accuracy:
+     fear_greed: 100.0%
+     regime_detector: 100.0%
+     critical_path: 0.0%
+
+📁 Database Status:
+   Total Signals: 626
+   Total Portfolios: 17
+   Total Executions: 0
+
+======================================================================

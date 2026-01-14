@@ -1,0 +1,622 @@
+{
+  "timestamp": "2026-01-12T01:03:17.897733",
+  "fred_summary": {
+    "rrp": 3.3,
+    "rrp_delta": 0.2,
+    "tga": 796.1,
+    "tga_delta": -41.2,
+    "fed_assets": 6.574,
+    "net_liquidity": 5774.2,
+    "liquidity_regime": "Abundant",
+    "fed_funds": 3.64,
+    "treasury_10y": 4.19,
+    "spread_10y2y": 0.64,
+    "curve_status": "Normal"
+  },
+  "market_data_count": 24,
+  "crypto_data_count": 2,
+  "regime": {
+    "regime": "Bull (Low Vol)",
+    "trend": "Weak Uptrend",
+    "volatility": "Low",
+    "confidence": 0.75,
+    "description": "\ucd5c\uc801\uc758 \ud22c\uc790 \ud658\uacbd. \ub9ac\uc2a4\ud06c \uc790\uc0b0 \uc120\ud638",
+    "strategy": "\uc8fc\uc2dd \ube44\uc911 \ud655\ub300, \uc131\uc7a5\uc8fc/\uc18c\ud615\uc8fc \uc120\ud638",
+    "gmm_regime": "Neutral",
+    "gmm_probabilities": {
+      "Bear": 0.0023250466659801607,
+      "Neutral": 0.9976749533340199,
+      "Bull": 3.1368002003577043e-28
+    },
+    "entropy": 0.014947456957914855,
+    "entropy_level": "Very Low",
+    "entropy_interpretation": "Strong Regime Signal",
+    "gmm_report_line": "GMM Regime: **Neutral** (Bull:0%/Neutral:100%/Bear:0%) | Entropy: 0.01 (Very Low) - Strong Regime Signal"
+  },
+  "events_detected": [],
+  "liquidity_signal": "NEUTRAL",
+  "risk_score": 5.01910645516577,
+  "debate_consensus": {},
+  "dissent_records": [],
+  "has_strong_dissent": false,
+  "full_mode_position": "BULLISH",
+  "reference_mode_position": "BULLISH",
+  "modes_agree": true,
+  "final_recommendation": "BULLISH",
+  "confidence": 0.7695992681179153,
+  "risk_level": "LOW",
+  "warnings": [],
+  "realtime_signals": [],
+  "portfolio_weights": {
+    "UUP": 0.0021506818816563137,
+    "TIP": 0.006294905078153188,
+    "ONDO-USD": 1.6799573766935198e-05,
+    "ETH-USD": 2.660785163847271e-05,
+    "LQD": 0.002724573136482654,
+    "COIN": 2.293450522355876e-05,
+    "BTC-USD": 8.574695078595481e-05,
+    "TLT": 0.0008340441244803724,
+    "USO": 0.0001256421994337507,
+    "IWM": 0.02992033046887856,
+    "SPY": 0.041519987800506954,
+    "XLI": 0.04292376040476046,
+    "DIA": 0.05596037451791782,
+    "XLE": 0.024858272868876003,
+    "HYG": 0.5313131402279739,
+    "XLF": 0.042871630869090904,
+    "SMH": 0.010809458369119746,
+    "QQQ": 0.028356427185403557,
+    "XLK": 0.020629482945798146,
+    "SOXX": 0.009786817135505442,
+    "XLV": 0.051667232312334534,
+    "GLD": 0.04791020117488214,
+    "PAXG-USD": 0.048188654741457726,
+    "^VIX": 0.0010022936758727582
+  },
+  "shock_propagation": {},
+  "integrated_signals": [],
+  "genius_act_regime": "contraction",
+  "genius_act_signals": [
+    {
+      "type": "stablecoin_drain",
+      "description": "\uc2a4\ud14c\uc774\ube14\ucf54\uc778 \uacf5\uae09 -4.9% \uac10\uc18c - \ud06c\ub9bd\ud1a0 \uc790\uae08 \uc774\ud0c8",
+      "why": "\uc2a4\ud14c\uc774\ube14\ucf54\uc778 \uacf5\uae09 \uac10\uc18c \u2192 \ud06c\ub9bd\ud1a0 \uc2dc\uc7a5\uc5d0\uc11c \uc790\uae08 \uc774\ud0c8 \uc2e0\ud638 \u2192 \ub9ac\uc2a4\ud06c\uc624\ud504 \uc804\ud658, \ud604\uae08\ud654 \uc555\ub825 \uc99d\uac00",
+      "strength": "0.49",
+      "confidence": "70%",
+      "affected_assets": [
+        "BTC-USD",
+        "ETH-USD"
+      ],
+      "metadata": {
+        "drain_amount": "9.3B"
+      }
+    },
+    {
+      "type": "crypto_risk_off",
+      "description": "\uc2a4\ud14c\uc774\ube14\ucf54\uc778 \uc774\ud0c8 \u2192 \ud06c\ub9bd\ud1a0 \ub9e4\ub3c4 \uc555\ub825",
+      "why": "\ud06c\ub9bd\ud1a0 \ub9ac\uc2a4\ud06c\uc624\ud504 \ud658\uacbd \u2192 \uc2a4\ud14c\uc774\ube14\ucf54\uc778 \uc774\ud0c8 + \uc720\ub3d9\uc131 \ucd95\uc18c \u2192 \ube44\ud2b8\ucf54\uc778/\uc774\ub354\ub9ac\uc6c0 \ud558\ub77d \uc555\ub825",
+      "strength": "0.49",
+      "confidence": "65%",
+      "affected_assets": [
+        "BTC-USD",
+        "ETH-USD",
+        "COIN"
+      ],
+      "metadata": {}
+    },
+    {
+      "type": "stablecoin_analysis",
+      "description": "Stablecoin Draining: -4.9% weekly redemption ($9.3B)",
+      "why": "\uc2a4\ud14c\uc774\ube14\ucf54\uc778 \uc18c\uac01/\ud658\ub9e4 \uc9c4\ud589 (-4.9%). \ud06c\ub9bd\ud1a0 \uc2dc\uc7a5 \uc790\uae08 \uc774\ud0c8 \uc2e0\ud638. Genius Act \uc5ed\uc791\uc6a9 \uac00\ub2a5. \uad6d\ucc44 \ub2f4\ubcf4 \ub9e4\uac01 \uc555\ub825, Risk-Off \uc8fc\uc758.",
+      "strength": 0.489,
+      "confidence": 0.8,
+      "affected_assets": [
+        "BTC-USD",
+        "ETH-USD",
+        "TLT",
+        "SHY"
+      ],
+      "metadata": {
+        "total_market_cap": 180.7,
+        "total_delta_7d": -9.3,
+        "total_delta_pct": -4.89,
+        "genius_act_status": "draining",
+        "components": {
+          "USDT": {
+            "current": 130.76,
+            "delta_7d": -9.24,
+            "delta_pct": -6.6,
+            "status": "declining"
+          },
+          "USDC": {
+            "current": 44.96,
+            "delta_7d": -0.04,
+            "delta_pct": -0.08,
+            "status": "stable"
+          },
+          "DAI": {
+            "current": 4.98,
+            "delta_7d": -0.02,
+            "delta_pct": -0.44,
+            "status": "stable"
+          }
+        }
+      }
+    }
+  ],
+  "whitening_summary": "",
+  "fact_check_grade": "N/A",
+  "theme_etf_analysis": {
+    "theme": "AI_SEMICONDUCTOR",
+    "description": "AI \uc778\ud504\ub77c\uc640 \ubc18\ub3c4\uccb4 \ubc38\ub958\uccb4\uc778",
+    "stocks_count": 13,
+    "top5_concentration": "53.7%",
+    "diversification_score": "91.1%",
+    "warnings": [
+      "\u26a0\ufe0f \ubcd1\ubaa9 \uc9c0\uc810\uc5d0 39% \ub178\ucd9c - \uacf5\uae09\ub9dd \ub9ac\uc2a4\ud06c"
+    ],
+    "supply_chain": {
+      "layers": {
+        "equipment": [
+          "AMAT",
+          "ASML",
+          "LRCX",
+          "KLAC"
+        ],
+        "manufacturer": [
+          "TSM",
+          "INTC"
+        ],
+        "integrator": [
+          "NVDA",
+          "AMD",
+          "AVGO",
+          "MRVL"
+        ],
+        "end_user": [
+          "MSFT",
+          "GOOGL",
+          "AMZN"
+        ]
+      },
+      "bottlenecks": [
+        "AMAT",
+        "ASML",
+        "LRCX",
+        "KLAC",
+        "AMD"
+      ],
+      "top_central": [
+        "TSM",
+        "NVDA",
+        "INTC"
+      ]
+    },
+    "causality_explanation": "=== Supply Chain Causality (\uc778\uacfc\uad00\uacc4) ===\n\n[Causality Insights (\uc778\uacfc\uad00\uacc4 \ubd84\uc11d)]\n\n**Path:** AI Demand Surge (External Shock) \u2192 AMAT (Bottleneck) \u2192 TSM (Production) \u2192 NVDA (Revenue)\n**Insight:** AI Demand Surge\ub85c \uc778\ud574 NVDA \uc218\uc694\uac00 \uae09\uc99d\ud558\uba74, TSM \uac00\ub3d9\ub960\uc774 \uc0c1\uc2b9\ud558\uace0 AMAT\uc5d0 \uc6a9\ub7c9 \uc555\ubc15\uc774 \ubc1c\uc0dd\ud568 (Positive Causality).\n(Causality: POSITIVE, Confidence: 85%)\n\n**Path:** AMAT \u2192 TSM (Hub Node) \u2192 MSFT\n**Insight:** TSM\ub294 \uacf5\uae09\ub9dd \ub124\ud2b8\uc6cc\ud06c\uc758 \ud575\uc2ec \ud5c8\ube0c\ub85c, AMAT\uc758 \uacf5\uae09\uacfc MSFT\uc758 \uc218\uc694\ub97c \ubaa8\ub450 \uc5f0\uacb0. \uc774 \uc885\ubaa9\uc758 \ubcc0\ub3d9\uc740 \uc591\ubc29\ud5a5\uc73c\ub85c \uc804\ud30c\ub428 (Bidirectional Causality).\n(Causality: NEUTRAL, Confidence: 80%)\n\n**Path:** Risk Event \u2192 ASML (Critical Bottleneck) \u2192 Supply Chain Disruption\n**Insight:** ASML\ub294 EUV \ub9ac\uc18c\uadf8\ub798\ud53c \uc7a5\ube44\uc758 \uc720\uc77c\ud55c \uacf5\uae09\uc790\ub85c, \ub300\uccb4 \ubd88\uac00\ub2a5\ud55c \ubcd1\ubaa9 \uc9c0\uc810. \uc774 \uc885\ubaa9\uc5d0 \ubb38\uc81c \ubc1c\uc0dd \uc2dc \ucd5c\ucca8\ub2e8 \ubc18\ub3c4\uccb4 \uc0dd\uc0b0\uc774 12-18\uac1c\uc6d4 \uc774\uc0c1 \uc9c0\uc5f0\ub420 \uc218 \uc788\uc74c (Critical Dependency).\n(Causality: NEGATIVE, Confidence: 90%)\n\n\n[\uc778\uacfc\uad00\uacc4 \uccb4\uc778 (Event \u2192 Node \u2192 Impact)]\n\u2022 AI Demand Surge \u2192 ASML Revenue Up \u2192 TSM Utilization Rate Increase \u2192 NVDA Impact\n\u2022 Chip Shortage @ NVDA \u2192 MSFT \u2192 GOOGL \u2192 AMZN\n\u2022 Disruption @ AMAT(Applied Materials) \u2192 TSM, INTC, NVDA Affected\n\u2022 Disruption @ ASML(ASML Holding) \u2192 TSM, INTC Affected\n\u2022 Hub Node: AMAT, ASML \u2192 TSM \u2192 NVDA, AMD\n\n[\uc804\ud30c \uacbd\ub85c] EQUIPMENT \u2192 MANUFACTURER \u2192 INTEGRATOR \u2192 END_USER\n\n[\ubcd1\ubaa9 \uc9c0\uc810] AMAT, ASML, LRCX, KLAC, AMD\n\u2022 \uc774 \uc885\ubaa9\ub4e4\uc774 \ud0c0\uaca9 \ubc1b\uc73c\uba74 \uc804\uccb4 \uacf5\uae09\ub9dd\uc5d0 \ucda9\uaca9 \uc804\ud30c\n\n[\ud575\uc2ec \ud5c8\ube0c] TSM, NVDA, INTC\n\u2022 \uacf5\uae09\ub9dd \ub124\ud2b8\uc6cc\ud06c\uc5d0\uc11c \uac00\uc7a5 \uc911\uc694\ud55c \uc704\uce58 (PageRank + Betweenness)\n\n[\ucda9\uaca9 \uc804\ud30c \uc608\uc2dc] NVDA \ud558\ub77d \uc2dc: NVDA \u2192 MSFT \u2192 GOOGL \u2192 AMZN",
+    "causality_insights": [
+      {
+        "path": "AI Demand Surge (External Shock) \u2192 AMAT (Bottleneck) \u2192 TSM (Production) \u2192 NVDA (Revenue)",
+        "insight": "AI Demand Surge\ub85c \uc778\ud574 NVDA \uc218\uc694\uac00 \uae09\uc99d\ud558\uba74, TSM \uac00\ub3d9\ub960\uc774 \uc0c1\uc2b9\ud558\uace0 AMAT\uc5d0 \uc6a9\ub7c9 \uc555\ubc15\uc774 \ubc1c\uc0dd\ud568 (Positive Causality).",
+        "causality_type": "positive",
+        "confidence": 0.85,
+        "affected_assets": [
+          "AMAT",
+          "TSM",
+          "NVDA"
+        ]
+      },
+      {
+        "path": "AMAT \u2192 TSM (Hub Node) \u2192 MSFT",
+        "insight": "TSM\ub294 \uacf5\uae09\ub9dd \ub124\ud2b8\uc6cc\ud06c\uc758 \ud575\uc2ec \ud5c8\ube0c\ub85c, AMAT\uc758 \uacf5\uae09\uacfc MSFT\uc758 \uc218\uc694\ub97c \ubaa8\ub450 \uc5f0\uacb0. \uc774 \uc885\ubaa9\uc758 \ubcc0\ub3d9\uc740 \uc591\ubc29\ud5a5\uc73c\ub85c \uc804\ud30c\ub428 (Bidirectional Causality).",
+        "causality_type": "neutral",
+        "confidence": 0.8,
+        "affected_assets": [
+          "AMAT",
+          "TSM",
+          "MSFT"
+        ]
+      },
+      {
+        "path": "Risk Event \u2192 ASML (Critical Bottleneck) \u2192 Supply Chain Disruption",
+        "insight": "ASML\ub294 EUV \ub9ac\uc18c\uadf8\ub798\ud53c \uc7a5\ube44\uc758 \uc720\uc77c\ud55c \uacf5\uae09\uc790\ub85c, \ub300\uccb4 \ubd88\uac00\ub2a5\ud55c \ubcd1\ubaa9 \uc9c0\uc810. \uc774 \uc885\ubaa9\uc5d0 \ubb38\uc81c \ubc1c\uc0dd \uc2dc \ucd5c\ucca8\ub2e8 \ubc18\ub3c4\uccb4 \uc0dd\uc0b0\uc774 12-18\uac1c\uc6d4 \uc774\uc0c1 \uc9c0\uc5f0\ub420 \uc218 \uc788\uc74c (Critical Dependency).",
+        "causality_type": "negative",
+        "confidence": 0.9,
+        "affected_assets": [
+          "ASML"
+        ]
+      }
+    ],
+    "graph_engine_insights": [
+      {
+        "path": "TSM \u2192 TSM \u2192 NVDA \u2192 AMD",
+        "type": "bottleneck_risk",
+        "severity": "medium",
+        "confidence": 0.11224006280285309,
+        "narrative": "**Path:** External Shock \u2192 TSM (Bottleneck) \u2192 5 downstream nodes affected.\n**Insight:** Taiwan Semiconductor\ub294 \ud30c\uc6b4\ub4dc\ub9ac/\uc81c\uc870 \ub808\uc774\uc5b4\uc758 \ud575\uc2ec \ubcd1\ubaa9\uc810\uc73c\ub85c, \uc774 \ub178\ub4dc\uc5d0 \ucda9\uaca9 \ubc1c\uc0dd \uc2dc \ucd5c\ub300 10.0%\uc758 \uc601\ud5a5\uc774 \uacf5\uae09\ub9dd \uc804\uccb4\uc5d0 \uc804\ud30c\ub428. Criticality Score: 0.11.",
+        "affected_assets": [
+          "TSM",
+          "NVDA",
+          "AMD",
+          "AVGO",
+          "MRVL"
+        ],
+        "action": "Monitor TSM for supply chain disruption signals"
+      },
+      {
+        "path": "INTC \u2192 INTC \u2192 NVDA \u2192 AMD",
+        "type": "bottleneck_risk",
+        "severity": "medium",
+        "confidence": 0.11224006280285309,
+        "narrative": "**Path:** External Shock \u2192 INTC (Bottleneck) \u2192 5 downstream nodes affected.\n**Insight:** Intel\ub294 \ud30c\uc6b4\ub4dc\ub9ac/\uc81c\uc870 \ub808\uc774\uc5b4\uc758 \ud575\uc2ec \ubcd1\ubaa9\uc810\uc73c\ub85c, \uc774 \ub178\ub4dc\uc5d0 \ucda9\uaca9 \ubc1c\uc0dd \uc2dc \ucd5c\ub300 10.0%\uc758 \uc601\ud5a5\uc774 \uacf5\uae09\ub9dd \uc804\uccb4\uc5d0 \uc804\ud30c\ub428. Criticality Score: 0.11.",
+        "affected_assets": [
+          "INTC",
+          "NVDA",
+          "AMD",
+          "AVGO",
+          "MRVL"
+        ],
+        "action": "Monitor INTC for supply chain disruption signals"
+      },
+      {
+        "path": "SOXX \u2192 SOXX",
+        "type": "bottleneck_risk",
+        "severity": "low",
+        "confidence": 0.23587237909657838,
+        "narrative": "**Path:** External Shock \u2192 SOXX (Bottleneck) \u2192 1 downstream nodes affected.\n**Insight:** SOXX\ub294  \ub808\uc774\uc5b4\uc758 \ud575\uc2ec \ubcd1\ubaa9\uc810\uc73c\ub85c, \uc774 \ub178\ub4dc\uc5d0 \ucda9\uaca9 \ubc1c\uc0dd \uc2dc \ucd5c\ub300 10.0%\uc758 \uc601\ud5a5\uc774 \uacf5\uae09\ub9dd \uc804\uccb4\uc5d0 \uc804\ud30c\ub428. Criticality Score: 0.24.",
+        "affected_assets": [
+          "SOXX"
+        ],
+        "action": "Monitor SOXX for supply chain disruption signals"
+      },
+      {
+        "path": "IWM \u2192 SPY \u2192 XLI \u2192 XLK \u2192 SOXX",
+        "type": "hub_influence",
+        "severity": "medium",
+        "confidence": 0.06326661872986823,
+        "narrative": "**Path:** IWM, SPY \u2192 XLK (Hub) \u2192 SOXX.\n**Insight:** XLK\ub294 PageRank 0.063\ub85c \ub124\ud2b8\uc6cc\ud06c \uc911\uc2ec\uc5d0 \uc704\uce58. 3\uac1c \uc0c1\ub958 \ub178\ub4dc\uc640 1\uac1c \ud558\ub958 \ub178\ub4dc\ub97c \uc5f0\uacb0\ud558\ub294 \ud5c8\ube0c\ub85c, \uc774 \uc885\ubaa9\uc758 \ubcc0\ub3d9\uc740 \uc591\ubc29\ud5a5\uc73c\ub85c \uc804\ud30c\ub428 (Bidirectional Causality).",
+        "affected_assets": [
+          "IWM",
+          "SPY",
+          "XLI",
+          "SOXX"
+        ],
+        "action": "Track XLK as key network node"
+      },
+      {
+        "path": "AMAT \u2192 TSM \u2192 NVDA \u2192 MSFT",
+        "type": "critical_path",
+        "severity": "medium",
+        "confidence": 0.5249999999999999,
+        "narrative": "**Path:** AMAT \u2192 TSM \u2192 NVDA \u2192 MSFT\n**Insight:** \ucd1d 4\uac1c \ub178\ub4dc\ub97c \uc5f0\uacb0\ud558\ub294 \uc778\uacfc\uad00\uacc4 \uacbd\ub85c. \uacbd\ub85c \uac00\uc911\uce58: 2.10. \uccab \ubc88\uc9f8 \ub178\ub4dc\uc758 \ubcc0\ub3d9\uc774 \uc21c\ucc28\uc801\uc73c\ub85c \ub9c8\uc9c0\ub9c9 \ub178\ub4dc\uae4c\uc9c0 \uc804\ud30c\ub428.",
+        "affected_assets": [
+          "AMAT",
+          "TSM",
+          "NVDA",
+          "MSFT"
+        ],
+        "action": ""
+      }
+    ],
+    "shock_simulation": {
+      "TSM": {
+        "TSM": -0.1,
+        "NVDA": -0.048999999999999995,
+        "AMD": -0.048999999999999995,
+        "AVGO": -0.048999999999999995,
+        "MRVL": -0.048999999999999995,
+        "MSFT": -0.024009999999999997,
+        "GOOGL": -0.024009999999999997,
+        "AMZN": -0.024009999999999997
+      },
+      "INTC": {
+        "INTC": -0.1,
+        "NVDA": -0.048999999999999995,
+        "AMD": -0.048999999999999995,
+        "AVGO": -0.048999999999999995,
+        "MRVL": -0.048999999999999995,
+        "MSFT": -0.024009999999999997,
+        "GOOGL": -0.024009999999999997,
+        "AMZN": -0.024009999999999997
+      },
+      "SOXX": {
+        "SOXX": -0.1
+      }
+    },
+    "graph_narrative": "### Supply Chain Causality Flow\n\n**External Shock:** AI Demand Surge\n\n**Propagation Path (\uc804\ud30c \uacbd\ub85c):**\n```\n[Path 1] AI Demand Surge \u2192 AMAT \u2192 TSM \u2192 NVDA \u2192 MSFT\n         (equipment \u2192 end_user)\n[Path 2] AI Demand Surge \u2192 AMAT \u2192 TSM \u2192 NVDA \u2192 GOOGL\n         (equipment \u2192 end_user)\n[Path 3] AI Demand Surge \u2192 AMAT \u2192 TSM \u2192 NVDA \u2192 AMZN\n         (equipment \u2192 end_user)\n```\n\n### Bottleneck Nodes (\ubcd1\ubaa9 \uc9c0\uc810)\n\n- **TSM** [Manufacturer (\uc81c\uc870)]\n  - Criticality Score: 0.11\n  - Upstream Dependencies: 4 nodes\n  - Downstream Impact: 4 nodes\n- **INTC** [Manufacturer (\uc81c\uc870)]\n  - Criticality Score: 0.11\n  - Upstream Dependencies: 4 nodes\n  - Downstream Impact: 4 nodes\n- **SOXX** [Core]\n  - Criticality Score: 0.24\n  - Upstream Dependencies: 12 nodes\n  - Downstream Impact: 0 nodes\n- **AMAT** [Equipment (\uc7a5\ube44)]\n  - Criticality Score: 0.02\n  - Upstream Dependencies: 0 nodes\n  - Downstream Impact: 2 nodes\n- **ASML** [Equipment (\uc7a5\ube44)]\n  - Criticality Score: 0.02\n  - Upstream Dependencies: 0 nodes\n  - Downstream Impact: 2 nodes\n\n### Hub Nodes (\ud575\uc2ec \ud5c8\ube0c)\n\n- **XLK** (PageRank: 0.063)\n  - Receives from: IWM, SPY, XLI\n  - Flows to: SOXX\n- **QQQ** (PageRank: 0.045)\n  - Receives from: IWM, SPY, XLI\n  - Flows to: XLK, SOXX\n- **MSFT** (PageRank: 0.044)\n  - Receives from: NVDA, AMD, AVGO\n\n### Shock Propagation Simulation\n\n**Scenario:** TSM experiences -10% shock\n\n| Node | Expected Impact | Propagation Depth |\n|------|-----------------|-------------------|\n| TSM | -10.0% | 0 |\n| NVDA | -4.9% | 1 |\n| AMD | -4.9% | 1 |\n| AVGO | -4.9% | 1 |\n| MRVL | -4.9% | 1 |\n| MSFT | -2.4% | 2 |\n| GOOGL | -2.4% | 2 |\n| AMZN | -2.4% | 2 |\n\n**Economic Interpretation:**\nTSM\uc5d0\uc11c -10% \ucda9\uaca9 \ubc1c\uc0dd \uc2dc, NVDA, AMD, AVGO\uc5d0 \uc21c\ucc28\uc801\uc73c\ub85c \uc804\ud30c\ub428. \ucd1d 4\uac1c \ub178\ub4dc\uac00 3% \uc774\uc0c1 \uc601\ud5a5\ubc1b\uc74c.\n\n### Causality Chains (\uc778\uacfc\uad00\uacc4 \uccb4\uc778)\n\n**Statistically Significant Causality (Granger Test):**\n- SPY \u2192 HYG (p-value: 0.000)\n- IWM \u2192 XLI (p-value: 0.000)\n- SPY \u2192 XLE (p-value: 0.001)\n- IWM \u2192 SPY (p-value: 0.001)\n- HYG \u2192 SOXX (p-value: 0.003)\n\n**Supply Chain Dependencies:**\n- Upstream (AMAT, ASML, LRCX) \u2192 Downstream (NVDA, AMD, AVGO)\n- Total supply chain edges: 28\n\n---\n\n**Summary:**\nNetwork analysis identified **TSM, INTC, SOXX** as critical bottlenecks and **XLK, QQQ** as central hub nodes. Disruption at bottleneck nodes will propagate through the network following the paths outlined above."
+  },
+  "volume_anomalies": [
+    {
+      "ticker": "TLT",
+      "timestamp": "2026-01-12T01:04:23.893668",
+      "current_volume": 57332100.0,
+      "avg_volume_20d": 33627545.0,
+      "volume_ratio": 1.7,
+      "z_score": 3.2,
+      "price_change_1d": 0.66,
+      "price_change_5d": 1.03,
+      "anomaly_type": "abnormal_surge",
+      "information_type": "unknown",
+      "severity": "LOW",
+      "alert_message": "[LOW] Abnormal Volume Detected: TLT: 1.7x avg volume, price +0.7%"
+    }
+  ],
+  "volume_analysis_summary": "Detected 1 volume anomalies in 24 tickers. 0 high-severity, 0 medium-severity alerts. Top: TLT at 1.7x average. Market volume at 51th percentile. Volume profile within normal bounds.",
+  "market_quality": {
+    "avg_liquidity_score": 82.2114688837331,
+    "liquidity_scores": {
+      "UUP": 87.78355072157153,
+      "IWM": 78.77041172068515,
+      "GLD": 74.98239254184922,
+      "SPY": 79.48257591877382,
+      "XLI": 86.23202752935593,
+      "DIA": 86.64625906903859,
+      "PAXG-USD": 73.1962176776968,
+      "TIP": 89.66120403853797,
+      "^VIX": 40.0,
+      "XLE": 99.21546116851778,
+      "ONDO-USD": 77.49216324955232,
+      "ETH-USD": 79.16671839235983,
+      "LQD": 97.60006386856503,
+      "HYG": 84.25977187977465,
+      "XLF": 99.85768094978793,
+      "COIN": 74.21353554045324,
+      "BTC-USD": 79.38868179184715,
+      "SMH": 79.28329702473799,
+      "TLT": 98.2487318961383,
+      "USO": 84.5740943816416,
+      "QQQ": 79.86037494066437,
+      "XLK": 79.51598881268603,
+      "SOXX": 79.50664313186273,
+      "XLV": 84.13740696349643
+    },
+    "high_toxicity_tickers": [],
+    "illiquid_tickers": [],
+    "data_quality": "COMPLETE"
+  },
+  "bubble_risk": {
+    "overall_status": "NONE",
+    "risk_tickers": [],
+    "highest_risk_ticker": "GLD",
+    "highest_risk_score": 15,
+    "methodology_notes": "Greenwood-Shleifer 2019: Run-up + Volatility + Issuance"
+  },
+  "base_risk_score": 11.46140023191239,
+  "microstructure_adjustment": -6.442293776746621,
+  "bubble_risk_adjustment": 0,
+  "crypto_stress_test": {
+    "scenario": "Moderate (\uc2e0\uc6a9\uc704\uae30 \uc218\uc900)",
+    "total_value": 180700000000.0,
+    "depeg_probability": 0.021401770890979527,
+    "depeg_probability_pct": "2.1%",
+    "estimated_loss_under_stress": 296423000.0,
+    "estimated_loss_pct": "0.2%",
+    "breakdown_by_coin": [
+      {
+        "ticker": "USDT",
+        "amount": 130759999999.99998,
+        "weight": 0.7236303265080243,
+        "depeg_probability": 0.025,
+        "expected_loss": 163450000.0,
+        "loss_rate": 0.0012500000000000002
+      },
+      {
+        "ticker": "DAI",
+        "amount": 4980000000.0,
+        "weight": 0.027559490868843385,
+        "depeg_probability": 0.07500000000000001,
+        "expected_loss": 130725000.00000003,
+        "loss_rate": 0.026250000000000006
+      },
+      {
+        "ticker": "USDC",
+        "amount": 44960000000.0,
+        "weight": 0.24881018262313226,
+        "depeg_probability": 0.005000000000000001,
+        "expected_loss": 2248000.000000001,
+        "loss_rate": 5.000000000000002e-05
+      }
+    ],
+    "risk_rating": "LOW (\ub0ae\uc74c)",
+    "methodology_note": "\uc2a4\ud2b8\ub808\uc2a4 \ud14c\uc2a4\ud2b8: Moderate (\uc2e0\uc6a9\uc704\uae30 \uc218\uc900). \ub2f4\ubcf4 \uc720\ud615\ubcc4 \ub9ac\uc2a4\ud06c \uac00\uc911\uce58 \uc801\uc6a9. \ud06c\ub9bd\ud1a0 \ub2f4\ubcf4\ub294 40% \uac00\uaca9 \ud558\ub77d \uac00\uc815."
+  },
+  "devils_advocate_arguments": [],
+  "hrp_allocation_rationale": "HYG (53%): portfolio diversification [low volatility] | 3 clusters identified for risk parity",
+  "defi_tvl": {
+    "total_tvl": 89766114905,
+    "stablecoin_mcap": 291254259029.6587,
+    "top_stablecoins": [
+      {
+        "symbol": "USDT",
+        "circulating": 186820406429.8945,
+        "peg_deviation": 0.12037555330752792
+      },
+      {
+        "symbol": "USDC",
+        "circulating": 74677347558.33603,
+        "peg_deviation": 0.023864632620984594
+      },
+      {
+        "symbol": "USDS",
+        "circulating": 6748919792.775775,
+        "peg_deviation": 0.032910003887220984
+      },
+      {
+        "symbol": "USDe",
+        "circulating": 6346610822.096197,
+        "peg_deviation": 0.030117294456866173
+      },
+      {
+        "symbol": "DAI",
+        "circulating": 4497755483.55135,
+        "peg_deviation": 0.03476985565710189
+      }
+    ]
+  },
+  "mena_markets": {
+    "timestamp": "2026-01-12T01:03:40.100062",
+    "etfs": {
+      "KSA": {
+        "name": "iShares MSCI Saudi Arabia ETF",
+        "price": 36.869998931884766,
+        "return_1d": 0.13579369221878856,
+        "return_1w": 2.4166636996798996,
+        "return_1m": -0.30444268679464814,
+        "volume": 467800.0
+      },
+      "UAE": {
+        "name": "iShares MSCI UAE ETF",
+        "price": 19.43000030517578,
+        "return_1d": -1.1195894026737263,
+        "return_1w": 1.0926170620379594,
+        "return_1m": 1.2401046100057211,
+        "volume": 217100.0
+      },
+      "TUR": {
+        "name": "iShares MSCI Turkey ETF",
+        "price": 37.15999984741211,
+        "return_1d": 1.170705991110399,
+        "return_1w": 3.7698922712915417,
+        "return_1m": 8.31480046491453,
+        "volume": 111800.0
+      },
+      "QAT": {
+        "name": "iShares MSCI Qatar ETF",
+        "price": 19.360000610351562,
+        "return_1d": 0.4149373488428809,
+        "return_1w": 0.8858784344077275,
+        "return_1m": 2.904115377491401,
+        "volume": 4900.0
+      }
+    },
+    "avg_return_1m": 3.038644441404251
+  },
+  "onchain_risk_signals": [
+    {
+      "type": "stablecoin_depeg",
+      "severity": "HIGH",
+      "symbol": "USYC",
+      "deviation": 11.284121000000003,
+      "message": "USYC \ud398\uae45 \uc774\ud0c8 11.28%"
+    }
+  ],
+  "event_tracking": {
+    "anomalies_found": 11,
+    "events_matched": 5,
+    "event_types": {
+      "macro": 5
+    }
+  },
+  "tracked_events": [
+    {
+      "ticker": "^VIX",
+      "timestamp": "2026-01-09",
+      "anomaly_type": "PRICE_DROP",
+      "volume_zscore": 0.0,
+      "price_change_pct": -6.213592556624336,
+      "volatility_zscore": 0.0,
+      "news_found": true,
+      "news_query": "^VIX stock 2026-01-09 price movement",
+      "news_summary": "U.S. stocks rise modestly as VIX retreats despite lingering geopolitical and rate concerns: Around January 9, 2026, the VIX fell about 6% to roughly 14.5 after closing at 15.45 the prior session, even though the index had recently ticked higher alongside concerns over oil-related geopolitical tensions and Federal Reserve policy.[3][4][6] The move appears driven by a modest grind higher in equities and stabilization in oil and rate expectations, which eased demand for short\u2011term hedging and pulled implied volatility lower.[3][4][6]",
+      "news_sources": [
+        "Cboe VIX spot data and commentary[3]",
+        "YCharts VIX level and day-over-day change[6]",
+        "Nasdaq U.S. stock market recap noting VIX behavior and overall risk tone[4]"
+      ],
+      "event_type": "macro",
+      "sentiment": "neutral",
+      "impact_score": -35,
+      "search_time_ms": 4165,
+      "raw_news": "{\n  \"found\": true,\n  \"event_type\": \"macro\",\n  \"headline\": \"U.S. stocks rise modestly as VIX retreats despite lingering geopolitical and rate concerns\",\n  \"summary\": \"Around January 9, 2026, the VIX fell about 6% to roughly 14.5 after closing at 15.45 the prior session, even though the index had recently ticked higher alongside concerns over oil-related geopolitical tensions and Federal Reserve policy.[3][4][6] The move appears driven by a modest grind higher in equities and stabilization in oil and rate expectations, which eased demand for short\u2011term hedging and pulled implied volatility lower.[3][4][6]\",\n  \"sentiment\": \"neutral\",\n  \"impact_score\": -35,\n  \"sources\": [\n    \"Cboe VIX spot data and commentary[3]\",\n    \"YCharts VIX level and day-over-day change[6]\",\n    \"Nasdaq U.S. stock market recap noting VIX behavior and overall risk tone[4]\"\n  ]\n}"
+    },
+    {
+      "ticker": "XLE",
+      "timestamp": "2026-01-08",
+      "anomaly_type": "PRICE_SURGE",
+      "volume_zscore": 0.677469423825729,
+      "price_change_pct": 3.146461633807829,
+      "volatility_zscore": 0.0,
+      "news_found": true,
+      "news_query": "XLE stock 2026-01-08 price movement",
+      "news_summary": "Crude oil surge and sector rotation drive 3% jump in Energy Select Sector SPDR (XLE): On January 8, 2026, XLE rose about 3.15% to $46.55, helped by a roughly 3.5% jump in crude oil prices that lifted the entire energy sector.[1][2][5] Market commentary highlighted a broader rotation into cyclical and value sectors, with energy and homebuilders leading a 'risk-off' session even as the S&P 500 was flat, pointing to macro-driven demand for energy equities rather than XLE-specific news.[2][5]",
+      "news_sources": [
+        "Perplexity Finance XLE quote page",
+        "ETFAction sector performance note on Jan 8, 2026",
+        "MarketScholars Stock Market Outlook \u2013 January 8, 2026"
+      ],
+      "event_type": "macro",
+      "sentiment": "positive",
+      "impact_score": 60,
+      "search_time_ms": 4071,
+      "raw_news": "{\n  \"found\": true,\n  \"event_type\": \"macro\",\n  \"headline\": \"Crude oil surge and sector rotation drive 3% jump in Energy Select Sector SPDR (XLE)\",\n  \"summary\": \"On January 8, 2026, XLE rose about 3.15% to $46.55, helped by a roughly 3.5% jump in crude oil prices that lifted the entire energy sector.[1][2][5] Market commentary highlighted a broader rotation into cyclical and value sectors, with energy and homebuilders leading a 'risk-off' session even as the S&P 500 was flat, pointing to macro-driven demand for energy equities rather than XLE-specific news.[2][5]\",\n  \"sentiment\": \"positive\",\n  \"impact_score\": 60,\n  \"sources\": [\n    \"Perplexity Finance XLE quote page\",\n    \"ETFAction sector performance note on Jan 8, 2026\",\n    \"MarketScholars Stock Market Outlook \u2013 January 8, 2026\"\n  ]\n}"
+    },
+    {
+      "ticker": "^VIX",
+      "timestamp": "2026-01-07",
+      "anomaly_type": "PRICE_SURGE",
+      "volume_zscore": 0.0,
+      "price_change_pct": 4.2711872165486,
+      "volatility_zscore": 0.0,
+      "news_found": true,
+      "news_query": "^VIX stock 2026-01-07 price movement",
+      "news_summary": "VIX jumps as markets react to Trump tariff threats and rising trade-war fears: Around January 7, 2026, the CBOE Volatility Index (^VIX) climbed as investors reacted to renewed trade-war concerns following Donald Trump\u2019s warning of steep tariffs, including a proposed 25% tariff on Apple and 50% tariffs on European goods starting June 1, 2025.[1] This escalation in tariff rhetoric raised fears of higher inflation, reduced chances of Fed rate cuts, and broader market stress, driving demand for downside protection and pushing the VIX sharply higher, with some reports noting a roughly 39% surge in the index over the prior five days.[1][3][4] Overall sentiment was risk-off as markets priced in greater policy and geopolitical uncertainty.",
+      "news_sources": [
+        "xtb.com market analysis on VIX gains 8% ahead of Wall Street open as fear on markets rise",
+        "GoldSilver report 'VIX Up 39% Over Past Five Day Period'",
+        "Investing.com CBOE Volatility Index Historical Data"
+      ],
+      "event_type": "macro",
+      "sentiment": "negative",
+      "impact_score": 70,
+      "search_time_ms": 10877,
+      "raw_news": "{\n  \"found\": true,\n  \"event_type\": \"macro\",\n  \"headline\": \"VIX jumps as markets react to Trump tariff threats and rising trade-war fears\",\n  \"summary\": \"Around January 7, 2026, the CBOE Volatility Index (^VIX) climbed as investors reacted to renewed trade-war concerns following Donald Trump\u2019s warning of steep tariffs, including a proposed 25% tariff on Apple and 50% tariffs on European goods starting June 1, 2025.[1] This escalation in tariff rhetoric raised fears of higher inflation, reduced chances of Fed rate cuts, and broader market stress, driving demand for downside protection and pushing the VIX sharply higher, with some reports noting a roughly 39% surge in the index over the prior five days.[1][3][4] Overall sentiment was risk-off as markets priced in greater policy and geopolitical uncertainty.\",\n  \"sentiment\": \"negative\",\n  \"impact_score\": 70,\n  \"sources\": [\n    \"xtb.com market analysis on VIX gains 8% ahead of Wall Street open as fear on markets rise\",\n    \"GoldSilver report 'VIX Up 39% Over Past Five Day Period'\",\n    \"Investing.com CBOE Volatility Index Historical Data\"\n  ]\n}"
+    },
+    {
+      "ticker": "XLE",
+      "timestamp": "2026-01-05",
+      "anomaly_type": "VOLUME_SPIKE",
+      "volume_zscore": 2.554375841458786,
+      "price_change_pct": 2.716315054374263,
+      "volatility_zscore": 0.0,
+      "news_found": true,
+      "news_query": "XLE stock 2026-01-05 trading volume spike",
+      "news_summary": "Energy sector leads market on January 5, 2026 as investors react to oil-market and Venezuela policy developments: On January 5, 2026, the Energy Select Sector SPDR ETF (XLE) was one of the market\u2019s leading sector ETFs, rising roughly 4% on elevated volume of about 2.0 million shares, significantly outperforming most other sectors.[1][2] Sector commentary around that date highlights a broad surge in energy stocks tied to renewed focus on Venezuela\u2019s oil industry and evolving U.S. policy direction, as well as a rotation into value and commodity-linked names, which likely drove both the price move and volume spike in XLE.[3][4][6]",
+      "news_sources": [
+        "Longbridge/Benzinga sector movers summary",
+        "Sahm Capital sector movers data",
+        "Nasdaq stock market news Jan 5, 2026",
+        "MarketWatch/Morningstar crude oil & Venezuela commentary",
+        "MarketBeat energy sector reaction to Venezuela and U.S. policy"
+      ],
+      "event_type": "macro",
+      "sentiment": "positive",
+      "impact_score": 65,
+      "search_time_ms": 5214,
+      "raw_news": "{\n  \"found\": true,\n  \"event_type\": \"macro\",\n  \"headline\": \"Energy sector leads market on January 5, 2026 as investors react to oil-market and Venezuela policy developments\",\n  \"summary\": \"On January 5, 2026, the Energy Select Sector SPDR ETF (XLE) was one of the market\u2019s leading sector ETFs, rising roughly 4% on elevated volume of about 2.0 million shares, significantly outperforming most other sectors.[1][2] Sector commentary around that date highlights a broad surge in energy stocks tied to renewed focus on Venezuela\u2019s oil industry and evolving U.S. policy direction, as well as a rotation into value and commodity-linked names, which likely drove both the price move and volume spike in XLE.[3][4][6]\",\n  \"sentiment\": \"positive\",\n  \"impact_score\": 65,\n  \"sources\": [\n    \"Longbridge/Benzinga sector movers summary\",\n    \"Sahm Capital sector movers data\",\n    \"Nasdaq stock market news Jan 5, 2026\",\n    \"MarketWatch/Morningstar crude oil & Venezuela commentary\",\n    \"MarketBeat energy sector reaction to Venezuela and U.S. policy\"\n  ]\n}"
+    },
+    {
+      "ticker": "UUP",
+      "timestamp": "2026-01-02",
+      "anomaly_type": "VOLUME_SPIKE",
+      "volume_zscore": 2.729234889650759,
+      "price_change_pct": 0.2959671538061759,
+      "volatility_zscore": 0.0,
+      "news_found": true,
+      "news_query": "UUP stock 2026-01-02 trading volume spike",
+      "news_summary": "Dollar bull ETF UUP sees heavy trading as investors position around early\u20112026 Fed and FX outlook: The Invesco DB US Dollar Index Bullish Fund (UUP) tracks ICE U.S. Dollar Index futures and typically sees volume spikes when traders reposition around macro events and changing expectations for U.S. rates and the dollar versus major currencies.[1][2][6] Around early January 2026, U.S. dollar products were being actively discussed by analysts such as Zacks in the context of recent underperformance and the evolving macro backdrop, which likely contributed to elevated trading activity as investors adjusted currency hedges and tactical bets on the dollar.[3]",
+      "news_sources": [
+        "Invesco fund page",
+        "ETF Database profile",
+        "Zacks analysis of UUP"
+      ],
+      "event_type": "macro",
+      "sentiment": "neutral",
+      "impact_score": 15,
+      "search_time_ms": 5104,
+      "raw_news": "{\n  \"found\": true,\n  \"event_type\": \"macro\",\n  \"headline\": \"Dollar bull ETF UUP sees heavy trading as investors position around early\u20112026 Fed and FX outlook\",\n  \"summary\": \"The Invesco DB US Dollar Index Bullish Fund (UUP) tracks ICE U.S. Dollar Index futures and typically sees volume spikes when traders reposition around macro events and changing expectations for U.S. rates and the dollar versus major currencies.[1][2][6] Around early January 2026, U.S. dollar products were being actively discussed by analysts such as Zacks in the context of recent underperformance and the evolving macro backdrop, which likely contributed to elevated trading activity as investors adjusted currency hedges and tactical bets on the dollar.[3]\",\n  \"sentiment\": \"neutral\",\n  \"impact_score\": 15,\n  \"sources\": [\n    \"Invesco fund page\",\n    \"ETF Database profile\",\n    \"Zacks analysis of UUP\"\n  ]\n}"
+    }
+  ],
+  "adaptive_portfolios": {},
+  "validation_loop_result": {},
+  "correlation_matrix": [],
+  "correlation_tickers": []
+}

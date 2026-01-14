@@ -1,0 +1,681 @@
+#!/usr/bin/env python3
+"""
+Multi-Agent System - Meta Orchestrator
+=======================================
+에이전트 조정, 토론 관리, 결과 종합
+
+경제학적 의미:
+- 중앙 계획자(Central Planner) 역할
+- 정보 흐름 최적화 (Information Flow Optimization)
+- 집단 의사결정 조정 (Collective Decision Coordination)
+- Nash Equilibrium 탐색 (Debate를 통한 균형점 도달)
+"""
+
+import sys
+import os
+import logging
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+import uuid
+
+# 프로젝트 루트를 sys.path에 추가
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core.schemas import (
+    AgentRequest,
+    AgentResponse,
+    AgentOpinion,
+    Consensus,
+    AgentRole,
+    TaskPriority,
+)
+from core.debate import DebateProtocol
+from agents.analysis_agent import AnalysisAgent
+from agents.forecast_agent import ForecastAgent
+
+
+class MetaOrchestrator:
+    """
+    메타 오케스트레이터
+
+    역할:
+    1. 에이전트 간 작업 조정
+    2. 토론 관리 및 합의 도출
+    3. 최종 보고서 종합
+
+    방법론:
+    - 정보 흐름 최적화 (Information Flow Optimization)
+    - 집단 의사결정 조정 (Collective Decision Coordination)
+    - 다수결 합의 (Majority Voting Consensus)
+    """
+
+    def __init__(self, verbose: bool = True):
+        """초기화"""
+        self.verbose = verbose
+        self.logger = self._setup_logger()
+
+        # 핵심 컴포넌트 초기화
+        # VIX > 20을 "높은 변동성"의 기준으로 설정 (기존 85% 일관성 임계값 유지)
+        self.debate_protocol = DebateProtocol(
+            max_rounds=3,
+            consistency_threshold=85.0,
+            modification_threshold=5.0
+        )
+
+        # 에이전트 초기화
+        self.analysis_agent = AnalysisAgent()
+        self.forecast_agent = ForecastAgent()
+
+        # 기본 토론 주제
+        self.default_debate_topics = [
+            "market_outlook",
+            "primary_risk",
+            "regime_stability",
+            "rate_direction"
+        ]
+
+        self.logger.info("MetaOrchestrator initialized (Analysis, Forecast)")
+
+    def _setup_logger(self) -> logging.Logger:
+        """로거 설정"""
+        logger = logging.getLogger("MetaOrchestrator")
+        logger.setLevel(logging.DEBUG if self.verbose else logging.INFO)
+
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - MetaOrchestrator - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+        return logger
+
+    async def run_with_debate(
+        self,
+        query: str,
+        market_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        토론 포함 전체 워크플로우 실행
+
+        Flow:
+        1. 분석 에이전트 실행 (Critical Path Analysis)
+        2. 분석 결과 기반 토론 주제 자동 감지
+        3. 에이전트들로부터 의견 수집
+        4. 토론 프로토콜 실행 및 합의 도출
+        5. 최종 보고서 종합
+
+        Args:
+            query: 사용자 질문/요청
+            market_data: 시장 데이터 (Dict[ticker, pd.DataFrame])
+
+        Returns:
+            종합 결과 딕셔너리:
+            {
+                'timestamp': str,
+                'query': str,
+                'analysis': Dict (CriticalPath 결과),
+                'debate_topics': List[str],
+                'opinions': Dict[topic, List[AgentOpinion]],
+                'consensus': Dict[topic, Consensus],
+                'recommendations': List[str],
+                'warnings': List[str]
+            }
+        """
+        self.logger.info(f"Starting workflow with debate for query: {query[:100]}")
+
+        workflow_start = datetime.now()
+
+        # ============================================================
+        # Step 1: Run Analysis Agent
+        # ============================================================
+        self.logger.info("Step 1: Running Analysis Agent...")
+
+        task_id = str(uuid.uuid4())
+        analysis_request = AgentRequest(
+            task_id=task_id,
+            role=AgentRole.ANALYSIS,
+            instruction=f"Analyze market conditions and risks: {query}",
+            context={'market_data': market_data},
+            priority=TaskPriority.HIGH
+        )
+
+        analysis_response: AgentResponse = await self.analysis_agent.execute(analysis_request)
+
+        if not analysis_response.is_success():
+            self.logger.error(f"Analysis failed: {analysis_response.error}")
+            return self._create_error_result(query, analysis_response.error)
+
+        analysis_result = analysis_response.result
+        self.logger.info(
+            f"Analysis complete: Risk={analysis_result.get('total_risk_score', 0):.1f}, "
+            f"Regime={analysis_result.get('current_regime', 'UNKNOWN')}"
+        )
+
+        # ============================================================
+        # Step 1.5: Run Forecast Agent
+        # ============================================================
+        self.logger.info("Step 1.5: Running Forecast Agent...")
+        
+        forecast_request = AgentRequest(
+            task_id=str(uuid.uuid4()),
+            role=AgentRole.FORECAST,
+            instruction="Forecast Fed Funds Rate and identify key drivers",
+            context={'market_data': market_data, 'horizon': 'short'},
+            priority=TaskPriority.HIGH
+        )
+        
+        forecast_response = await self.forecast_agent.execute(forecast_request)
+        forecast_result = {}
+        if forecast_response.is_success() and forecast_response.result.get('forecast_results'):
+            forecast_result = forecast_response.result
+            self.logger.info(
+                f"Forecast complete: Point={forecast_result['forecast_results'][0]['point_forecast']:.2f}% "
+                f"(R2={forecast_result['model_metrics']['r2_score']:.2f})"
+            )
+        else:
+            self.logger.warning(f"Forecast results empty or failed: {forecast_response.error or 'No results'}")
+
+        # Merge results for topic detection and opinion collection
+        combined_context = {**analysis_result, **forecast_result}
+
+        # ============================================================
+        # Step 2: Auto-detect Debate Topics
+        # ============================================================
+        self.logger.info("Step 2: Auto-detecting debate topics...")
+
+        debate_topics = self._auto_detect_topics(combined_context)
+        self.logger.info(f"Detected {len(debate_topics)} debate topics: {debate_topics}")
+
+        # ============================================================
+        # Step 3: Collect Opinions
+        # ============================================================
+        self.logger.info("Step 3: Collecting opinions from agents...")
+
+        opinions_by_topic = await self.collect_opinions(
+            topics=debate_topics,
+            context=combined_context
+        )
+
+        total_opinions = sum(len(ops) for ops in opinions_by_topic.values())
+        self.logger.info(f"Collected {total_opinions} opinions across {len(opinions_by_topic)} topics")
+
+        # ============================================================
+        # Step 4: Run Debates
+        # ============================================================
+        self.logger.info("Step 4: Running debates...")
+
+        consensus_results = await self.run_debates(opinions_by_topic)
+        self.logger.info(f"Reached consensus on {len(consensus_results)} topics")
+
+        # ============================================================
+        # Step 5: Synthesize Report
+        # ============================================================
+        self.logger.info("Step 5: Synthesizing final report...")
+
+        final_report = self.synthesize_report(
+            query=query,
+            analysis_result=analysis_result,
+            forecast_result=forecast_result,
+            consensus_results=consensus_results,
+            opinions_by_topic=opinions_by_topic
+        )
+
+        workflow_duration = (datetime.now() - workflow_start).total_seconds()
+        final_report['workflow_duration_seconds'] = workflow_duration
+
+        self.logger.info(f"Workflow completed in {workflow_duration:.2f}s")
+
+        return final_report
+
+    def _auto_detect_topics(self, analysis_result: Dict[str, Any]) -> List[str]:
+        """
+        분석 결과 기반 토론 주제 자동 감지
+
+        감지 규칙:
+        - total_risk_score가 40-60 범위: "market_outlook" 추가 (불확실성 높음)
+        - transition_probability > 0.3: "regime_stability" 추가 (레짐 변화 가능)
+        - active_warnings > 3개: "primary_risk" 추가 (다양한 위험 요인)
+        - crypto 데이터 존재: "crypto_correlation" 추가
+
+        Args:
+            analysis_result: CriticalPath 분석 결과
+
+        Returns:
+            토론 주제 리스트
+        """
+        topics = []
+
+        total_risk_score = analysis_result.get('total_risk_score', 50.0)
+        transition_probability = analysis_result.get('transition_probability', 0.0)
+        active_warnings = analysis_result.get('active_warnings', [])
+        path_contributions = analysis_result.get('path_contributions', {})
+        crypto_result = analysis_result.get('critical_path_result', {}).get('crypto_result', {})
+
+        # Rule 1: 애매한 리스크 범위 → market_outlook 토론 필요
+        if 40 <= total_risk_score <= 60:
+            topics.append("market_outlook")
+            self.logger.debug(f"Added 'market_outlook' (risk={total_risk_score:.1f} in uncertain range)")
+
+        # Rule 2: 높은 전이 확률 → regime_stability 토론 필요
+        if transition_probability > 0.3:
+            topics.append("regime_stability")
+            display_prob = transition_probability / 100.0 if transition_probability > 1.0 else transition_probability
+            self.logger.debug(f"Added 'regime_stability' (transition_prob={display_prob:.1%})")
+
+        # Rule 3: 다수의 경고 → primary_risk 토론 필요
+        if len(active_warnings) > 3:
+            topics.append("primary_risk")
+            self.logger.debug(f"Added 'primary_risk' ({len(active_warnings)} active warnings)")
+
+        # Rule 4: 다중 경로 기여 → primary_risk 토론 필요
+        if len([c for c in path_contributions.values() if c > 15.0]) > 2:
+            if "primary_risk" not in topics:
+                topics.append("primary_risk")
+                self.logger.debug(f"Added 'primary_risk' (multiple significant paths)")
+
+        # Rule 5: 암호화폐 데이터 존재 → crypto_correlation 토론 가능
+        if crypto_result:
+            topics.append("crypto_correlation")
+            self.logger.debug(f"Added 'crypto_correlation' (crypto data available)")
+
+        # Rule 6: 금리 예측 데이터 존재 → rate_direction 토론 추가
+        if 'forecast_results' in analysis_result:
+            topics.append("rate_direction")
+            topics.append("rate_magnitude")
+            self.logger.debug("Added 'rate_direction', 'rate_magnitude' (forecast data available)")
+
+        # Fallback: 토픽이 없으면 기본 토픽 사용
+        if not topics:
+            self.logger.info("No topics auto-detected, using default topics")
+            topics = self.default_debate_topics.copy()
+
+        return topics
+
+    async def collect_opinions(
+        self,
+        topics: List[str],
+        context: Dict[str, Any]
+    ) -> Dict[str, List[AgentOpinion]]:
+        """
+        각 에이전트로부터 의견 수집
+
+        현재: AnalysisAgent만 구현
+        향후: ResearchAgent, ForecastAgent, StrategyAgent 추가 예정
+
+        Args:
+            topics: 의견을 수집할 주제 리스트
+            context: 분석 결과 등 컨텍스트
+
+        Returns:
+            {topic: [opinion1, opinion2, ...]} 딕셔너리
+        """
+        opinions_by_topic = {}
+
+        for topic in topics:
+            opinions = []
+
+            # Analysis Agent의 의견 수집
+            try:
+                opinion = await self.analysis_agent.form_opinion(topic, context)
+                opinions.append(opinion)
+                self.logger.debug(
+                    f"Collected opinion from AnalysisAgent on '{topic}': "
+                    f"{opinion.position} (confidence={opinion.confidence:.2f})"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to get opinion from AnalysisAgent on '{topic}': {e}")
+
+            # Forecast Agent의 의견 수집
+            if topic in ["rate_direction", "rate_magnitude", "forecast_confidence", "market_outlook"]:
+                try:
+                    opinion = await self.forecast_agent.form_opinion(topic, context)
+                    opinions.append(opinion)
+                    self.logger.debug(
+                        f"Collected opinion from ForecastAgent on '{topic}': "
+                        f"{opinion.position} (confidence={opinion.confidence:.2f})"
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Failed to get opinion from ForecastAgent on '{topic}': {e}")
+
+            # TODO: 다른 에이전트 추가
+            # research_opinion = await self.research_agent.form_opinion(topic, context)
+            # forecast_opinion = await self.forecast_agent.form_opinion(topic, context)
+            # strategy_opinion = await self.strategy_agent.form_opinion(topic, context)
+
+            if opinions:
+                opinions_by_topic[topic] = opinions
+            else:
+                self.logger.warning(f"No opinions collected for topic '{topic}'")
+
+        return opinions_by_topic
+
+    async def run_debates(
+        self,
+        opinions_by_topic: Dict[str, List[AgentOpinion]]
+    ) -> Dict[str, Consensus]:
+        """
+        각 주제에 대해 토론 프로토콜 실행
+
+        논리:
+        - 의견이 1개만 있으면 토론 스킵 (단일 의견 = 합의)
+        - 의견이 2개 이상이면 DebateProtocol.run_debate() 실행
+        - 초기 일관성이 매우 높으면(95% 이상) 토론 스킵
+
+        Args:
+            opinions_by_topic: {topic: [opinions]} 딕셔너리
+
+        Returns:
+            {topic: Consensus} 딕셔너리
+        """
+        consensus_results = {}
+
+        for topic, opinions in opinions_by_topic.items():
+            self.logger.info(f"Processing debate for topic '{topic}' with {len(opinions)} opinions")
+
+            # 단일 의견: 토론 불필요
+            if len(opinions) == 1:
+                self.logger.info(f"Single opinion for '{topic}' - skipping debate")
+                consensus = Consensus(
+                    topic=topic,
+                    final_position=opinions[0].position,
+                    confidence=opinions[0].confidence,
+                    supporting_agents=[opinions[0].agent_role],
+                    dissenting_agents=[],
+                    compromises=[],
+                    debate_rounds=0
+                )
+                consensus_results[topic] = consensus
+                continue
+
+            # 초기 일관성 체크
+            initial_consistency = self.debate_protocol.calculate_consistency(opinions)
+            self.logger.debug(f"Initial consistency for '{topic}': {initial_consistency:.1f}%")
+
+            if initial_consistency >= 95.0:
+                self.logger.info(f"High initial consistency ({initial_consistency:.1f}%) - skipping debate")
+                consensus = self.debate_protocol.reach_consensus(opinions, debate_rounds=0)
+                consensus_results[topic] = consensus
+                continue
+
+            # 토론 실행
+            try:
+                consensus = self.debate_protocol.run_debate(opinions, topic)
+                self.logger.info(
+                    f"Debate complete for '{topic}': {consensus.final_position} "
+                    f"(confidence={consensus.confidence:.2%}, rounds={consensus.debate_rounds})"
+                )
+                consensus_results[topic] = consensus
+            except Exception as e:
+                self.logger.error(f"Debate failed for '{topic}': {e}")
+                # Fallback: 첫 번째 의견을 기본 합의로 사용
+                consensus = Consensus(
+                    topic=topic,
+                    final_position=opinions[0].position,
+                    confidence=0.5,
+                    supporting_agents=[opinions[0].agent_role],
+                    dissenting_agents=[],
+                    compromises=["Debate failed - using fallback opinion"],
+                    debate_rounds=0
+                )
+                consensus_results[topic] = consensus
+
+        return consensus_results
+
+    def synthesize_report(
+        self,
+        query: str,
+        analysis_result: Dict[str, Any],
+        forecast_result: Dict[str, Any],
+        consensus_results: Dict[str, Consensus],
+        opinions_by_topic: Dict[str, List[AgentOpinion]]
+    ) -> Dict[str, Any]:
+        """
+        최종 보고서 종합
+        """
+        # transition_probability 스케일 보정 (0-100 -> 0-1)
+        trans_prob = analysis_result.get('transition_probability', 0.0)
+        if trans_prob > 1.0:
+            trans_prob /= 100.0
+
+        # 모든 의견을 플랫 리스트로 변환
+        all_opinions = []
+        for topic, opinions in opinions_by_topic.items():
+            for opinion in opinions:
+                all_opinions.append({
+                    'topic': topic,
+                    'agent_role': opinion.agent_role.value if hasattr(opinion.agent_role, 'value') else str(opinion.agent_role),
+                    'position': opinion.position,
+                    'confidence': opinion.confidence,
+                    'strength': opinion.strength.value if hasattr(opinion.strength, 'value') else str(opinion.strength),
+                    'evidence': opinion.evidence,
+                    'caveats': opinion.caveats,
+                    'key_metrics': opinion.key_metrics
+                })
+
+        report = {
+            'timestamp': datetime.now().isoformat(),
+            'query': query,
+            'analysis': {
+                'total_risk_score': analysis_result.get('total_risk_score', 0.0),
+                'risk_level': analysis_result.get('risk_level', 'UNKNOWN'),
+                'current_regime': analysis_result.get('current_regime', 'UNKNOWN'),
+                'regime_confidence': analysis_result.get('regime_confidence', 0.0),
+                'transition_probability': trans_prob,
+                'primary_risk_path': analysis_result.get('primary_risk_path', 'unknown'),
+                'path_contributions': analysis_result.get('path_contributions', {}),
+                'active_warnings': analysis_result.get('active_warnings', []),
+            },
+            'forecast': forecast_result,
+            'debate': {
+                'opinions': all_opinions,
+                'consensus': {
+                    topic: {
+                        'final_position': consensus.final_position,
+                        'confidence': consensus.confidence,
+                        'supporting_agents': [a.value for a in consensus.supporting_agents],
+                        'dissenting_agents': [a.value for a in consensus.dissenting_agents],
+                        'debate_rounds': consensus.debate_rounds,
+                        'compromises': consensus.compromises
+                    }
+                    for topic, consensus in consensus_results.items()
+                },
+                'conflicts': []  # TODO: 충돌 정보 추가
+            },
+            'debate_topics': list(consensus_results.keys()),
+            'recommendations': self._generate_recommendations(analysis_result, consensus_results),
+            'warnings': self._generate_warnings(analysis_result, consensus_results),
+            'metadata': {
+                'num_agents': 2, # Analysis, Forecast
+                'total_opinions': len(all_opinions),
+                'total_debates': len([c for c in consensus_results.values() if c.debate_rounds > 0]),
+                'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1)
+            }
+        }
+
+        return report
+
+    def _generate_recommendations(
+        self,
+        analysis_result: Dict[str, Any],
+        consensus_results: Dict[str, Consensus]
+    ) -> List[str]:
+        """
+        권고 사항 생성 (Rule-based)
+        """
+        recommendations = []
+
+        total_risk_score = analysis_result.get('total_risk_score', 50.0)
+        transition_probability = analysis_result.get('transition_probability', 0.0)
+        if transition_probability > 1.0:
+            transition_probability /= 100.0
+            
+        current_regime = analysis_result.get('current_regime', 'NEUTRAL')
+
+        # Risk-based recommendations
+        if total_risk_score > 70:
+            recommendations.append(
+                f"HIGH RISK ({total_risk_score:.1f}/100): Consider defensive positioning and risk reduction"
+            )
+        elif total_risk_score < 30:
+            recommendations.append(
+                f"LOW RISK ({total_risk_score:.1f}/100): Favorable conditions for growth-oriented strategies"
+            )
+
+        # Regime transition recommendations
+        if transition_probability > 0.5:
+            recommendations.append(
+                f"HIGH REGIME TRANSITION RISK ({transition_probability:.1%}): "
+                f"Prepare for potential shift from {current_regime} regime"
+            )
+
+        # Consensus confidence recommendations
+        low_confidence_topics = [
+            topic for topic, consensus in consensus_results.items()
+            if consensus.confidence < 0.6
+        ]
+        if low_confidence_topics:
+            recommendations.append(
+                f"LOW CONSENSUS CONFIDENCE on {', '.join(low_confidence_topics)}: "
+                f"Monitor developments closely and reassess regularly"
+            )
+
+        # Dissent recommendations
+        topics_with_dissent = [
+            topic for topic, consensus in consensus_results.items()
+            if len(consensus.dissenting_agents) > 0
+        ]
+        if topics_with_dissent:
+            recommendations.append(
+                f"AGENT DISAGREEMENT on {', '.join(topics_with_dissent)}: "
+                f"Consider multiple scenarios in planning"
+            )
+
+        # Default fallback
+        if not recommendations:
+            recommendations.append(
+                f"Current market regime: {current_regime} with moderate risk levels - "
+                f"Maintain balanced portfolio approach"
+            )
+
+        return recommendations
+
+    def _generate_warnings(
+        self,
+        analysis_result: Dict[str, Any],
+        consensus_results: Dict[str, Consensus]
+    ) -> List[str]:
+        """
+        주의 사항 생성
+
+        Args:
+            analysis_result: 분석 결과
+            consensus_results: 합의 결과
+
+        Returns:
+            주의 사항 리스트
+        """
+        warnings = []
+
+        # Extract active warnings from analysis
+        active_warnings = analysis_result.get('active_warnings', [])
+        warnings.extend(active_warnings[:5])  # Top 5 warnings
+
+        # Add debate-related warnings
+        debate_failures = [
+            topic for topic, consensus in consensus_results.items()
+            if "failed" in ' '.join(consensus.compromises).lower()
+        ]
+        if debate_failures:
+            warnings.append(
+                f"Debate process encountered issues for: {', '.join(debate_failures)}"
+            )
+
+        return warnings
+
+    def _create_error_result(self, query: str, error_msg: str) -> Dict[str, Any]:
+        """
+        에러 발생 시 결과 생성
+
+        Args:
+            query: 원본 질문
+            error_msg: 에러 메시지
+
+        Returns:
+            에러 결과 딕셔너리
+        """
+        return {
+            'timestamp': datetime.now().isoformat(),
+            'query': query,
+            'status': 'error',
+            'error': error_msg,
+            'analysis': {},
+            'consensus': {},
+            'recommendations': [f"Error occurred: {error_msg}"],
+            'warnings': ["Analysis failed - results unavailable"],
+            'metadata': {}
+        }
+
+
+# ============================================================
+# 테스트 코드
+# ============================================================
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def test_orchestrator():
+        """Test MetaOrchestrator with mock data"""
+        print("="*60)
+        print("MetaOrchestrator Test")
+        print("="*60)
+
+        orchestrator = MetaOrchestrator(verbose=True)
+
+        print("\nNote: Full test requires real market_data from DataManager")
+        print("For complete integration test, use test_debate_system.py\n")
+
+        # Mock context for testing opinion collection
+        mock_context = {
+            'total_risk_score': 55.0,
+            'risk_level': 'MEDIUM',
+            'current_regime': 'TRANSITION',
+            'regime_confidence': 65.0,
+            'transition_probability': 0.45,
+            'primary_risk_path': 'liquidity',
+            'path_contributions': {
+                'liquidity': 35.0,
+                'credit': 25.0,
+                'volatility': 20.0,
+                'crypto': 15.0
+            },
+            'active_warnings': [
+                'Credit spread widening detected',
+                'VIX elevated above 20',
+                'High volatility in crypto markets',
+                'Liquidity conditions tightening'
+            ]
+        }
+
+        # Test auto-detection
+        print("Testing topic auto-detection...")
+        topics = orchestrator._auto_detect_topics(mock_context)
+        print(f"Auto-detected topics: {topics}\n")
+
+        # Test opinion collection
+        print("Testing opinion collection...")
+        opinions = await orchestrator.collect_opinions(topics[:2], mock_context)
+        print(f"Collected {sum(len(ops) for ops in opinions.values())} opinions\n")
+
+        for topic, topic_opinions in opinions.items():
+            print(f"Topic '{topic}':")
+            for op in topic_opinions:
+                print(f"  - {op.agent_role.value}: {op.position} (conf={op.confidence:.2f})")
+
+        print("\n" + "="*60)
+        print("Basic tests passed!")
+        print("Run test_debate_system.py for full integration test")
+        print("="*60)
+
+    asyncio.run(test_orchestrator())

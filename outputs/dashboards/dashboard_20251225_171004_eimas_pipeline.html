@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIMAS Dashboard - 2025-12-25</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #4a90d9;
+            margin-bottom: 30px;
+        }
+        
+        header h1 {
+            font-size: 2.5rem;
+            color: #4a90d9;
+            margin-bottom: 10px;
+        }
+        
+        header .timestamp {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .section {
+            background: #16213e;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section-title {
+            font-size: 1.4rem;
+            color: #4a90d9;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 20px;
+            border-left: 4px solid #4a90d9;
+        }
+        
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        .neutral { color: #f59e0b; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            background: rgba(74, 144, 217, 0.2);
+            font-weight: 600;
+        }
+        
+        .agent-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .agent-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .agent-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .agent-position {
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        
+        .agent-confidence {
+            font-size: 0.85rem;
+            color: #888;
+        }
+        
+        .consensus-box {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .conflict-list {
+            list-style: none;
+            margin-top: 15px;
+        }
+        
+        .conflict-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 30px 0;
+            color: #666;
+            font-size: 0.85rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 40px;
+        }
+        
+        /* Sections placeholder */
+        #section-regime { }
+        #section-lasso { }
+        #section-agents { }
+        #section-risk { }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 EIMAS Multi-Agent Dashboard</h1>
+            <p class="timestamp">Generated: 2025-12-25T17:10:04.716318</p>
+        </header>
+        
+        <!-- Summary Section -->
+        <div class="section">
+            <h2 class="section-title">📊 Summary</h2>
+            <div class="card-grid">
+                <div class="card">
+                    <div class="card-title">Total Signals</div>
+                    <div class="card-value">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Forecast Horizons</div>
+                    <div class="card-value">3</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Agent Opinions</div>
+                    <div class="card-value">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dynamic sections will be inserted here -->
+        
+        <div class="section">
+            <h2 class="section-title">📈 Regime Analysis</h2>
+            <div class="card-grid">
+                <div class="card" style="border-left-color: #22c55e;">
+                    <div class="card-title">Current Regime</div>
+                    <div class="card-value" style="color: #22c55e;">BULL</div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Confidence</div>
+                    <div class="card-value">50.0%</div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="section">
+            <h2 class="section-title">📈 LASSO Fed Rate Forecast</h2>
+            
+            <div style="
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border: 1px solid #e74c3c;
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 20px;
+            ">
+                <h3 style="color: #e74c3c; margin-top: 0; margin-bottom: 10px;">🔍 문제 진단 (Diagnostics)</h3>
+                <ul style="color: #e0e0e0; margin: 0; padding-left: 20px; list-style: none;">
+                    <li style="margin: 5px 0;">📅 시장 데이터 기간: 2024-09-04 00:00:00 ~ 2025-12-22 00:00:00</li><li style="margin: 5px 0;">📅 CME 데이터 기간: 2024-09-12 00:00:00 ~ 2025-12-10 00:00:00</li>
+                </ul>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Horizon</th>
+                        <th>Obs</th>
+                        <th>R²</th>
+                        <th>Selected</th>
+                        <th>Top Variables</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                <tr>
+                    <td>VeryShort</td>
+                    <td style="color: #22c55e;">131</td>
+                    <td>0.7644</td>
+                    <td>14</td>
+                    <td>Term_Spread, Ret_Commodity_Idx, Ret_Dollar_Idx...</td>
+                </tr>
+            
+                <tr>
+                    <td>Short</td>
+                    <td style="color: #22c55e;">80</td>
+                    <td>0.7353</td>
+                    <td>9</td>
+                    <td>USDKRW, Ret_Commodity_Idx, Ret_Dollar_Idx...</td>
+                </tr>
+            
+                <tr>
+                    <td>Long</td>
+                    <td style="color: #22c55e;">40</td>
+                    <td>0.6829</td>
+                    <td>4</td>
+                    <td>Copper, Ret_GBPUSD, Ret_HighYield_ETF...</td>
+                </tr>
+            
+                </tbody>
+            </table>
+            
+                <div class="chart-container">
+                    <canvas id="lassoChart"></canvas>
+                </div>
+                <script>
+                    new Chart(document.getElementById('lassoChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: ['d_Spread_HighYield', 'Ret_HighYield_ETF', 'Copper', 'Ret_GBPUSD'],
+                            datasets: [{
+                                label: 'Coefficient',
+                                data: [-3.5751295143756914, -1.3285550848077337, 0.7416608967300233, -0.45381477750221066],
+                                backgroundColor: ['#ef4444', '#ef4444', '#22c55e', '#ef4444']
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: 'Top 10 LASSO Coefficients (Long Horizon)',
+                                    color: '#e0e0e0'
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    grid: { color: 'rgba(255,255,255,0.1)' },
+                                    ticks: { color: '#888' }
+                                },
+                                y: {
+                                    grid: { display: false },
+                                    ticks: { color: '#e0e0e0' }
+                                }
+                            }
+                        }
+                    });
+                </script>
+                
+        </div>
+        
+        <div id="section-agents"></div>
+        <div id="section-risk"></div>
+        
+    
+        <footer>
+            <p>Generated by EIMAS (Economic Intelligence Multi-Agent System)</p>
+            <p>© 2025 - Dashboard v1.0</p>
+        </footer>
+    </div>
+</body>
+</html>

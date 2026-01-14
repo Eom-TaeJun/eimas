@@ -1,0 +1,76 @@
+# EIMAS Configuration
+# ====================
+# Full pipeline configuration for LASSO forecasting and multi-agent analysis
+
+# 데이터 수집 설정
+data:
+  lookback_days: 365          # 데이터 수집 기간 (일)
+  tickers_config: 'configs/tickers.yaml'  # 티커 설정 파일
+  
+  # 기본 티커 (tickers.yaml 없을 경우)
+  tickers:
+    - SPY
+    - QQQ
+    - TLT
+    - GLD
+    - VIX
+    - HYG
+    - LQD
+    - TIP
+    - BTC-USD
+
+# 에이전트 설정
+agents:
+  # ForecastAgent (LASSO 예측)
+  forecast:
+    enabled: true
+    timeout: 180
+    n_splits: 5               # TimeSeriesSplit CV fold 수
+    max_iter: 10000           # LASSO 최대 반복
+    hac_lag: 5                # Newey-West lag (1주일 거래일)
+  
+  # AnalysisAgent (Critical Path 분석)
+  analysis:
+    enabled: true
+    timeout: 120
+  
+  # VisualizationAgent (대시보드 생성)
+  visualization:
+    enabled: true
+    theme: 'dark'             # 'dark' / 'light'
+    language: 'ko'            # 'ko' / 'en'
+    include_crypto: true
+    include_regime: true
+    include_critical_path: true
+    include_lasso_results: true
+    include_agent_debate: true
+
+# 토론 설정
+debate:
+  max_rounds: 3               # 최대 토론 라운드
+  consensus_threshold: 0.85   # 합의 임계값 (0-1)
+  consistency_threshold: 85.0 # 일관성 임계값 (%)
+  modification_threshold: 5.0 # 수정 임계값 (%)
+
+# 출력 설정
+output:
+  dir: 'outputs/dashboards'   # 대시보드 출력 디렉토리
+  save_json: true             # JSON 결과 저장 여부
+  generate_dashboard: true    # 대시보드 생성 여부
+
+# LASSO 분석 설정
+lasso:
+  # 제외 변수 (Simultaneity bias 방지)
+  exclude_patterns:
+    - 'd_US10Y'
+    - 'd_US2Y'
+    - 'd_RealYield'
+    - 'd_Term_Spread'
+    - 'Ret_Treasury'
+  
+  # Horizon 설정
+  horizons:
+    very_short_max: 30        # VeryShort: ≤30일
+    short_min: 31             # Short: 31일 이상
+    short_max: 90             # Short: 90일 이하
+    long_min: 180             # Long: 180일 이상

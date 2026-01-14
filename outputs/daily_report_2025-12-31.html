@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIMAS Daily Report</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-yellow: #d29922;
+            --accent-blue: #58a6ff;
+            --border: #30363d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header .date {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric:last-child { border-bottom: none; }
+
+        .metric-label { color: var(--text-secondary); }
+
+        .metric-value { font-weight: 600; }
+
+        .metric-value.positive { color: var(--accent-green); }
+        .metric-value.negative { color: var(--accent-red); }
+        .metric-value.warning { color: var(--accent-yellow); }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.buy { background: rgba(63, 185, 80, 0.2); color: var(--accent-green); }
+        .badge.sell { background: rgba(248, 81, 73, 0.2); color: var(--accent-red); }
+        .badge.hold { background: rgba(210, 153, 34, 0.2); color: var(--accent-yellow); }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+
+        .progress-bar .fill.green { background: var(--accent-green); }
+        .progress-bar .fill.red { background: var(--accent-red); }
+        .progress-bar .fill.yellow { background: var(--accent-yellow); }
+        .progress-bar .fill.blue { background: var(--accent-blue); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--accent-blue);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px 0;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 30px;
+        }
+
+        .allocation-bar {
+            display: flex;
+            height: 30px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .allocation-segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+        <div class="header">
+            <h1>📊 Daily Market Report</h1>
+            <p class="date">Generated: 2025-12-31 14:10</p>
+        </div>
+        <div class="grid">
+        <div class="card">
+            <h2>📡 Today's Signals</h2>
+            <div class="metric">
+                <span class="metric-label">Total Signals</span>
+                <span class="metric-value">4</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Buy Signals</span>
+                <span class="metric-value positive">4</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Sell Signals</span>
+                <span class="metric-value negative">0</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>📁 Database Status</h2>
+            <div class="metric">
+                <span class="metric-label">Total Signals</span>
+                <span class="metric-value">4</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Total Portfolios</span>
+                <span class="metric-value">13</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Total Executions</span>
+                <span class="metric-value">0</span>
+            </div>
+        </div>
+        
+            <div class="card">
+                <h2>⏰ Session Analysis (30d avg)</h2>
+                <div class="metric">
+                    <span class="metric-label">Best Session</span>
+                    <span class="metric-value positive">overnight (+21.39%)</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Worst Session</span>
+                    <span class="metric-value negative">after_hours (-9.99%)</span>
+                </div>
+            </div>
+            </div><div class="section"><h2 class="section-title">💼 Portfolio Recommendations</h2><div class="grid">
+                <div class="card">
+                    <h2>TACTICAL</h2>
+                    <div class="metric">
+                        <span class="metric-label">Expected Return</span>
+                        <span class="metric-value positive">8.1%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Expected Risk</span>
+                        <span class="metric-value">9.2%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Sharpe Ratio</span>
+                        <span class="metric-value">0.89</span>
+                    </div>
+                    <div class="allocation-bar">
+                <div class="allocation-segment" style="width:43.5%;background:#3fb950">SPY</div><div class="allocation-segment" style="width:17.4%;background:#58a6ff">QQQ</div><div class="allocation-segment" style="width:17.4%;background:#d29922">TLT</div><div class="allocation-segment" style="width:13.0%;background:#f85149">GLD</div><div class="allocation-segment" style="width:8.7%;background:#8b949e">CASH</div></div></div>
+                <div class="card">
+                    <h2>AGGRESSIVE</h2>
+                    <div class="metric">
+                        <span class="metric-label">Expected Return</span>
+                        <span class="metric-value positive">10.4%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Expected Risk</span>
+                        <span class="metric-value">11.3%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Sharpe Ratio</span>
+                        <span class="metric-value">0.91</span>
+                    </div>
+                    <div class="allocation-bar">
+                <div class="allocation-segment" style="width:47.8%;background:#3fb950">SPY</div><div class="allocation-segment" style="width:26.1%;background:#58a6ff">QQQ</div><div class="allocation-segment" style="width:13.0%;background:#d29922">ARKK</div><div class="allocation-segment" style="width:8.7%;background:#f85149">TLT</div></div></div>
+                <div class="card">
+                    <h2>MODERATE</h2>
+                    <div class="metric">
+                        <span class="metric-label">Expected Return</span>
+                        <span class="metric-value positive">7.9%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Expected Risk</span>
+                        <span class="metric-value">8.9%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Sharpe Ratio</span>
+                        <span class="metric-value">0.89</span>
+                    </div>
+                    <div class="allocation-bar">
+                <div class="allocation-segment" style="width:42.1%;background:#3fb950">SPY</div><div class="allocation-segment" style="width:21.099999999999998%;background:#58a6ff">TLT</div><div class="allocation-segment" style="width:15.8%;background:#d29922">QQQ</div><div class="allocation-segment" style="width:10.5%;background:#f85149">GLD</div><div class="allocation-segment" style="width:10.5%;background:#8b949e">CASH</div></div></div>
+                <div class="card">
+                    <h2>CONSERVATIVE</h2>
+                    <div class="metric">
+                        <span class="metric-label">Expected Return</span>
+                        <span class="metric-value positive">6.1%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Expected Risk</span>
+                        <span class="metric-value">7.2%</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Sharpe Ratio</span>
+                        <span class="metric-value">0.84</span>
+                    </div>
+                    <div class="allocation-bar">
+                <div class="allocation-segment" style="width:31.6%;background:#3fb950">SPY</div><div class="allocation-segment" style="width:31.6%;background:#58a6ff">TLT</div><div class="allocation-segment" style="width:21.099999999999998%;background:#d29922">CASH</div><div class="allocation-segment" style="width:15.8%;background:#f85149">GLD</div></div></div></div></div><div class="section"><h2 class="section-title">📡 Recent Signals</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Source</th>
+                        <th>Action</th>
+                        <th>Ticker</th>
+                        <th>Conviction</th>
+                    </tr>
+                </thead>
+                <tbody>
+            
+                <tr>
+                    <td>2025-12-31T14:10</td>
+                    <td>regime_detector</td>
+                    <td><span class="badge buy">BUY</span></td>
+                    <td>SPY</td>
+                    <td>6000%</td>
+                </tr>
+                
+                <tr>
+                    <td>2025-12-31T13:44</td>
+                    <td>regime_detector</td>
+                    <td><span class="badge buy">BUY</span></td>
+                    <td>SPY</td>
+                    <td>6000%</td>
+                </tr>
+                
+                <tr>
+                    <td>2025-12-31T10:03</td>
+                    <td>regime_detector</td>
+                    <td><span class="badge buy">BUY</span></td>
+                    <td>SPY</td>
+                    <td>6000%</td>
+                </tr>
+                
+                <tr>
+                    <td>2025-12-31T09:59</td>
+                    <td>regime_detector</td>
+                    <td><span class="badge buy">BUY</span></td>
+                    <td>SPY</td>
+                    <td>75%</td>
+                </tr>
+                </tbody></table></div>
+    <div class="footer">
+        <p>Generated by EIMAS (Economic Intelligence Multi-Agent System)</p>
+        <p>2025-12-31 14:10:45</p>
+    </div>
+</div>
+</body>
+</html>

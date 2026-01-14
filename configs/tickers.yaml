@@ -1,0 +1,104 @@
+# Market Ticker Configuration
+# LASSO 분석에 필요한 변수들 포함
+
+# 거시경제 (Macro) - FRED 데이터
+macro:
+  # 금리 (Rates) - Treasury 관련은 LASSO에서 제외되지만 분석 참고용
+  rates:
+    - id: 'DGS2'    # 2-Year Treasury Yield
+    - id: 'DGS10'   # 10-Year Treasury Yield
+    - id: 'DGS5'    # 5-Year Treasury Yield
+    - id: 'DGS30'   # 30-Year Treasury Yield
+    - id: 'DFF'     # Federal Funds Effective Rate (→ d_Exp_Rate)
+    - id: 'DTB3'    # 3-Month Treasury Bill
+    - id: 'DFEDTARU' # Federal Funds Target Range Upper
+    - id: 'DFEDTARL' # Federal Funds Target Range Lower
+  
+  # 신용 스프레드 (Credit Spreads) - LASSO 핵심 변수
+  spreads:
+    - id: 'T10Y2Y'  # 10Y-2Y Spread (Term Spread)
+    - id: 'BAMLC0A0CM' # US Corp Master Option-Adjusted Spread
+    - id: 'BAMLH0A0HYM2' # US High Yield Option-Adjusted Spread
+    - id: 'TEDRATE' # TED Spread
+    - id: 'AAA'     # Moody's Seasoned Aaa Corporate Bond Yield
+    - id: 'BAA'     # Moody's Seasoned Baa Corporate Bond Yield (→ d_Baa_Yield)
+  
+  # 인플레이션 기대 (Inflation Expectations) - LASSO 핵심 변수
+  inflation:
+    - id: 'T5YIE'   # 5-Year Breakeven Inflation Rate (→ d_Breakeven5Y)
+    - id: 'T10YIE'  # 10-Year Breakeven Inflation Rate (→ d_Breakeven10Y)
+    - id: 'CPIAUCSL' # CPI All Items
+    - id: 'MICH'    # University of Michigan Inflation Expectation
+  
+  # 변동성 (Volatility)
+  volatility:
+    - id: 'VIXCLS'  # CBOE VIX (→ d_VIX)
+  
+  # 달러 인덱스 (Dollar Index) - LASSO 핵심 변수
+  dollar:
+    - id: 'DTWEXBGS' # Trade Weighted U.S. Dollar Index (→ d_Dollar_Idx)
+
+# 주식 (Equities)
+equities:
+  indices:
+    - ticker: '^GSPC'  # S&P 500
+    - ticker: '^IXIC'  # NASDAQ Composite
+    - ticker: '^DJI'   # Dow Jones
+    - ticker: '^RUT'   # Russell 2000
+    - ticker: 'SPY'    # S&P 500 ETF
+    - ticker: 'QQQ'    # NASDAQ ETF
+    - ticker: 'IWM'    # Russell 2000 ETF
+  
+  sectors:
+    - ticker: 'XLK'    # Technology
+    - ticker: 'XLF'    # Financials
+    - ticker: 'XLE'    # Energy
+    - ticker: 'XLV'    # Healthcare
+    - ticker: 'XLY'    # Consumer Discretionary
+    - ticker: 'XLP'    # Consumer Staples
+    - ticker: 'XLI'    # Industrials
+    - ticker: 'XLB'    # Materials
+    - ticker: 'XLU'    # Utilities
+    - ticker: 'XLRE'   # Real Estate
+
+  volatility:
+    - ticker: '^VIX'   # CBOE Volatility Index
+    - ticker: 'VXX'    # VIX Short-Term Futures ETN
+
+# 채권 (Bonds)
+bonds:
+  treasury:
+    - ticker: 'SHY'    # 1-3 Year Treasury Bond
+    - ticker: 'IEF'    # 7-10 Year Treasury Bond
+    - ticker: 'TLT'    # 20+ Year Treasury Bond
+    - ticker: 'TIP'    # TIPS Bond
+  
+  corporate:
+    - ticker: 'LQD'    # Investment Grade Corporate Bond
+    - ticker: 'HYG'    # High Yield Corporate Bond
+
+# 상품 (Commodities)
+commodities:
+  metals:
+    - ticker: 'GLD'    # Gold
+    - ticker: 'SLV'    # Silver
+  
+  energy:
+    - ticker: 'USO'    # Oil Fund
+    - ticker: 'UNG'    # Natural Gas Fund
+  
+  agriculture:
+    - ticker: 'DBA'    # Agriculture Fund
+
+# 외환 (FX)
+fx:
+  - ticker: 'DX-Y.NYB' # US Dollar Index
+  - ticker: 'EURUSD=X' # EUR/USD
+  - ticker: 'JPY=X'    # USD/JPY
+  - ticker: 'GBPUSD=X' # GBP/USD
+
+# 암호화폐 (Crypto)
+crypto:
+  - ticker: 'BTC-USD'  # Bitcoin
+  - ticker: 'ETH-USD'  # Ethereum
+  - ticker: 'SOL-USD'  # Solana

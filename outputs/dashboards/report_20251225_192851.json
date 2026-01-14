@@ -1,0 +1,182 @@
+{
+  "timestamp": "2025-12-25T19:28:51.738240",
+  "forecast_results": [
+    {
+      "horizon": "VeryShort",
+      "selected_variables": [
+        "Term_Spread",
+        "Ret_Commodity_Idx",
+        "Ret_Dollar_Idx",
+        "Ret_NatGas",
+        "Ret_USDJPY",
+        "Ret_Sector_Comm",
+        "Ret_Sector_Energy",
+        "Ret_Dow",
+        "Ret_Nasdaq",
+        "d_Baa_Yield",
+        "d_Breakeven5Y",
+        "d_Spread_Baa",
+        "d_Spread_HighYield",
+        "d_VIX"
+      ],
+      "coefficients": {
+        "Term_Spread": -0.481709988072741,
+        "Ret_Commodity_Idx": 0.1465487063571521,
+        "Ret_Dollar_Idx": 1.026276592222661,
+        "Ret_NatGas": 0.07711299945894758,
+        "Ret_USDJPY": -0.05084699934630974,
+        "Ret_Sector_Comm": 0.27123334543880784,
+        "Ret_Sector_Energy": 0.48211474605392984,
+        "Ret_Dow": 0.31918036954755175,
+        "Ret_Nasdaq": 0.14279316707285913,
+        "d_Baa_Yield": 1.4144454211358057,
+        "d_Breakeven5Y": 0.2555097069356739,
+        "d_Spread_Baa": -0.7561224949174016,
+        "d_Spread_HighYield": -0.7357697043662317,
+        "d_VIX": -0.004437415758456733
+      },
+      "r_squared": 0.764421893718727,
+      "n_observations": 131,
+      "lambda_optimal": 0.2434446664509204,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T19:28:50.458775"
+    },
+    {
+      "horizon": "Short",
+      "selected_variables": [
+        "USDKRW",
+        "Ret_Commodity_Idx",
+        "Ret_Dollar_Idx",
+        "Ret_Copper",
+        "Ret_Corp_InvGrade",
+        "Ret_Copper_Gold",
+        "d_Breakeven5Y",
+        "d_Spread_Baa",
+        "d_Spread_HighYield"
+      ],
+      "coefficients": {
+        "USDKRW": 0.014433816058324212,
+        "Ret_Commodity_Idx": 0.37788281383245936,
+        "Ret_Dollar_Idx": 0.18569251283476867,
+        "Ret_Copper": -0.08927916223956041,
+        "Ret_Corp_InvGrade": -1.663167977825175,
+        "Ret_Copper_Gold": -0.0394458326602245,
+        "d_Breakeven5Y": 0.15841645926405676,
+        "d_Spread_Baa": -0.5851639251507174,
+        "d_Spread_HighYield": -2.189517908262149
+      },
+      "r_squared": 0.7352853482625077,
+      "n_observations": 80,
+      "lambda_optimal": 0.4081870518659913,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T19:28:51.212523"
+    },
+    {
+      "horizon": "Long",
+      "selected_variables": [
+        "Copper",
+        "Ret_GBPUSD",
+        "Ret_HighYield_ETF",
+        "d_Spread_HighYield"
+      ],
+      "coefficients": {
+        "Copper": 0.7416786444084311,
+        "Ret_GBPUSD": -0.45381945290486947,
+        "Ret_HighYield_ETF": -1.3285085952138842,
+        "d_Spread_HighYield": -3.575131556233876
+      },
+      "r_squared": 0.6829162739930217,
+      "n_observations": 40,
+      "lambda_optimal": 1.0145590073741884,
+      "hac_std_errors": {},
+      "vif_scores": {},
+      "predicted_change": null,
+      "confidence_interval": null,
+      "timestamp": "2025-12-25T19:28:51.435008"
+    }
+  ],
+  "analysis": {
+    "total_risk_score": 12.112379382337473,
+    "risk_level": "LOW",
+    "current_regime": "BULL",
+    "regime_confidence": 90.0,
+    "transition_probability": 0.25,
+    "primary_risk_path": "crypto",
+    "path_contributions": {
+      "liquidity": 7.2878409645862385,
+      "concentration": 14.766717818670879,
+      "credit": 11.837933595902589,
+      "volatility": 12.146401607643732,
+      "rotation": 14.09192726196115,
+      "crypto": 20.0
+    },
+    "active_warnings": []
+  },
+  "debate": {
+    "opinions": [
+      {
+        "topic": "regime_stability",
+        "agent_role": "analysis",
+        "position": "Regime stable - low transition risk",
+        "confidence": 0.75,
+        "strength": "agree",
+        "evidence": [
+          "Current regime: BULL",
+          "Regime confidence: 90.0%",
+          "Transition probability: 25.0%"
+        ],
+        "caveats": [],
+        "key_metrics": {
+          "regime_confidence": 90.0,
+          "transition_probability": 0.25
+        }
+      },
+      {
+        "topic": "crypto_correlation",
+        "agent_role": "analysis",
+        "position": "Moderate crypto-equity correlation",
+        "confidence": 0.6,
+        "strength": "neutral",
+        "evidence": [
+          "BTC-SPY correlation: 0.42"
+        ],
+        "caveats": [],
+        "key_metrics": {
+          "btc_spy_correlation": 0.41752851815007225
+        }
+      }
+    ],
+    "consensus": {
+      "regime_stability": {
+        "final_position": "Regime stable - low transition risk",
+        "confidence": 0.75,
+        "supporting_agents": [
+          "analysis"
+        ],
+        "dissenting_agents": [],
+        "debate_rounds": 0,
+        "compromises": []
+      },
+      "crypto_correlation": {
+        "final_position": "Moderate crypto-equity correlation",
+        "confidence": 0.6,
+        "supporting_agents": [
+          "analysis"
+        ],
+        "dissenting_agents": [],
+        "debate_rounds": 0,
+        "compromises": []
+      }
+    },
+    "conflicts": []
+  },
+  "recommendations": [
+    "LOW RISK (12.1/100): Favorable conditions for growth-oriented strategies"
+  ]
+}
