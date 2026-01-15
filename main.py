@@ -262,6 +262,10 @@ class EIMASResult:
     critical_path_monitoring: Dict = field(default_factory=dict)  # Critical Path 모니터링
     trading_db_status: str = "N/A"  # Trading DB 저장 상태
 
+    # Missing Phase 2 Analyses (2026-01-15)
+    liquidity_analysis: Dict = field(default_factory=dict)  # 2.3 Liquidity-Market Causality
+    etf_flow_result: Dict = field(default_factory=dict)  # 2.5 ETF Flow Analysis
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -1776,6 +1780,18 @@ async def run_integrated_pipeline(
             liquidity_analyzer = LiquidityMarketAnalyzer()
             liquidity_signal = liquidity_analyzer.generate_signals()
             result.liquidity_signal = liquidity_signal.get('signal', 'NEUTRAL')
+
+            # Store detailed analysis for markdown
+            result.liquidity_analysis = {
+                'rrp_to_spy_significant': liquidity_signal.get('rrp_to_spy_significant', False),
+                'rrp_to_spy_lag': liquidity_signal.get('rrp_to_spy_lag', 0),
+                'rrp_to_spy_pvalue': liquidity_signal.get('rrp_to_spy_pvalue', 1.0),
+                'net_liq_to_spy_significant': liquidity_signal.get('net_liq_to_spy_significant', False),
+                'net_liq_to_spy_lag': liquidity_signal.get('net_liq_to_spy_lag', 0),
+                'net_liq_to_spy_pvalue': liquidity_signal.get('net_liq_to_spy_pvalue', 1.0),
+                'primary_path': liquidity_signal.get('primary_path', 'Unknown')
+            }
+
             print(f"      ✓ Liquidity Signal: {result.liquidity_signal}")
             if liquidity_signal.get('causality_results'):
                 for var, strength in liquidity_signal['causality_results'].items():
@@ -1976,6 +1992,10 @@ async def run_integrated_pipeline(
         try:
             etf_analyzer = ETFFlowAnalyzer()
             etf_result = etf_analyzer.analyze()
+
+            # Store for markdown
+            result.etf_flow_result = etf_result
+
             print(f"      ✓ Sector Rotation: {etf_result.get('rotation_signal', 'N/A')}")
             print(f"      ✓ Style: {etf_result.get('style_signal', 'N/A')}")
         except Exception as e:
