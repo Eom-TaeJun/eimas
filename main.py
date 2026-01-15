@@ -600,7 +600,41 @@ class EIMASResult:
                     md.append("```")
             md.append("")
 
-        # Shock Propagation
+        # Liquidity-Market Causality (2.3)
+        if self.liquidity_analysis:
+            md.append("### Liquidity-Market Causality")
+            md.append("")
+            if self.liquidity_analysis.get('rrp_to_spy_significant'):
+                lag = self.liquidity_analysis.get('rrp_to_spy_lag', 0)
+                pval = self.liquidity_analysis.get('rrp_to_spy_pvalue', 1.0)
+                md.append(f"- **RRP → SPY**: Significant (lag={lag} days, p={pval:.3f})")
+            if self.liquidity_analysis.get('net_liq_to_spy_significant'):
+                lag = self.liquidity_analysis.get('net_liq_to_spy_lag', 0)
+                pval = self.liquidity_analysis.get('net_liq_to_spy_pvalue', 1.0)
+                md.append(f"- **Net Liquidity → SPY**: Significant (lag={lag} days, p={pval:.3f})")
+            if self.liquidity_analysis.get('primary_path'):
+                md.append(f"- **Primary Path**: {self.liquidity_analysis['primary_path']}")
+            md.append("")
+            md.append("_Methodology: Granger Causality Test (p<0.05 threshold)_")
+            md.append("")
+
+        # ETF Flow Analysis (2.5)
+        if self.etf_flow_result:
+            md.append("### ETF Flow Analysis")
+            md.append("")
+            flow = self.etf_flow_result
+            if flow.get('sector_rotation'):
+                md.append("**Sector Rotation:**")
+                for sector, data in list(flow['sector_rotation'].items())[:5]:
+                    signal = data.get('signal', 'N/A')
+                    strength = data.get('strength', 0)
+                    md.append(f"- **{sector}**: {signal} (strength: {strength:.2f})")
+                md.append("")
+            if flow.get('market_regime'):
+                md.append(f"**Market Regime**: {flow['market_regime']}")
+                md.append("")
+
+        # Shock Propagation (2.8)
         if self.shock_propagation:
             md.append("### Shock Propagation")
             md.append(f"- **Nodes**: {self.shock_propagation.get('nodes', 0)}")
@@ -641,6 +675,27 @@ class EIMASResult:
             md.append("|--------|--------------|----------|-------|")
             for anomaly in self.volume_anomalies[:10]:
                 md.append(f"| {anomaly.get('ticker', 'N/A')} | {anomaly.get('volume_ratio', 0):.1f}x | {anomaly.get('severity', 'N/A')} | {anomaly.get('alert_message', '')[:50]}... |")
+            md.append("")
+
+        # Event Tracking (2.12)
+        if self.tracked_events:
+            md.append("### Event Tracking (Anomaly → News)")
+            md.append("")
+            md.append(f"**Anomalies Found**: {self.event_tracking.get('anomalies_found', 0)}")
+            md.append(f"**Events Matched**: {self.event_tracking.get('events_matched', 0)}")
+            md.append("")
+            md.append("**Top Tracked Events:**")
+            md.append("")
+            md.append("| Ticker | Event Type | Timestamp | News Summary |")
+            md.append("|--------|------------|-----------|--------------|")
+            for event in self.tracked_events[:5]:
+                ticker = event.get('ticker', 'N/A')
+                event_type = event.get('event_type', 'N/A')
+                timestamp = event.get('timestamp', 'N/A')
+                news = event.get('news_summary', 'N/A')[:40]
+                md.append(f"| {ticker} | {event_type} | {timestamp} | {news}... |")
+            md.append("")
+            md.append("_Methodology: Volume anomaly detection + Perplexity news search_")
             md.append("")
 
         # 7. Final Recommendation
@@ -2940,6 +2995,38 @@ async def run_integrated_pipeline(
     with open(md_file, 'w', encoding='utf-8') as f:
         f.write(result.to_markdown())
     print(f"      - MD: {md_file}")
+
+    # HTML Dashboard 생성
+    try:
+        from lib.dashboard_generator import generate_dashboard
+
+        # EIMASResult를 dashboard_generator가 사용하는 형식으로 변환
+        dashboard_html = generate_dashboard(
+            signals=result.integrated_signals,
+            summary=f"Risk: {result.risk_score:.1f}/100, Regime: {result.regime.get('regime', 'Unknown')}",
+            regime_data=result.regime,
+            crypto_panel={
+                'stress_test': result.crypto_stress_test,
+                'monitoring': result.crypto_monitoring if hasattr(result, 'crypto_monitoring') else {}
+            },
+            risk_data={
+                'risk_score': result.risk_score,
+                'risk_level': result.risk_level,
+                'base_risk': result.base_risk_score,
+                'market_quality': result.market_quality.__dict__ if result.market_quality else {},
+                'bubble_risk': result.bubble_risk.__dict__ if result.bubble_risk else {}
+            },
+            critical_path_data=result.critical_path_monitoring if hasattr(result, 'critical_path_monitoring') else {},
+            macro_indicators=result.fred_summary,
+            llm_summary=f"{result.full_mode_position} (FULL) vs {result.reference_mode_position} (REF)"
+        )
+
+        html_file = output_dir / f"dashboard_{timestamp_str}.html"
+        with open(html_file, 'w', encoding='utf-8') as f:
+            f.write(dashboard_html)
+        print(f"      - HTML: {html_file}")
+    except Exception as e:
+        print(f"      ✗ HTML dashboard generation error: {e}")
 
     return result, market_data, output_file, md_file
 
