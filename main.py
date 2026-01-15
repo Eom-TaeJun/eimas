@@ -746,7 +746,7 @@ class EIMASResult:
 
             # 11.1 ARK ETF Holdings Analysis
             if self.ark_analysis and 'error' not in self.ark_analysis:
-                md.append("### 12.1 ARK ETF Holdings Analysis")
+                md.append("### 11.1 ARK ETF Holdings Analysis")
                 md.append(f"- **ETFs Analyzed**: {', '.join(self.ark_analysis.get('etfs_analyzed', []))}")
                 md.append(f"- **Total Holdings**: {self.ark_analysis.get('total_holdings', 0)}")
                 md.append(f"- **New Positions**: {len(self.ark_analysis.get('new_positions', []))}")
@@ -770,7 +770,7 @@ class EIMASResult:
 
             # 11.2 Critical Path Monitoring
             if self.critical_path_monitoring and 'error' not in self.critical_path_monitoring:
-                md.append("### 12.2 Critical Path Monitoring")
+                md.append("### 11.2 Critical Path Monitoring")
                 md.append(f"- **Timestamp**: {self.critical_path_monitoring.get('timestamp', 'N/A')}")
                 md.append(f"- **Active Paths**: {len(self.critical_path_monitoring.get('active_paths', []))}")
                 md.append(f"- **Critical Alerts**: {self.critical_path_monitoring.get('alert_count', 0)}")
@@ -787,7 +787,7 @@ class EIMASResult:
 
             # 11.3 Trading DB Status
             if self.trading_db_status != "N/A":
-                md.append("### 12.3 Trading Database")
+                md.append("### 11.3 Trading Database")
                 md.append(f"- **Status**: {self.trading_db_status}")
                 if self.trading_db_status == "SUCCESS":
                     md.append(f"- **Portfolio Candidates Saved**: {len(self.portfolio_weights)}")
@@ -819,7 +819,7 @@ class EIMASResult:
                         md.append(f"  - {ticker} ({severity})")
                 md.append("")
 
-            # 11.2 Cryptocurrency Monitoring
+            # 12.2 Cryptocurrency Monitoring
             if self.crypto_monitoring and 'error' not in self.crypto_monitoring:
                 md.append("### 12.2 24/7 Cryptocurrency Monitoring")
                 md.append(f"- **Symbols Monitored**: {self.crypto_monitoring.get('symbols_monitored', 0)}")
@@ -833,7 +833,7 @@ class EIMASResult:
                         md.append(f"  - {symbol} (Risk: {risk})")
                 md.append("")
 
-            # 11.3 Event Predictions
+            # 12.3 Event Predictions
             if self.event_predictions:
                 md.append("### 12.3 Economic Event Predictions")
                 md.append("")
@@ -848,7 +848,7 @@ class EIMASResult:
                         md.append(f"| {event_type} | {date} | {impact} | {confidence:.0%} |")
                 md.append("")
 
-            # 11.4 Event Attributions
+            # 12.4 Event Attributions
             if self.event_attributions:
                 md.append("### 12.4 Event Cause Analysis")
                 for i, attr in enumerate(self.event_attributions[:3], 1):
@@ -858,7 +858,7 @@ class EIMASResult:
                         md.append(f"{i}. **{event}**: {summary}")
                 md.append("")
 
-            # 11.5 Event Backtest
+            # 12.5 Event Backtest
             if self.event_backtest_results and 'error' not in self.event_backtest_results:
                 md.append("### 12.5 Historical Event Backtesting")
                 md.append(f"- **Events Tested**: {self.event_backtest_results.get('events_tested', 0)}")
@@ -866,7 +866,7 @@ class EIMASResult:
                 md.append(f"- **Best Performing Event**: {self.event_backtest_results.get('best_performing_event', 'N/A')}")
                 md.append("")
 
-            # 11.6 News Correlations
+            # 12.6 News Correlations
             if self.news_correlations:
                 md.append("### 12.6 Anomaly-News Correlations")
                 md.append("")
