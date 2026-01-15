@@ -110,6 +110,11 @@ from lib.event_backtester import EventBacktester
 from lib.news_correlator import NewsCorrelator
 import subprocess
 
+# 2026-01-15 추가 통합 모듈 (Phase 1.7, 2.4.3, 5.3)
+from lib.ark_holdings_analyzer import ARKHoldingsAnalyzer, ARKAnalysisResult
+from lib.critical_path_monitor import CriticalPathMonitor
+from lib.trading_db import TradingDB
+
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO,
@@ -251,6 +256,11 @@ class EIMASResult:
     event_attributions: List[Dict] = field(default_factory=list)  # 이벤트 원인 분석
     event_backtest_results: Dict = field(default_factory=dict)  # 이벤트 백테스트
     news_correlations: List[Dict] = field(default_factory=list)  # 뉴스 상관관계
+
+    # Additional Integrated Modules (2026-01-15)
+    ark_analysis: Dict = field(default_factory=dict)  # ARK ETF Holdings 분석
+    critical_path_monitoring: Dict = field(default_factory=dict)  # Critical Path 모니터링
+    trading_db_status: str = "N/A"  # Trading DB 저장 상태
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -724,7 +734,67 @@ class EIMASResult:
                 md.append(f"### Fact Check Grade: {self.fact_check_grade}")
             md.append("")
 
-        # 11. Standalone Scripts Results (--full mode)
+        # 11. Additional Modules Results (2026-01-15)
+        has_additional_results = (
+            self.ark_analysis or self.critical_path_monitoring or
+            self.trading_db_status != "N/A"
+        )
+
+        if has_additional_results:
+            md.append("## 11. Additional Modules Results")
+            md.append("")
+
+            # 11.1 ARK ETF Holdings Analysis
+            if self.ark_analysis and 'error' not in self.ark_analysis:
+                md.append("### 12.1 ARK ETF Holdings Analysis")
+                md.append(f"- **ETFs Analyzed**: {', '.join(self.ark_analysis.get('etfs_analyzed', []))}")
+                md.append(f"- **Total Holdings**: {self.ark_analysis.get('total_holdings', 0)}")
+                md.append(f"- **New Positions**: {len(self.ark_analysis.get('new_positions', []))}")
+                md.append(f"- **Exited Positions**: {len(self.ark_analysis.get('exited_positions', []))}")
+                md.append(f"- **Consensus Buys**: {len(self.ark_analysis.get('consensus_buys', []))} tickers")
+                md.append(f"- **Consensus Sells**: {len(self.ark_analysis.get('consensus_sells', []))} tickers")
+                md.append("")
+
+                if self.ark_analysis.get('top_increases'):
+                    md.append("**Top Weight Increases:**")
+                    md.append("")
+                    md.append("| Ticker | Company | Weight Change | Signal |")
+                    md.append("|--------|---------|---------------|--------|")
+                    for inc in self.ark_analysis['top_increases']:
+                        ticker = inc.get('ticker', 'N/A')
+                        company = inc.get('company', 'N/A')[:30]
+                        change = inc.get('weight_change', 0)
+                        signal = inc.get('signal', 'N/A')
+                        md.append(f"| {ticker} | {company} | +{change:.2f}% | {signal} |")
+                    md.append("")
+
+            # 11.2 Critical Path Monitoring
+            if self.critical_path_monitoring and 'error' not in self.critical_path_monitoring:
+                md.append("### 12.2 Critical Path Monitoring")
+                md.append(f"- **Timestamp**: {self.critical_path_monitoring.get('timestamp', 'N/A')}")
+                md.append(f"- **Active Paths**: {len(self.critical_path_monitoring.get('active_paths', []))}")
+                md.append(f"- **Critical Alerts**: {self.critical_path_monitoring.get('alert_count', 0)}")
+                md.append("")
+
+                if self.critical_path_monitoring.get('critical_signals'):
+                    md.append("**Critical Signals:**")
+                    for i, sig in enumerate(self.critical_path_monitoring['critical_signals'][:5], 1):
+                        path = sig.get('path', 'N/A')
+                        level = sig.get('level', 'N/A')
+                        message = sig.get('message', 'N/A')
+                        md.append(f"{i}. **{path}** ({level}): {message}")
+                    md.append("")
+
+            # 11.3 Trading DB Status
+            if self.trading_db_status != "N/A":
+                md.append("### 12.3 Trading Database")
+                md.append(f"- **Status**: {self.trading_db_status}")
+                if self.trading_db_status == "SUCCESS":
+                    md.append(f"- **Portfolio Candidates Saved**: {len(self.portfolio_weights)}")
+                    md.append(f"- **Signals Saved**: {min(len(self.integrated_signals), 10)}")
+                md.append("")
+
+        # 12. Standalone Scripts Results (--full mode)
         has_standalone_results = (
             self.intraday_summary or self.crypto_monitoring or
             self.event_predictions or self.event_attributions or
@@ -732,12 +802,12 @@ class EIMASResult:
         )
 
         if has_standalone_results:
-            md.append("## 11. Standalone Scripts Results (--full mode)")
+            md.append("## 12. Standalone Scripts Results (--full mode)")
             md.append("")
 
-            # 11.1 Intraday Data Collection
+            # 12.1 Intraday Data Collection
             if self.intraday_summary and 'error' not in self.intraday_summary:
-                md.append("### 11.1 Intraday Data Collection")
+                md.append("### 12.1 Intraday Data Collection")
                 md.append(f"- **Date**: {self.intraday_summary.get('date', 'N/A')}")
                 md.append(f"- **Tickers Collected**: {self.intraday_summary.get('tickers_collected', 0)}")
                 md.append(f"- **Anomalies Detected**: {self.intraday_summary.get('anomalies_detected', 0)}")
@@ -751,7 +821,7 @@ class EIMASResult:
 
             # 11.2 Cryptocurrency Monitoring
             if self.crypto_monitoring and 'error' not in self.crypto_monitoring:
-                md.append("### 11.2 24/7 Cryptocurrency Monitoring")
+                md.append("### 12.2 24/7 Cryptocurrency Monitoring")
                 md.append(f"- **Symbols Monitored**: {self.crypto_monitoring.get('symbols_monitored', 0)}")
                 md.append(f"- **Anomalies Detected**: {self.crypto_monitoring.get('anomalies_detected', 0)}")
                 md.append(f"- **Overall Risk Level**: {self.crypto_monitoring.get('risk_level', 'UNKNOWN')}")
@@ -765,7 +835,7 @@ class EIMASResult:
 
             # 11.3 Event Predictions
             if self.event_predictions:
-                md.append("### 11.3 Economic Event Predictions")
+                md.append("### 12.3 Economic Event Predictions")
                 md.append("")
                 md.append("| Event Type | Date | Expected Impact | Confidence |")
                 md.append("|------------|------|-----------------|------------|")
@@ -780,7 +850,7 @@ class EIMASResult:
 
             # 11.4 Event Attributions
             if self.event_attributions:
-                md.append("### 11.4 Event Cause Analysis")
+                md.append("### 12.4 Event Cause Analysis")
                 for i, attr in enumerate(self.event_attributions[:3], 1):
                     if 'error' not in attr:
                         event = attr.get('event', 'N/A')
@@ -790,7 +860,7 @@ class EIMASResult:
 
             # 11.5 Event Backtest
             if self.event_backtest_results and 'error' not in self.event_backtest_results:
-                md.append("### 11.5 Historical Event Backtesting")
+                md.append("### 12.5 Historical Event Backtesting")
                 md.append(f"- **Events Tested**: {self.event_backtest_results.get('events_tested', 0)}")
                 md.append(f"- **Average Accuracy**: {self.event_backtest_results.get('avg_accuracy', 0):.1%}")
                 md.append(f"- **Best Performing Event**: {self.event_backtest_results.get('best_performing_event', 'N/A')}")
@@ -798,7 +868,7 @@ class EIMASResult:
 
             # 11.6 News Correlations
             if self.news_correlations:
-                md.append("### 11.6 Anomaly-News Correlations")
+                md.append("### 12.6 Anomaly-News Correlations")
                 md.append("")
                 md.append("| Ticker | Headline | Correlation Score |")
                 md.append("|--------|----------|-------------------|")
@@ -1514,6 +1584,49 @@ async def run_integrated_pipeline(
         correlation_matrix = []
         correlation_tickers = []
 
+    # 1.7 ARK ETF Holdings 분석 (not quick_mode)
+    if not quick_mode:
+        print("\n[1.7] ARK ETF Holdings analysis...")
+        try:
+            ark_analyzer = ARKHoldingsAnalyzer()
+            ark_result = ark_analyzer.run_analysis()
+
+            result.ark_analysis = {
+                'timestamp': ark_result.timestamp,
+                'etfs_analyzed': ark_result.etfs_analyzed,
+                'total_holdings': ark_result.total_holdings,
+                'top_increases': [
+                    {
+                        'ticker': change.ticker,
+                        'company': change.company,
+                        'weight_change': change.weight_change_1d,
+                        'signal': change.signal_type.value
+                    }
+                    for change in ark_result.top_increases[:5]
+                ],
+                'top_decreases': [
+                    {
+                        'ticker': change.ticker,
+                        'company': change.company,
+                        'weight_change': change.weight_change_1d,
+                        'signal': change.signal_type.value
+                    }
+                    for change in ark_result.top_decreases[:5]
+                ],
+                'new_positions': ark_result.new_positions,
+                'exited_positions': ark_result.exited_positions,
+                'consensus_buys': ark_result.consensus_buys,
+                'consensus_sells': ark_result.consensus_sells,
+            }
+
+            print(f"      ✓ ETFs analyzed: {len(ark_result.etfs_analyzed)}")
+            print(f"      ✓ Total holdings: {ark_result.total_holdings}")
+            print(f"      ✓ New positions: {len(ark_result.new_positions)}")
+            print(f"      ✓ Consensus buys: {len(ark_result.consensus_buys)}")
+        except Exception as e:
+            print(f"      ✗ ARK analysis error: {e}")
+            result.ark_analysis = {'error': str(e)}
+
     # ========================================================================
     # Phase 2: Analysis
     # ========================================================================
@@ -1773,6 +1886,34 @@ async def run_integrated_pipeline(
         except Exception as e:
             print(f"      ✗ Bubble detection error: {e}")
             result.bubble_risk = BubbleRiskMetrics(overall_status="ERROR")
+
+    # 2.4.3 Critical Path Monitoring (not quick_mode)
+    if not quick_mode:
+        print("\n[2.4.3] Critical Path monitoring...")
+        try:
+            cp_monitor = CriticalPathMonitor()
+            # 현재 리스크 점수와 레짐 정보 전달
+            monitoring_result = cp_monitor.monitor(
+                current_risk_score=result.risk_score,
+                regime=result.regime.get('regime', 'Unknown')
+            )
+
+            result.critical_path_monitoring = {
+                'timestamp': monitoring_result.get('timestamp', ''),
+                'active_paths': monitoring_result.get('active_paths', []),
+                'critical_signals': monitoring_result.get('critical_signals', []),
+                'path_statuses': monitoring_result.get('path_statuses', {}),
+                'alert_count': monitoring_result.get('alert_count', 0),
+            }
+
+            print(f"      ✓ Active paths monitored: {len(monitoring_result.get('active_paths', []))}")
+            print(f"      ✓ Critical signals: {monitoring_result.get('alert_count', 0)}")
+            if monitoring_result.get('critical_signals'):
+                top_signal = monitoring_result['critical_signals'][0]
+                print(f"      ✓ Top signal: {top_signal.get('path', 'N/A')} - {top_signal.get('level', 'N/A')}")
+        except Exception as e:
+            print(f"      ✗ Critical path monitoring error: {e}")
+            result.critical_path_monitoring = {'error': str(e)}
 
     # 2.5 ETF Flow 분석
     if not quick_mode:
@@ -2734,6 +2875,49 @@ async def run_integrated_pipeline(
     except Exception as e:
         print(f"      ✗ Predictions DB error: {e}")
 
+    # 5.2.2 Trading DB 저장 (포트폴리오 & 시그널)
+    print("\n[5.2.2] Saving to Trading Database...")
+    try:
+        trading_db = TradingDB('data/trading.db')
+
+        # 포트폴리오 후보 저장 (GC-HRP 결과)
+        if result.portfolio_weights:
+            from lib.trading_db import PortfolioCandidate, InvestorProfile
+
+            for ticker, weight in result.portfolio_weights.items():
+                candidate = PortfolioCandidate(
+                    ticker=ticker,
+                    weight=weight,
+                    expected_return=0.0,  # 실제 예상 수익률 계산 필요
+                    expected_risk=0.0,
+                    sharpe_ratio=0.0,
+                    profile=InvestorProfile.BALANCED,  # 기본값
+                    reason=f"GC-HRP allocation: {weight:.1%}"
+                )
+                trading_db.save_portfolio_candidate(candidate)
+
+        # 통합 시그널 저장
+        if result.integrated_signals:
+            from lib.trading_db import Signal, SignalSource, SignalAction
+
+            for sig in result.integrated_signals[:10]:  # Top 10만 저장
+                signal = Signal(
+                    ticker=sig.get('ticker', 'SPY'),
+                    action=SignalAction.BUY if sig.get('signal') == 'bullish' else SignalAction.SELL,
+                    strength=sig.get('strength', 0.5),
+                    source=SignalSource.QUANTITATIVE,
+                    regime=result.regime.get('regime', 'Unknown'),
+                    reason=sig.get('reason', 'Integrated strategy signal')
+                )
+                trading_db.save_signal(signal)
+
+        result.trading_db_status = "SUCCESS"
+        print(f"      ✓ Saved {len(result.portfolio_weights)} portfolio candidates")
+        print(f"      ✓ Saved {min(len(result.integrated_signals), 10)} signals")
+    except Exception as e:
+        print(f"      ✗ Trading DB error: {e}")
+        result.trading_db_status = f"ERROR: {str(e)}"
+
     # 5.3 결과 JSON 저장
     if not cron_mode:
         print("\n[5.3] Saving results...")
@@ -3082,6 +3266,14 @@ async def run_full_pipeline(
         print(f"   Whitening: {result.whitening_summary[:60]}...")
     if result.fact_check_grade != "N/A":
         print(f"   Fact Check Grade: {result.fact_check_grade}")
+
+    # Additional Modules Summary (2026-01-15)
+    if result.ark_analysis and 'error' not in result.ark_analysis:
+        print(f"   ARK Holdings: {result.ark_analysis.get('total_holdings', 0)} positions, {len(result.ark_analysis.get('consensus_buys', []))} consensus buys")
+    if result.critical_path_monitoring and 'error' not in result.critical_path_monitoring:
+        print(f"   Critical Path Monitor: {result.critical_path_monitoring.get('alert_count', 0)} alerts")
+    if result.trading_db_status == "SUCCESS":
+        print(f"   Trading DB: Saved {len(result.portfolio_weights)} candidates")
 
     # Standalone Scripts Summary (--full mode)
     if full_mode:
