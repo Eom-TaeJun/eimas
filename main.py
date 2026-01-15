@@ -3096,19 +3096,17 @@ async def run_full_pipeline(
         try:
             from datetime import date, timedelta
             intraday = IntradayCollector()
-            # 어제 날짜의 장중 데이터 수집 (백필)
-            yesterday = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
-            intraday_result = intraday.collect_and_analyze(target_date=yesterday)
+            # 최근 5일 데이터 수집
+            intraday_result = intraday.collect_missing_days(days_back=5)
 
             result.intraday_summary = {
-                'date': yesterday,
-                'tickers_collected': intraday_result.get('tickers_count', 0),
-                'anomalies_detected': len(intraday_result.get('anomalies', [])),
-                'top_anomalies': intraday_result.get('anomalies', [])[:3]  # Top 3
+                'dates_collected': intraday_result.get('dates_collected', []),
+                'tickers_collected': intraday_result.get('total_tickers', 0),
+                'status': intraday_result.get('status', 'UNKNOWN')
             }
-            print(f"      ✓ Date: {yesterday}")
+            print(f"      ✓ Dates: {len(result.intraday_summary['dates_collected'])}")
             print(f"      ✓ Tickers: {result.intraday_summary['tickers_collected']}")
-            print(f"      ✓ Anomalies: {result.intraday_summary['anomalies_detected']}")
+            print(f"      ✓ Status: {result.intraday_summary['status']}")
         except Exception as e:
             print(f"      ✗ Intraday collector error: {e}")
             result.intraday_summary = {'error': str(e)}
@@ -3117,13 +3115,14 @@ async def run_full_pipeline(
         print("\n[8.2] 24/7 Cryptocurrency monitoring...")
         try:
             crypto_monitor = CryptoCollector()
-            crypto_result = crypto_monitor.monitor_and_detect()
+            prices = crypto_monitor.collect_current_prices()
+            anomalies = crypto_monitor.detect_anomalies()
 
             result.crypto_monitoring = {
-                'symbols_monitored': len(crypto_result.get('symbols', [])),
-                'anomalies_detected': len(crypto_result.get('anomalies', [])),
-                'risk_level': crypto_result.get('overall_risk', 'UNKNOWN'),
-                'top_anomalies': crypto_result.get('anomalies', [])[:3]
+                'symbols_monitored': len(prices),
+                'anomalies_detected': len(anomalies),
+                'risk_level': 'HIGH' if len(anomalies) > 2 else 'MEDIUM' if len(anomalies) > 0 else 'LOW',
+                'top_anomalies': anomalies[:3]
             }
             print(f"      ✓ Symbols: {result.crypto_monitoring['symbols_monitored']}")
             print(f"      ✓ Anomalies: {result.crypto_monitoring['anomalies_detected']}")
@@ -3161,12 +3160,19 @@ async def run_full_pipeline(
         print("\n[8.4] Economic event predictions...")
         try:
             predictor = EventPredictor()
-            predictions = predictor.generate_predictions()
+            predictions = predictor.predict_upcoming_events()
 
-            result.event_predictions = predictions[:5]  # Top 5 predictions
+            result.event_predictions = [
+                {
+                    'event_type': p.event_type,
+                    'predicted_date': str(p.predicted_date),
+                    'confidence': p.confidence,
+                    'magnitude': p.expected_magnitude
+                } for p in predictions[:5]
+            ]
             print(f"      ✓ Events predicted: {len(predictions)}")
             if predictions:
-                print(f"      ✓ Next event: {predictions[0].get('event_type', 'N/A')} on {predictions[0].get('date', 'N/A')}")
+                print(f"      ✓ Next event: {predictions[0].event_type} on {predictions[0].predicted_date}")
         except Exception as e:
             print(f"      ✗ Event predictor error: {e}")
             result.event_predictions = [{'error': str(e)}]
@@ -3176,12 +3182,19 @@ async def run_full_pipeline(
         try:
             attributor = EventAttributor()
             # 최근 7일간의 이벤트 분석
-            attributions = attributor.analyze_recent_events(days=7)
+            report = attributor.analyze_recent_events(days_back=7)
 
-            result.event_attributions = attributions[:5]  # Top 5
-            print(f"      ✓ Events analyzed: {len(attributions)}")
-            if attributions:
-                print(f"      ✓ Recent attribution: {attributions[0].get('summary', 'N/A')[:50]}...")
+            result.event_attributions = [
+                {
+                    'ticker': a.ticker,
+                    'event_type': a.event_type,
+                    'timestamp': str(a.timestamp),
+                    'summary': a.summary[:100] if a.summary else 'N/A'
+                } for a in report.attributions[:5]
+            ] if report else []
+            print(f"      ✓ Events analyzed: {len(result.event_attributions)}")
+            if result.event_attributions:
+                print(f"      ✓ Recent attribution: {result.event_attributions[0]['summary'][:50]}...")
         except Exception as e:
             print(f"      ✗ Event attributor error: {e}")
             result.event_attributions = [{'error': str(e)}]
@@ -3189,17 +3202,14 @@ async def run_full_pipeline(
         # 8.6 Event Backtester - 역사적 이벤트 백테스트
         print("\n[8.6] Historical event backtesting...")
         try:
-            backtester = EventBacktester()
-            backtest_results = backtester.run_backtest()
-
+            # Note: EventBacktester requires specific event inputs
+            # Skipping for now as it needs historical event data
             result.event_backtest_results = {
-                'events_tested': len(backtest_results.get('events', [])),
-                'avg_accuracy': backtest_results.get('avg_accuracy', 0.0),
-                'best_performing_event': backtest_results.get('best_event', 'N/A'),
-                'summary': backtest_results.get('summary', {})
+                'status': 'SKIPPED',
+                'reason': 'Requires specific historical event data',
+                'events_tested': 0
             }
-            print(f"      ✓ Events tested: {result.event_backtest_results['events_tested']}")
-            print(f"      ✓ Avg accuracy: {result.event_backtest_results['avg_accuracy']:.1%}")
+            print(f"      ⊘ Skipped (requires specific event data)")
         except Exception as e:
             print(f"      ✗ Event backtester error: {e}")
             result.event_backtest_results = {'error': str(e)}
@@ -3209,12 +3219,19 @@ async def run_full_pipeline(
         try:
             correlator = NewsCorrelator()
             # 최근 24시간 이상 이벤트와 뉴스 연결
-            correlations = correlator.correlate_anomalies_with_news(hours=24)
+            attributions = correlator.process_recent_anomalies(hours_back=24)
 
-            result.news_correlations = correlations[:5]  # Top 5
-            print(f"      ✓ Correlations found: {len(correlations)}")
-            if correlations:
-                print(f"      ✓ Top correlation: {correlations[0].get('ticker', 'N/A')} - {correlations[0].get('headline', 'N/A')[:40]}...")
+            result.news_correlations = [
+                {
+                    'ticker': a.ticker,
+                    'event_type': a.event_type,
+                    'timestamp': str(a.timestamp),
+                    'summary': a.summary[:80] if a.summary else 'N/A'
+                } for a in attributions[:5]
+            ]
+            print(f"      ✓ Correlations found: {len(attributions)}")
+            if attributions:
+                print(f"      ✓ Top correlation: {attributions[0].ticker} - {attributions[0].summary[:40]}...")
         except Exception as e:
             print(f"      ✗ News correlator error: {e}")
             result.news_correlations = [{'error': str(e)}]
