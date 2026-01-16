@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lib.event_db import EventDatabase
 from lib.trading_db import TradingDB, Signal, SignalSource, SignalAction, PortfolioCandidate, InvestorProfile
@@ -115,7 +115,7 @@ def run_storage(result: Any, market_data: Dict, output_dir: str = 'outputs', cro
     if not cron_mode:
         print("\n[5.3] Saving results...")
         if isinstance(output_dir, str):
-            output_dir = Path(output_dir) if os.path.isabs(output_dir) else Path(__file__).parent.parent / output_dir
+            output_dir = Path(output_dir) if os.path.isabs(output_dir) else Path(__file__).parent.parent.parent / output_dir
         output_dir.mkdir(parents=True, exist_ok=True)
         
         timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")

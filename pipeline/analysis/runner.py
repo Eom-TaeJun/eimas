@@ -6,7 +6,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lib.regime_detector import RegimeDetector
 from lib.regime_analyzer import get_gmm_regime_summary

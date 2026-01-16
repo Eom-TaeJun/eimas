@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lib.intraday_collector import IntradayCollector
 from lib.crypto_collector import CryptoCollector
@@ -15,13 +15,10 @@ from lib.news_correlator import NewsCorrelator
 
 logger = logging.getLogger('eimas.pipeline.standalone')
 
-def run_standalone_scripts(result: Any, full_mode: bool) -> Any:
+async def run_standalone_scripts(result: Any) -> Any:
     """
     Phase 8: Standalone Scripts Execution
     """
-    if not full_mode:
-        return result
-
     print("\n" + "=" * 50)
     print("PHASE 8: STANDALONE SCRIPTS EXECUTION")
     print("=" * 50)
@@ -59,7 +56,7 @@ def run_standalone_scripts(result: Any, full_mode: bool) -> Any:
     print("\n[8.3] Multi-source data pipeline...")
     try:
         # Assuming we are running from root or adjusting path
-        cwd = str(Path(__file__).parent.parent)
+        cwd = str(Path(__file__).parent.parent.parent)
         pipeline_cmd = ['python', 'lib/market_data_pipeline.py', '--all']
         pipeline_proc = subprocess.run(pipeline_cmd, capture_output=True, text=True, timeout=60, cwd=cwd)
         if pipeline_proc.returncode == 0:

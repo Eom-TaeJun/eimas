@@ -110,9 +110,53 @@ class PortfolioResponse(BaseModel):
     positions: Dict[str, Any]
 
 
+class ResearchRequest(BaseModel):
+    query: str
+    quick_mode: bool = True
+
+
 # ============================================================================
 # API Routes
 # ============================================================================
+
+@app.post("/api/research")
+async def run_research(request: ResearchRequest):
+    """
+    Elicit 심층 리서치 실행
+    
+    사용자의 쿼리를 분석하고 멀티 에이전트 토론을 수행하여 결과를 반환합니다.
+    (실제로는 통합 파이프라인을 실행하고 관련 섹션을 추출합니다)
+    """
+    from pipeline.runner import run_integrated_pipeline
+    
+    try:
+        # 통합 파이프라인 실행
+        # 주: 실제 구현에서는 query를 pipeline에 전달하는 매커니즘이 필요함.
+        # 현재 구조상 query는 내부적으로 하드코딩 되어 있거나 ("Analyze current market...")
+        # pipeline/signal/runner.py를 수정해야 함.
+        # 우선은 파이프라인을 실행하고 결과 포맷을 반환.
+        
+        result = await run_integrated_pipeline(
+            quick_mode=request.quick_mode,
+            enable_realtime=False
+        )
+        
+        return {
+            "timestamp": result.timestamp,
+            "query": request.query,
+            "recommendation": result.final_recommendation,
+            "confidence": result.confidence,
+            "full_mode_position": result.full_mode_position,
+            "reference_mode_position": result.reference_mode_position,
+            "agreement": result.modes_agree,
+            "devil_advocate": result.devils_advocate_arguments,
+            "risk_score": result.risk_score,
+            "regime": result.regime
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/", response_class=HTMLResponse)
 async def root():

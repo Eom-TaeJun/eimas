@@ -1,0 +1,680 @@
+INFO:eimas.bubble_detector:BubbleDetector initialized: runup>100%, vol_z>2.0, issuance>5%
+INFO:eimas.bubble_detector:BTC-USD: Using marketCap/price fallback for shares estimation
+INFO:eimas.bubble_detector:ONDO-USD: Using marketCap/price fallback for shares estimation
+INFO:eimas.bubble_detector:ETH-USD: Using marketCap/price fallback for shares estimation
+INFO:eimas.bubble_detector:PAXG-USD: Using marketCap/price fallback for shares estimation
+======================================================================
+  EIMAS - Integrated Analysis Pipeline
+======================================================================
+  Mode: Full
+  Realtime: Disabled
+  Standalone Scripts: Enabled (7 scripts)
+======================================================================
+
+==================================================
+PHASE 1: DATA COLLECTION
+==================================================
+
+[1.1] Collecting FRED data...
+Collecting FRED data...
+  [1/5] Collecting rates...
+  [2/5] Collecting spreads...
+  [3/5] Collecting inflation...
+  [4/5] Collecting employment...
+  [5/5] Collecting liquidity (RRP/TGA/Fed)...
+      ✓ RRP: $2B (Δ-1B)
+      ✓ TGA: $779B (Δ-17B)
+      ✓ Net Liquidity: $5800B (Abundant)
+      ✓ Curve: Normal (10Y-2Y: 0.61%)
+
+[1.2] Collecting market data...
+   📊 Collecting 24 tickers...
+   ✅ Collected 24 market tickers
+   🪙 Collecting 2 crypto tickers...
+   ✅ BTC-USD (Bitcoin)
+   ✅ ETH-USD (Ethereum)
+   ✅ Collected 2 crypto tickers
+      ✓ Collected 24 tickers
+
+[1.3] Crypto & RWA data collected with market data...
+      ✓ Crypto: 2 tickers
+      ✓ RWA (Tokenized Assets): 3 tickers
+
+[1.4] Collecting market indicators...
+Collecting market indicators...
+  [1/5] Valuation metrics...
+  [2/5] Crypto metrics...
+  [3/5] Credit metrics...
+  [4/5] VIX metrics...
+  [5/5] FX metrics...
+      ✓ VIX: 15.84
+      ✓ Fear & Greed: Greed
+
+[1.5] Extended data sources (DeFi, MENA)...
+      ✓ DeFi TVL: $93.54B
+      ✓ Stablecoin MCap: $292.97B
+      ✓ MENA ETFs: 4 tracked
+      ✓ MENA Avg 1M Return: +4.8%
+      ✓ On-Chain Risk Signals: 1
+        - [HIGH] USYC 페깅 이탈 11.34%
+
+[1.6] Calculating correlation matrix...
+      ✗ Correlation calculation error: cannot access local variable 'pd' where it is not associated with a value
+
+[1.7] ARK ETF Holdings analysis...
+Fetching current ARK holdings...
+  Fetching ARKK...
+    → 45 holdings
+  Fetching ARKW...
+    → 45 holdings
+  Fetching ARKG...
+    → 34 holdings
+  Fetching ARKF...
+    → 41 holdings
+  Fetching ARKQ...
+    → 37 holdings
+  Fetching ARKX...
+    → 33 holdings
+      ✓ ETFs analyzed: 6
+      ✓ Total holdings: 235
+      ✓ New positions: 2
+      ✓ Consensus buys: 0
+
+==================================================
+PHASE 2: ANALYSIS
+==================================================
+
+[2.1] Detecting market regime...
+Detecting market regime for SPY...
+  Trend: Weak Uptrend
+  Volatility: Low
+  Regime: Bull (Low Vol) (75%)
+      ✓ Regime: Bull (Low Vol)
+      ✓ Trend: Weak Uptrend, Volatility: Low
+      ✓ Confidence: 75%
+
+[2.1.1] GMM & Entropy regime analysis...
+      ✓ GMM Regime: Neutral
+      ✓ Probabilities: Bull:0% / Neutral:100% / Bear:0%
+      ✓ Shannon Entropy: 0.016 (Very Low)
+      ✓ Interpretation: Strong Regime Signal
+
+[2.2] Detecting events...
+      ✓ No liquidity events detected
+
+[2.3] Liquidity-Market causality analysis...
+Collecting FRED data...
+  [1/5] Collecting rates...
+  [2/5] Collecting spreads...
+  [3/5] Collecting inflation...
+  [4/5] Collecting employment...
+  [5/5] Collecting liquidity (RRP/TGA/Fed)...
+      ✓ Liquidity Signal: NEUTRAL
+
+[2.4] Critical path analysis...
+Warning: 7 required tickers missing
+      ✓ Risk Score: 12.8/100
+      ✓ Risk Level: LOW
+      ✓ Primary Risk Path: rotation
+
+[2.4.1] Microstructure risk enhancement...
+      ✓ Avg Liquidity Score: 82.7/100
+      ✓ High Toxicity Tickers: 0 (None)
+      ✓ Risk Adjustment: -6.5
+
+[2.4.2] Bubble risk overlay...
+      ✓ Overall Bubble Status: NONE
+      ✓ Risk Tickers: 0 detected
+      ✓ Bubble Adjustment: +0
+      ✓ Final Risk Score: 12.8 → 6.3
+
+[2.4.3] Critical Path monitoring...
+      ✗ Critical path monitoring error: 'CriticalPathMonitor' object has no attribute 'monitor'
+
+[2.5] ETF flow analysis...
+Fetching 12 ETFs...
+Fetched 12 ETFs successfully
+      ✓ Sector Rotation: Uncertain
+      ✓ Style: Value Leading
+
+[2.6] Genius Act Macro analysis...
+      ✓ Regime: expansion
+      ✓ Signals: 2 detected
+      ✓ Stablecoin: USD Liquidity Injection (Genius Act Active): Stablecoin issuance +3.5% in 7 days
+        → Total Market Cap: $196.6B
+        → 7-Day Delta: $+6.6B (+3.5%)
+        → Genius Act Status: ACTIVE
+        → rrp_drain: 역레포 -37.5% 감소 → 시장 유동성 주입
+          Why: 역레포(RRP) 잔액 감소 → 시중 유동성 공급 (B = Fed BS - RRP - TGA 공식) → 위험자산(주식, 크립토) 강세 환경 조성 (RRP 감소: $1B)...
+        → treasury_demand: 스테이블코인 담보 요건 → 단기 국채 수요 증가
+          Why: 국채 수요 증가 → 안전자산 선호 또는 스테이블코인 담보 수요 → 금리 하락, 성장주 상대적 강세...
+        → stablecoin_analysis: USD Liquidity Injection (Genius Act Active): Stablecoin issuance +3.5% in 7 days
+          Why: 스테이블코인 발행량 급증 ($6.6B, +3.5%). Genius Act 담보 요건에 따라 미국 국채 수요 상승 예상. M = B + S·B* 공식에서 S·B* 증가로 총 유동성(...
+      ✓ Positions: 3 recommended
+
+[2.6.1] Crypto Stress Test...
+      ✓ Scenario: Moderate (신용위기 수준)
+      ✓ De-peg Probability: 2.2%
+      ✓ Estimated Loss: $318,223,000
+      ✓ Risk Rating: LOW (낮음)
+
+[2.7] Theme ETF analysis...
+      ✓ Graph Engine: 37 nodes, 154 edges
+      ✓ Advanced Bottlenecks: TSM, INTC, HYG, AMAT, ASML
+      ✓ Narrative Generated: 2274 chars
+      ✓ Theme: AI & Semiconductor Revolution
+      ✓ Stocks: 13, Diversification: 91.1%
+      ✓ Bottlenecks: AMAT, ASML, LRCX, KLAC, AMD
+      ✓ Hub Nodes: TSM, NVDA, INTC
+      ✓ Causality Insights: 3 generated
+        → Path: AI Demand Surge (External Shock) → AMAT (Bottleneck) → TSM (...
+        → Insight: AI Demand Surge로 인해 NVDA 수요가 급증하면, TSM 가동률이 상승하고 AMAT에 용량 압박이 발생함 (Positive Caus...
+
+[2.8] Shock propagation analysis...
+      ✗ Shock propagation error: 'ShockPropagationGraph' object has no attribute 'build_from_returns'
+
+[2.9] Graph-Clustered Portfolio optimization...
+[GC-HRP] Starting with 24 assets
+[GC-HRP] Building correlation network...
+[GC-HRP] Clustering assets...
+[GC-HRP] Found 3 clusters
+[GC-HRP] Selecting representatives...
+[GC-HRP] Reduced to 6 representatives
+[GC-HRP] Calculating HRP weights...
+[GC-HRP] Analyzing systemic risk via MST...
+[GC-HRP] Top systemic risk nodes: ['SPY', 'QQQ', 'HYG']
+      ✓ Clusters: 3
+      ✓ Diversification Ratio: 1.79
+      ✓ Effective N: 5.4
+      ✓ Top Weights: TIP:34.3%, HYG:17.9%, LQD:14.9%, UUP:9.3%, TLT:4.5%
+      ✓ Rationale: TIP (34%): portfolio diversification [low volatility]; HYG (18%): portfolio dive...
+
+[2.10] Integrated Strategy analysis...
+[Strategy] Starting integrated strategy...
+[Strategy] Step 1: Building portfolio allocation...
+[GC-HRP] Starting with 24 assets
+[GC-HRP] Building correlation network...
+[GC-HRP] Clustering assets...
+[GC-HRP] Found 3 clusters
+[GC-HRP] Selecting representatives...
+[GC-HRP] Reduced to 6 representatives
+[GC-HRP] Calculating HRP weights...
+[GC-HRP] Analyzing systemic risk via MST...
+[GC-HRP] Top systemic risk nodes: ['SPY', 'QQQ', 'HYG']
+[Strategy] Step 2: Analyzing causal relationships...
+[SPG] Running full analysis...
+[SPG] Building graph with 2 variables
+[SPG] Added 2 significant edges
+[Strategy] Step 3: Calculating leading indicator tilt...
+[Strategy] Step 4: Generating shock warnings...
+[Strategy] Step 5: Detecting volume anomalies...
+      ✓ Signals: 0 generated
+      ✓ Leading Exposure: 0.0%
+      ✓ Shock Vulnerability: 0.0%
+
+[2.11] Volume anomaly detection...
+      ✓ Analyzed: 24 tickers
+      ✓ Anomalies: 0 detected
+      ✓ High severity: 0
+      ✓ Volume profile is normal (No asymmetric info detected)
+        → All tickers within normal range (<2.5x MA20)
+        → Kyle(1985): No evidence of Private Information Inflow
+      ✓ Top Movers: No significant anomaly, but watching top movers: SMH (1.64x), DIA (1.64x)
+        → SMH: 1.64x (price +2.1%)
+        → DIA: 1.64x (price +0.6%)
+        → COIN: 1.54x (price -6.5%)
+
+[2.12] Event tracking (anomaly → news)...INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+2026-01-16 16:11:15,799 - CriticalPathAnalyst - INFO - Initialized CriticalPathAnalyst (analysis)
+INFO:agent.CriticalPathAnalyst:Initialized CriticalPathAnalyst (analysis)
+2026-01-16 16:11:15,799 - CriticalPathAnalyst - INFO - CriticalPathAggregator initialized
+INFO:agent.CriticalPathAnalyst:CriticalPathAggregator initialized
+2026-01-16 16:11:15,799 - ForecastAgent - INFO - Initialized ForecastAgent (forecast)
+INFO:agent.ForecastAgent:Initialized ForecastAgent (forecast)
+INFO:eimas.forecast_agent:ForecastAgent initialized with LASSO configuration
+2026-01-16 16:11:15,799 - MetaOrchestrator - INFO - MetaOrchestrator initialized (Analysis, Forecast)
+INFO:MetaOrchestrator:MetaOrchestrator initialized (Analysis, Forecast)
+2026-01-16 16:11:15,799 - MetaOrchestrator - INFO - Starting workflow with debate for query: Analyze current market conditions, risks, and generate trading signals
+INFO:MetaOrchestrator:Starting workflow with debate for query: Analyze current market conditions, risks, and generate trading signals
+2026-01-16 16:11:15,799 - MetaOrchestrator - INFO - Step 1: Running Analysis Agent...
+INFO:MetaOrchestrator:Step 1: Running Analysis Agent...
+2026-01-16 16:11:15,799 - CriticalPathAnalyst - INFO - Starting task 515f5c23-27da-4136-9ccb-552c363128ae: Analyze market conditions and risks: Analyze current market conditions, risks, and generate trading 
+INFO:agent.CriticalPathAnalyst:Starting task 515f5c23-27da-4136-9ccb-552c363128ae: Analyze market conditions and risks: Analyze current market conditions, risks, and generate trading 
+2026-01-16 16:11:15,799 - CriticalPathAnalyst - INFO - Running critical path analysis on 24 tickers
+INFO:agent.CriticalPathAnalyst:Running critical path analysis on 24 tickers
+2026-01-16 16:11:15,913 - CriticalPathAnalyst - INFO - Analysis complete: Risk=12.8, Regime=BULL
+INFO:agent.CriticalPathAnalyst:Analysis complete: Risk=12.8, Regime=BULL
+2026-01-16 16:11:15,913 - CriticalPathAnalyst - INFO - Task 515f5c23-27da-4136-9ccb-552c363128ae completed successfully in 0.11s (confidence: 0.83)
+INFO:agent.CriticalPathAnalyst:Task 515f5c23-27da-4136-9ccb-552c363128ae completed successfully in 0.11s (confidence: 0.83)
+2026-01-16 16:11:15,914 - MetaOrchestrator - INFO - Analysis complete: Risk=12.8, Regime=BULL
+INFO:MetaOrchestrator:Analysis complete: Risk=12.8, Regime=BULL
+2026-01-16 16:11:15,914 - MetaOrchestrator - INFO - Step 1.5: Running Forecast Agent...
+INFO:MetaOrchestrator:Step 1.5: Running Forecast Agent...
+2026-01-16 16:11:15,914 - ForecastAgent - INFO - Starting task 1c71e5e6-2d59-4004-9bb6-44df3739f8b6: Forecast Fed Funds Rate and identify key drivers
+INFO:agent.ForecastAgent:Starting task 1c71e5e6-2d59-4004-9bb6-44df3739f8b6: Forecast Fed Funds Rate and identify key drivers
+WARNING:eimas.forecast_agent:d_Exp_Rate not found, using placeholder
+2026-01-16 16:11:15,952 - ForecastAgent - WARNING - days_to_meeting not provided, using random values
+WARNING:agent.ForecastAgent:days_to_meeting not provided, using random values
+2026-01-16 16:11:15,954 - ForecastAgent - INFO - Data prepared: 365 observations, 24 features
+INFO:agent.ForecastAgent:Data prepared: 365 observations, 24 features
+2026-01-16 16:11:15,954 - ForecastAgent - INFO - days_to_meeting range: 2 - 399
+INFO:agent.ForecastAgent:days_to_meeting range: 2 - 399
+2026-01-16 16:11:15,954 - ForecastAgent - INFO - d_Exp_Rate: valid=365, NaN=0
+INFO:agent.ForecastAgent:d_Exp_Rate: valid=365, NaN=0
+2026-01-16 16:11:15,955 - ForecastAgent - INFO -   VeryShort: 22 observations
+INFO:agent.ForecastAgent:  VeryShort: 22 observations
+2026-01-16 16:11:15,955 - ForecastAgent - INFO -   Short: 52 observations
+INFO:agent.ForecastAgent:  Short: 52 observations
+2026-01-16 16:11:15,955 - ForecastAgent - INFO -   Long: 214 observations
+INFO:agent.ForecastAgent:  Long: 214 observations
+INFO:eimas.lasso:LASSOForecaster initialized with config: n_splits=5, max_iter=10000
+INFO:eimas.lasso:Starting LASSO fit: horizon=VeryShort, n_obs=22, n_vars=24
+INFO:eimas.lasso:After Treasury filtering: 24 variables remain
+WARNING:eimas.lasso:No variables selected for horizon=VeryShort (expected for VeryShort)
+2026-01-16 16:11:16,209 - ForecastAgent - INFO - Horizon VeryShort: R²=0.0000, selected=0
+INFO:agent.ForecastAgent:Horizon VeryShort: R²=0.0000, selected=0
+INFO:eimas.lasso:LASSOForecaster initialized with config: n_splits=5, max_iter=10000
+INFO:eimas.lasso:Starting LASSO fit: horizon=Short, n_obs=52, n_vars=24
+INFO:eimas.lasso:After Treasury filtering: 24 variables remain
+INFO:eimas.lasso:LASSO fit completed: horizon=Short, R²=0.3653, selected=4, λ=0.000839
+2026-01-16 16:11:16,623 - ForecastAgent - INFO - Horizon Short: R²=0.3653, selected=4
+INFO:agent.ForecastAgent:Horizon Short: R²=0.3653, selected=4
+INFO:eimas.lasso:LASSOForecaster initialized with config: n_splits=5, max_iter=10000
+INFO:eimas.lasso:Starting LASSO fit: horizon=Long, n_obs=214, n_vars=24
+INFO:eimas.lasso:After Treasury filtering: 24 variables remain
+INFO:eimas.lasso:LASSO fit completed: horizon=Long, R²=0.0000, selected=1, λ=0.000764
+2026-01-16 16:11:16,994 - ForecastAgent - INFO - Horizon Long: R²=0.0000, selected=1
+INFO:agent.ForecastAgent:Horizon Long: R²=0.0000, selected=1
+2026-01-16 16:11:16,994 - ForecastAgent - INFO - Task 1c71e5e6-2d59-4004-9bb6-44df3739f8b6 completed successfully in 1.08s (confidence: 0.10)
+INFO:agent.ForecastAgent:Task 1c71e5e6-2d59-4004-9bb6-44df3739f8b6 completed successfully in 1.08s (confidence: 0.10)
+2026-01-16 16:11:16,994 - MetaOrchestrator - WARNING - Forecast results empty or failed: No results
+WARNING:MetaOrchestrator:Forecast results empty or failed: No results
+2026-01-16 16:11:16,994 - MetaOrchestrator - INFO - Step 2: Auto-detecting debate topics...
+INFO:MetaOrchestrator:Step 2: Auto-detecting debate topics...
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Detected 1 debate topics: ['crypto_correlation']
+INFO:MetaOrchestrator:Detected 1 debate topics: ['crypto_correlation']
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Step 3: Collecting opinions from agents...
+INFO:MetaOrchestrator:Step 3: Collecting opinions from agents...
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Collected 1 opinions across 1 topics
+INFO:MetaOrchestrator:Collected 1 opinions across 1 topics
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Step 4: Running debates...
+INFO:MetaOrchestrator:Step 4: Running debates...
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Processing debate for topic 'crypto_correlation' with 1 opinions
+INFO:MetaOrchestrator:Processing debate for topic 'crypto_correlation' with 1 opinions
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Single opinion for 'crypto_correlation' - skipping debate
+INFO:MetaOrchestrator:Single opinion for 'crypto_correlation' - skipping debate
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Reached consensus on 1 topics
+INFO:MetaOrchestrator:Reached consensus on 1 topics
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Step 5: Synthesizing final report...
+INFO:MetaOrchestrator:Step 5: Synthesizing final report...
+2026-01-16 16:11:16,995 - MetaOrchestrator - INFO - Workflow completed in 1.20s
+INFO:MetaOrchestrator:Workflow completed in 1.20s
+2026-01-16 16:11:18,990 - CriticalPathAnalyst - INFO - Initialized CriticalPathAnalyst (analysis)
+INFO:agent.CriticalPathAnalyst:Initialized CriticalPathAnalyst (analysis)
+2026-01-16 16:11:18,990 - CriticalPathAnalyst - INFO - CriticalPathAggregator initialized
+INFO:agent.CriticalPathAnalyst:CriticalPathAggregator initialized
+2026-01-16 16:11:18,991 - ForecastAgent - INFO - Initialized ForecastAgent (forecast)
+INFO:agent.ForecastAgent:Initialized ForecastAgent (forecast)
+INFO:eimas.forecast_agent:ForecastAgent initialized with LASSO configuration
+2026-01-16 16:11:18,991 - MetaOrchestrator - INFO - MetaOrchestrator initialized (Analysis, Forecast)
+INFO:MetaOrchestrator:MetaOrchestrator initialized (Analysis, Forecast)
+2026-01-16 16:11:18,991 - MetaOrchestrator - INFO - Starting workflow with debate for query: Analyze current market conditions, risks, and generate trading signals
+INFO:MetaOrchestrator:Starting workflow with debate for query: Analyze current market conditions, risks, and generate trading signals
+2026-01-16 16:11:18,991 - MetaOrchestrator - INFO - Step 1: Running Analysis Agent...
+INFO:MetaOrchestrator:Step 1: Running Analysis Agent...
+2026-01-16 16:11:18,991 - CriticalPathAnalyst - INFO - Starting task b6b0efdb-bf86-49c8-ba22-e467c64d7231: Analyze market conditions and risks: Analyze current market conditions, risks, and generate trading 
+INFO:agent.CriticalPathAnalyst:Starting task b6b0efdb-bf86-49c8-ba22-e467c64d7231: Analyze market conditions and risks: Analyze current market conditions, risks, and generate trading 
+2026-01-16 16:11:18,991 - CriticalPathAnalyst - INFO - Running critical path analysis on 24 tickers
+INFO:agent.CriticalPathAnalyst:Running critical path analysis on 24 tickers
+2026-01-16 16:11:19,097 - CriticalPathAnalyst - INFO - Analysis complete: Risk=12.8, Regime=BULL
+INFO:agent.CriticalPathAnalyst:Analysis complete: Risk=12.8, Regime=BULL
+2026-01-16 16:11:19,098 - CriticalPathAnalyst - INFO - Task b6b0efdb-bf86-49c8-ba22-e467c64d7231 completed successfully in 0.11s (confidence: 0.41)
+INFO:agent.CriticalPathAnalyst:Task b6b0efdb-bf86-49c8-ba22-e467c64d7231 completed successfully in 0.11s (confidence: 0.41)
+2026-01-16 16:11:19,098 - MetaOrchestrator - INFO - Analysis complete: Risk=12.8, Regime=BULL
+INFO:MetaOrchestrator:Analysis complete: Risk=12.8, Regime=BULL
+2026-01-16 16:11:19,098 - MetaOrchestrator - INFO - Step 1.5: Running Forecast Agent...
+INFO:MetaOrchestrator:Step 1.5: Running Forecast Agent...
+2026-01-16 16:11:19,098 - ForecastAgent - INFO - Starting task 44a40fd1-35cf-4220-b27c-374e6c6dbe46: Forecast Fed Funds Rate and identify key drivers
+INFO:agent.ForecastAgent:Starting task 44a40fd1-35cf-4220-b27c-374e6c6dbe46: Forecast Fed Funds Rate and identify key drivers
+WARNING:eimas.forecast_agent:d_Exp_Rate not found, using placeholder
+2026-01-16 16:11:19,155 - ForecastAgent - WARNING - days_to_meeting not provided, using random values
+WARNING:agent.ForecastAgent:days_to_meeting not provided, using random values
+2026-01-16 16:11:19,155 - ForecastAgent - INFO - Data prepared: 90 observations, 24 features
+INFO:agent.ForecastAgent:Data prepared: 90 observations, 24 features
+2026-01-16 16:11:19,155 - ForecastAgent - INFO - days_to_meeting range: 5 - 399
+INFO:agent.ForecastAgent:days_to_meeting range: 5 - 399
+2026-01-16 16:11:19,156 - ForecastAgent - INFO - d_Exp_Rate: valid=90, NaN=0
+INFO:agent.ForecastAgent:d_Exp_Rate: valid=90, NaN=0
+2026-01-16 16:11:19,156 - ForecastAgent - INFO -   VeryShort: 6 observations
+INFO:agent.ForecastAgent:  VeryShort: 6 observations
+2026-01-16 16:11:19,156 - ForecastAgent - INFO -   Short: 14 observations
+INFO:agent.ForecastAgent:  Short: 14 observations
+2026-01-16 16:11:19,156 - ForecastAgent - INFO -   Long: 54 observations
+INFO:agent.ForecastAgent:  Long: 54 observations
+WARNING:eimas.forecast_agent:Insufficient observations for VeryShort: 6
+2026-01-16 16:11:19,157 - ForecastAgent - INFO - Horizon VeryShort: R²=0.0000, selected=0
+INFO:agent.ForecastAgent:Horizon VeryShort: R²=0.0000, selected=0
+WARNING:eimas.forecast_agent:Insufficient observations for Short: 14
+2026-01-16 16:11:19,158 - ForecastAgent - INFO - Horizon Short: R²=0.0000, selected=0
+INFO:agent.ForecastAgent:Horizon Short: R²=0.0000, selected=0
+INFO:eimas.lasso:LASSOForecaster initialized with config: n_splits=5, max_iter=10000
+INFO:eimas.lasso:Starting LASSO fit: horizon=Long, n_obs=54, n_vars=24
+INFO:eimas.lasso:After Treasury filtering: 24 variables remain
+INFO:eimas.lasso:LASSO fit completed: horizon=Long, R²=0.0000, selected=1, λ=0.002173
+2026-01-16 16:11:19,705 - ForecastAgent - INFO - Horizon Long: R²=0.0000, selected=1
+INFO:agent.ForecastAgent:Horizon Long: R²=0.0000, selected=1
+2026-01-16 16:11:19,706 - ForecastAgent - INFO - Task 44a40fd1-35cf-4220-b27c-374e6c6dbe46 completed successfully in 0.61s (confidence: 0.10)
+INFO:agent.ForecastAgent:Task 44a40fd1-35cf-4220-b27c-374e6c6dbe46 completed successfully in 0.61s (confidence: 0.10)
+2026-01-16 16:11:19,706 - MetaOrchestrator - WARNING - Forecast results empty or failed: No results
+WARNING:MetaOrchestrator:Forecast results empty or failed: No results
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Step 2: Auto-detecting debate topics...
+INFO:MetaOrchestrator:Step 2: Auto-detecting debate topics...
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Detected 2 debate topics: ['regime_stability', 'crypto_correlation']
+INFO:MetaOrchestrator:Detected 2 debate topics: ['regime_stability', 'crypto_correlation']
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Step 3: Collecting opinions from agents...
+INFO:MetaOrchestrator:Step 3: Collecting opinions from agents...
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Collected 2 opinions across 2 topics
+INFO:MetaOrchestrator:Collected 2 opinions across 2 topics
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Step 4: Running debates...
+INFO:MetaOrchestrator:Step 4: Running debates...
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Processing debate for topic 'regime_stability' with 1 opinions
+INFO:MetaOrchestrator:Processing debate for topic 'regime_stability' with 1 opinions
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Single opinion for 'regime_stability' - skipping debate
+INFO:MetaOrchestrator:Single opinion for 'regime_stability' - skipping debate
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Processing debate for topic 'crypto_correlation' with 1 opinions
+INFO:MetaOrchestrator:Processing debate for topic 'crypto_correlation' with 1 opinions
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Single opinion for 'crypto_correlation' - skipping debate
+INFO:MetaOrchestrator:Single opinion for 'crypto_correlation' - skipping debate
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Reached consensus on 2 topics
+INFO:MetaOrchestrator:Reached consensus on 2 topics
+2026-01-16 16:11:19,706 - MetaOrchestrator - INFO - Step 5: Synthesizing final report...
+INFO:MetaOrchestrator:Step 5: Synthesizing final report...
+2026-01-16 16:11:19,707 - MetaOrchestrator - INFO - Workflow completed in 0.72s
+INFO:MetaOrchestrator:Workflow completed in 0.72s
+Traceback (most recent call last):
+  File "/home/tj/projects/autoai/eimas/main.py", line 2730, in run_integrated_pipeline
+    market_condition = MarketCondition(
+        regime=result.regime.get('regime', 'NEUTRAL'),
+    ...<4 lines>...
+        bubble_status=result.bubble_risk.overall_status if result.bubble_risk else 'NONE'
+    )
+TypeError: MarketCondition.__init__() missing 4 required positional arguments: 'timestamp', 'regime_confidence', 'trend', and 'volatility'
+INFO:httpx:HTTP Request: POST https://api.perplexity.ai/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+ERROR:yfinance:$MATIC-USD: possibly delisted; no price data found  (1h 2026-01-14 16:12:32.673941 -> 2026-01-16 16:12:32.673941)
+ERROR:yfinance:$MATIC-USD: possibly delisted; no price data found  (period=1d)
+
+[EventTracker] Perplexity API initialized
+[EventTracker] Detecting anomalies for 10 tickers...
+[EventTracker] Found 16 anomalies
+[EventTracker] Searching news for ONDO-USD (1/5)...
+[EventTracker] Searching news for COIN (2/5)...
+[EventTracker] Searching news for ONDO-USD (3/5)...
+[EventTracker] Searching news for BTC-USD (4/5)...
+[EventTracker] Searching news for ONDO-USD (5/5)...
+  📦 캐시 사용: ONDO-USD 2026-01-13...
+      ✓ Anomalies: 16
+      ✓ Events Matched: 5
+        → [ONDO-USD] 2026-01-15: other (negative)
+          **ONDO-USD traded around $0.38 on January 15, 2026, down app...
+        → [COIN] 2026-01-15: other (negative)
+          **No breaking financial news on COIN (Coinbase Global, Inc.)...
+        → [ONDO-USD] 2026-01-14: other (negative)
+          **ONDO-USD closed at approximately $0.401 on January 14, 202...
+
+==================================================
+PHASE 3: MULTI-AGENT DEBATE
+==================================================
+
+[3.1] Running FULL mode analysis...
+Warning: 7 required tickers missing
+      ✓ FULL Position: BULLISH
+      ✓ Confidence: 83%
+      ✓ Regime: BULL, Risk: 12.8
+
+[3.2] Running REFERENCE mode analysis...
+   📊 Collecting 24 tickers...
+   ✅ Collected 24 market tickers
+   🪙 Collecting 2 crypto tickers...
+   ✅ BTC-USD (Bitcoin)
+   ✅ ETH-USD (Ethereum)
+   ✅ Collected 2 crypto tickers
+Warning: 7 required tickers missing
+      ✓ REFERENCE Position: BULLISH
+      ✓ Confidence: 70%
+      ✓ Regime: BULL, Risk: 12.8
+
+[3.3] Comparing modes...
+      ✓ Modes Agree: Yes
+      ✓ Final Recommendation: BULLISH
+      ✓ Risk Level: LOW
+
+[3.4] Adaptive portfolio agents...
+      ✗ Adaptive agents error: MarketCondition.__init__() missing 4 required positional arguments: 'timestamp', 'regime_confidence', 'trend', and 'volatility'
+
+==================================================
+PHASE 5: DATABASE STORAGE
+==================================================
+
+[5.1] Saving to Event Database...
+[EventDB] Database initialized: data/events.db
+[EventDB] Error saving event: NOT NULL constraint failed: detected_events.event_id
+      ✓ Saved 1 events
+      ✓ Saved market snapshot (ID: c8624a20)
+
+[5.2] Saving to Signal Database...
+      ✓ Saved integrated signal
+
+[5.2.1] Saving to Predictions Database...
+[predictions_db] Initialized: /home/tj/projects/autoai/eimas/data/predictions.db
+      ✓ Saved predictions: ['regime', 'risk', 'debate', 'portfolio', 'stablecoin']
+
+[5.2.2] Saving to Trading Database...
+      ✗ Trading DB error: type object 'InvestorProfile' has no attribute 'BALANCED'
+
+[5.3] Saving results...
+      - JSON: /home/tj/projects/autoai/eimas/outputs/integrated_20260116_161119.json
+      - MD: /home/tj/projects/autoai/eimas/outputs/integrated_20260116_161119.md
+      - HTML: /home/tj/projects/autoai/eimas/outputs/dashboard_20260116_161119.html
+
+==================================================
+PHASE 6: AI REPORT GENERATION
+==================================================
+[AIReportGenerator] APIs: Claude=True, Perplexity=True, GPT=True
+
+[6.1] Generating AI-powered investment report...
+[AIReportGenerator] Starting report generation...
+[AIReportGenerator] Calculating technical indicators...
+[AIReportGenerator] Found 4 notable stocks
+[AIReportGenerator] Generating scenario analysis...
+[AIReportGenerator] Fetching global market data...
+[AIReportGenerator] Fetching latest news with Perplexity...
+[AIReportGenerator] Running deep analysis with GPT...
+[AIReportGenerator] Generating comprehensive analysis with Claude...
+[AIReportGenerator] Generating recommendations with GPT...
+[AIReportGenerator] Generating sector recommendations with GPT...
+[AIReportGenerator] Generating entry/exit strategy...
+[AIReportGenerator] Comparing with previous report...
+[AIReportGenerator] ⚠️ Major change detected: ['🔄 레짐 변경: MarketRegime.BULL_LOW_VOL → Bull (Low Vol)']
+[AIReportGenerator] Generating backtest section (similar regime analysis)...
+[AIReportGenerator] Backtest section generation failed: No module named 'lib.regime_history'
+[AIReportGenerator] Analyzing options and sentiment...
+[AIReportGenerator] Options/Sentiment analysis error: 'VIXTermStructureResult' object has no attribute 'spread_pct'
+[AIReportGenerator] Options/Sentiment analysis completed
+[AIReportGenerator] Report generation complete!
+
+[6.2] Saving report...
+[AIReportGenerator] Report saved: outputs/ai_report_20260116_161229.md
+
+      ✓ AI Report saved: outputs/ai_report_20260116_161229.md
+
+--------------------------------------------------
+📝 AI REPORT HIGHLIGHTS
+--------------------------------------------------
+
+주목할 종목:
+  • COIN: 1일 급락 (-6.5%)
+  • ^VIX: 1일 급락 (-5.4%)
+  • ONDO-USD: 높은 변동성 (일일 4.4%)
+
+최종 제안: 
+📈 **적극적 매수** (신뢰도: 76%)
+
+현재 시장은 Bull (Low Vol) 레짐에서 리스크 점수 6.3/100 수준입니다.
+두 분석 모드(FULL/REFERENCE)가 일치하여
+신호의 신뢰성이 높습니다.
+...
+
+액션 아이템:
+  • 주식 비중 확대 고려
+  • 성장주/소형주 비중 점검
+  • 레버리지 ETF 검토 가능
+
+==================================================
+PHASE 7: WHITENING & FACT CHECK
+==================================================
+
+[7.1] Economic whitening analysis...
+      ✗ Whitening error: unsupported operand type(s) for -: 'dict' and 'int'
+
+[7.2] Fact checking AI outputs...
+      ✓ Claims checked: 2
+      ✓ Verified: 0
+      ✓ Grade: C (추가 검증 필요)
+
+==================================================
+PHASE 8: STANDALONE SCRIPTS EXECUTION
+==================================================
+Running 7 independent scripts for comprehensive data collection...
+
+[8.1] Intraday data collection...
+[StableStore] Initialized: /home/tj/projects/autoai/eimas/data/stable/market.db
+[VolatileStore] Initialized: /home/tj/projects/autoai/eimas/data/volatile/realtime.db
+[IntradayCollector] Initialized
+
+============================================================
+📊 장중 데이터 수집: 2026-01-07
+============================================================
+
+📥 1분봉 데이터 조회 중...
+
+============================================================
+✅ 수집 완료: 0/5 저장, 0 알림
+============================================================
+
+============================================================
+📊 장중 데이터 수집: 2026-01-08
+============================================================
+
+📥 1분봉 데이터 조회 중...
+
+============================================================
+✅ 수집 완료: 0/5 저장, 0 알림
+============================================================
+      ✓ Dates: 0
+      ✓ Tickers: 0
+      ✓ Status: UNKNOWN
+
+[8.2] 24/7 Cryptocurrency monitoring...
+[VolatileStore] Initialized: /home/tj/projects/autoai/eimas/data/volatile/realtime.db
+[CryptoCollector] Initialized with 10 cryptos
+[CryptoCollector] Perplexity API: ✅ Available
+
+📥 암호화폐 현재가 수집 중...
+  🔴 BTC: $95,686.81 (-0.02% 1H, -0.96% 24H)
+  🔴 ETH: $3,311.50 (-0.05% 1H, -0.73% 24H)
+  🔴 SOL: $143.19 (-0.06% 1H, -1.13% 24H)
+  🔴 XRP: $2.07 (-0.00% 1H, -1.43% 24H)
+  🔴 ADA: $0.39 (-0.08% 1H, -2.44% 24H)
+  🔴 DOGE: $0.14 (-0.03% 1H, -2.75% 24H)
+  🔴 AVAX: $13.81 (-0.05% 1H, -4.13% 24H)
+  🟢 DOT: $2.13 (+0.08% 1H, -2.62% 24H)
+  🔴 LINK: $13.79 (-0.11% 1H, -0.91% 24H)
+
+🔍 이상 탐지 실행 중...
+
+⚠️ 총 27개 이상 감지됨
+      ✓ Symbols: 9
+      ✓ Anomalies: 27
+      ✓ Risk: HIGH
+
+[8.3] Multi-source data pipeline...
+      ✓ Data sources collected: 0
+
+[8.4] Economic event predictions...
+[EventPredictor] Predicting upcoming events...
+[EventPredictor] Evaluating current market state...
+      ✗ Event predictor error: 'EventPrediction' object has no attribute 'predicted_date'
+
+[8.5] Event cause analysis...
+[EventAttributor] Analyzing events for ['SPY', 'QQQ', 'GLD', 'TLT', 'IWM'] over last 7 days...
+[EventAttributor]   Found 0 events
+      ✓ Events analyzed: 0
+
+[8.6] Historical event backtesting...
+      ⊘ Skipped (requires specific event data)
+
+[8.7] Anomaly-news correlation analysis...
+최근 이상 없음
+      ✓ Correlations found: 0
+
+==================================================
+PHASE 8 COMPLETE: All standalone scripts executed
+==================================================
+
+======================================================================
+EIMAS INTEGRATED ANALYSIS COMPLETE
+======================================================================
+Total time: 203.3s
+
+📊 DATA SUMMARY
+   FRED: RRP=$2B, Net Liq=$5800B
+   Market: 24 tickers, Crypto: 2 tickers
+
+📈 ANALYSIS SUMMARY
+   Regime: Bull (Low Vol)
+   Risk Score: 6.3/100
+   Events: 1 detected
+
+🤖 AGENT DEBATE
+   FULL Mode: BULLISH
+   REFERENCE Mode: BULLISH
+   Modes Agree: ✓
+   Dissent Records: 0
+
+🔬 ADVANCED ANALYSIS
+   Genius Act Regime: expansion
+   Genius Act Signals: 3
+   Theme ETF: AI_SEMICONDUCTOR
+   GC-HRP Portfolio: TIP:34.3%, HYG:17.9%, LQD:14.9%
+   Fact Check Grade: C
+   ARK Holdings: 235 positions, 0 consensus buys
+
+🚀 STANDALONE SCRIPTS (--full mode)
+   Intraday: 0 tickers, 0 anomalies
+   Crypto: 9 symbols, Risk: HIGH
+   Events: 1 predictions
+   Backtest: 0 events, 0% accuracy
+
+🎯 FINAL RECOMMENDATION
+   Action: BULLISH
+   Confidence: 76%
+   Risk Level: LOW
+
+Results saved:
+   JSON: /home/tj/projects/autoai/eimas/outputs/integrated_20260116_161119.json
+   MD:   /home/tj/projects/autoai/eimas/outputs/integrated_20260116_161119.md
+   AI Report: outputs/ai_report_20260116_161229.md
+======================================================================

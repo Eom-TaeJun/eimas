@@ -5,7 +5,7 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any, List
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from agents.orchestrator import MetaOrchestrator
 from lib.dual_mode_analyzer import DualModeAnalyzer, ModeResult

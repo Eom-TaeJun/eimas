@@ -346,6 +346,22 @@ def cmd_report_daily(args):
     print_success(f"Report saved: {path}")
 
 
+def cmd_run(args):
+    """통합 파이프라인 실행"""
+    from pipeline.pipeline_run import run_integrated_pipeline
+    import asyncio
+
+    print_header("Running Integrated Pipeline")
+    
+    asyncio.run(run_integrated_pipeline(
+        enable_realtime=args.realtime,
+        realtime_duration=args.duration,
+        quick_mode=args.quick,
+        output_dir=args.output,
+        full_mode=args.full
+    ))
+
+
 # ============================================================================
 # Main CLI
 # ============================================================================
@@ -356,6 +372,15 @@ def main():
         description="EIMAS - Economic Intelligence Multi-Agent System CLI",
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # Run command
+    run_parser = subparsers.add_parser("run", help="Run integrated pipeline")
+    run_parser.add_argument("--realtime", action="store_true", help="Enable realtime monitoring")
+    run_parser.add_argument("--duration", type=int, default=30, help="Realtime duration in seconds")
+    run_parser.add_argument("--quick", action="store_true", help="Quick mode")
+    run_parser.add_argument("--full", action="store_true", help="Full mode (standalone scripts)")
+    run_parser.add_argument("--output", default="outputs", help="Output directory")
+    run_parser.set_defaults(func=cmd_run)
 
     # Signal commands
     signal_parser = subparsers.add_parser("signal", help="Signal management")

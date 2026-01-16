@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 # Add parent directory to sys.path to allow importing from lib
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from lib.fred_collector import FREDCollector
 from lib.data_collector import DataManager
