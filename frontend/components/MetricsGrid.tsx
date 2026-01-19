@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge"
 import useSWR from "swr"
 import { fetchLatestAnalysis } from "@/lib/api"
 import type { EIMASAnalysis } from "@/lib/types"
-import { TrendingUp, TrendingDown, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, PieChart as PieChartIcon } from "lucide-react"
+import { RiskGauge } from "@/components/charts/RiskGauge"
+import { PortfolioPie } from "@/components/charts/PortfolioPie"
 
 export function MetricsGrid() {
   // Fetch latest EIMAS analysis every 5 seconds
   const { data: analysis, error } = useSWR<EIMASAnalysis>("latest-analysis", fetchLatestAnalysis, {
-    refreshInterval: 5000, // 5 seconds
+    refreshInterval: 5000,
   })
 
   const getRiskColor = (level: string) => {
@@ -105,7 +107,10 @@ export function MetricsGrid() {
                 <Badge variant="outline" className={`text-xl font-bold px-3 py-1 ${getRiskColor(analysis.risk_level)}`}>
                   {analysis.risk_level}
                 </Badge>
-                <span className="text-2xl font-bold text-white">{analysis.risk_score.toFixed(1)}</span>
+                {/* Risk Gauge Small */}
+                <div className="w-24 h-16">
+                  <RiskGauge score={analysis.risk_score} />
+                </div>
               </div>
             </div>
           </div>
@@ -183,48 +188,24 @@ export function MetricsGrid() {
           </CardContent>
         </Card>
 
-        {/* Data Collection Card */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        {/* Portfolio Allocation Card (NEW) */}
+        <Card className="bg-[#161b22] border-[#30363d] col-span-1 md:col-span-2">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-400">Data Collection</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <div className="text-2xl font-bold text-white">{analysis.market_data_count}</div>
-                <div className="text-sm text-gray-400">Market Tickers</div>
-              </div>
-              <div>
-                <div className="text-xl font-bold text-white">{analysis.crypto_data_count}</div>
-                <div className="text-sm text-gray-400">Crypto Assets</div>
-              </div>
+            <div className="flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-purple-400" />
+              <CardTitle className="text-sm font-medium text-gray-400">Recommended Allocation</CardTitle>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Market Quality Card (v2.1.1) */}
-        <Card className="bg-[#161b22] border-[#30363d]">
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-400">Market Quality</CardTitle>
           </CardHeader>
           <CardContent>
-            {analysis.market_quality ? (
-              <div className="space-y-3">
-                <div>
-                  <div className="text-2xl font-bold text-white">
-                    {analysis.market_quality.avg_liquidity_score.toFixed(1)}
-                  </div>
-                  <div className="text-sm text-gray-400">Avg Liquidity</div>
+            <div className="h-[200px]">
+              {analysis.portfolio_weights ? (
+                <PortfolioPie weights={analysis.portfolio_weights} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Calculating Portfolio...
                 </div>
-                <div className="text-xs">
-                  <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20">
-                    {analysis.market_quality.data_quality}
-                  </Badge>
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-400">No data</div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
