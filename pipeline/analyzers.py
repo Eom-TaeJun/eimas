@@ -55,7 +55,7 @@ from lib.graph_clustered_portfolio import GraphClusteredPortfolio
 # Missing Microstructure & Adaptive Modules
 from lib.volume_analyzer import VolumeAnalyzer
 from lib.event_tracker import EventTracker
-from lib.adaptive_agents import AdaptivePortfolioManager, MarketCondition
+from lib.adaptive_agents import AdaptiveAgentManager, MarketCondition
 
 # Schemas
 from pipeline.schemas import (
@@ -343,19 +343,29 @@ def run_adaptive_portfolio(regime_result: RegimeResult) -> Dict:
     """적응형 포트폴리오 전략 수립"""
     print("\n[2.13] Adaptive portfolio agents...")
     try:
-        manager = AdaptivePortfolioManager()
+        manager = AdaptiveAgentManager()
         
         # RegimeResult -> MarketCondition 변환
         condition = MarketCondition(
             timestamp=regime_result.timestamp,
+            regime=regime_result.regime,
             regime_confidence=regime_result.confidence * 100, # 0-100 scale
             trend=regime_result.trend,
-            volatility=regime_result.volatility
+            volatility=regime_result.volatility,
+            risk_score=50, # Default if not passed
+            vix_level=20, # Default
+            liquidity_signal="NEUTRAL" # Default
         )
         
-        allocation = manager.propose_allocation(condition)
-        print(f"      ✓ Adaptive Allocation: {allocation}")
-        return allocation
+        # 가상의 가격 데이터 (실제 데이터 연동 필요하나 여기선 간소화)
+        prices = {"SPY": 500.0, "QQQ": 400.0, "TLT": 95.0, "GLD": 200.0}
+        
+        results = manager.run_all(condition, prices)
+        
+        # 결과 요약
+        summary = {name: res['action'] for name, res in results.items()}
+        print(f"      ✓ Adaptive Allocation: {summary}")
+        return summary
     except Exception as e:
         log_error(logger, "Adaptive portfolio analysis failed", e)
         return {}
