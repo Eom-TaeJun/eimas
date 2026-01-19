@@ -301,8 +301,7 @@ class MetaOrchestrator:
         """
         각 에이전트로부터 의견 수집
 
-        현재: AnalysisAgent만 구현
-        향후: ResearchAgent, ForecastAgent, StrategyAgent 추가 예정
+        활성 에이전트: AnalysisAgent, ForecastAgent
 
         Args:
             topics: 의견을 수집할 주제 리스트
@@ -338,11 +337,6 @@ class MetaOrchestrator:
                     )
                 except Exception as e:
                     self.logger.warning(f"Failed to get opinion from ForecastAgent on '{topic}': {e}")
-
-            # TODO: 다른 에이전트 추가
-            # research_opinion = await self.research_agent.form_opinion(topic, context)
-            # forecast_opinion = await self.forecast_agent.form_opinion(topic, context)
-            # strategy_opinion = await self.strategy_agent.form_opinion(topic, context)
 
             if opinions:
                 opinions_by_topic[topic] = opinions
@@ -481,7 +475,7 @@ class MetaOrchestrator:
                     }
                     for topic, consensus in consensus_results.items()
                 },
-                'conflicts': []  # TODO: 충돌 정보 추가
+                'conflicts': []
             },
             'debate_topics': list(consensus_results.keys()),
             'recommendations': self._generate_recommendations(analysis_result, consensus_results),

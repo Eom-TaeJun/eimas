@@ -964,6 +964,151 @@ class AIReportGenerator:
         self._log("Report generation complete!")
         return report
 
+    async def generate_ib_report(
+        self,
+        analysis_result: Dict[str, Any],
+        market_data: Dict[str, Any] = None
+    ) -> str:
+        """Investment Banking Style Report (Memorandum) 생성"""
+        self._log("Generating IB-style memorandum...")
+        
+        # 1. 데이터 추출
+        explanation = analysis_result.get('market_explanation', {})
+        shap_narrative = explanation.get('narrative', '데이터 부족으로 분석 불가')
+        drivers = explanation.get('drivers', [])
+        
+        # 2. SHAP 설명 포맷팅
+        shap_text = self._format_causal_explanation(explanation)
+        
+        # 3. 프롬프트 생성
+        prompt = self._build_ib_prompt(analysis_result, shap_text, drivers)
+        
+        # 4. LLM 호출
+        report_content = ""
+        if self.has_claude:
+            report_content = await self._call_claude_ib(prompt)
+        elif self.has_gpt:
+            report_content = await self._call_gpt_ib(prompt)
+        else:
+            report_content = "LLM API가 설정되지 않아 IB 리포트를 생성할 수 없습니다."
+            
+        return report_content
+
+    async def save_ib_report(self, content: str) -> str:
+        """IB 리포트 파일 저장"""
+        output_dir = Path("outputs")
+        output_dir.mkdir(exist_ok=True)
+        
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = output_dir / f"ib_memorandum_{timestamp_str}.md"
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            f.write(content)
+            
+        self._log(f"IB Report saved to {filename}")
+        return str(filename)
+
+    def _format_causal_explanation(self, explanation: Dict) -> str:
+        """SHAP 설명을 자연어로 변환"""
+        if not explanation or "error" in explanation:
+            return "시장 데이터 부족으로 인과관계 분석을 수행할 수 없습니다."
+            
+        drivers = explanation.get('drivers', [])
+        prediction = explanation.get('prediction', 0.0)
+        
+        lines = []
+        direction = "상승" if prediction > 0 else "하락"
+        lines.append(f"AI 모델은 익일 시장의 {direction}({prediction:+.2f}%) 가능성을 예측하고 있습니다.")
+        lines.append("주요 원인은 다음과 같습니다:")
+        
+        for d in drivers:
+            impact = d.get('impact', 0)
+            desc = d.get('description', d.get('name', 'Unknown'))
+            lines.append(f"- **{desc}**: {impact:+.2f}% 기여")
+            
+        return "\n".join(lines)
+
+    def _build_ib_prompt(self, result: Dict, shap_text: str, drivers: List) -> str:
+        """IB 스타일 프롬프트 구성"""
+        regime = result.get('regime', {})
+        risk_score = result.get('risk_score', 50)
+        fred = result.get('fred_summary', {})
+        
+        prompt = f"""
+당신은 골드만삭스나 모건스탠리의 수석 전략가입니다.
+기관 투자자를 위한 "Daily Investment Memorandum"을 작성해야 합니다.
+
+다음 시장 데이터를 바탕으로 전문적인 보고서를 작성하십시오.
+
+## 1. 시장 상황 데이터
+- 레짐: {regime.get('regime', 'Unknown')} (신뢰도 {regime.get('confidence', 0)*100:.0f}%)
+- 리스크 점수: {risk_score:.1f}/100
+- 금리: Fed Funds {fred.get('fed_funds', 0):.2f}%, 10Y {fred.get('treasury_10y', 0):.2f}%
+- 유동성: Net Liquidity ${fred.get('net_liquidity', 0):.0f}B ({fred.get('liquidity_regime', 'Unknown')})
+
+## 2. AI 인과관계 분석 (Why-Based)
+{shap_text}
+
+## 3. 작성 지침
+보고서는 다음 목차를 엄격히 준수하여 작성하십시오:
+
+# EIMAS Daily Investment Memorandum
+
+## 1. Investment Highlights (The "Alpha")
+- 단순히 시장 방향을 나열하지 말고, **"Why"**에 집중하십시오.
+- 위 "AI 인과관계 분석" 데이터를 인용하여, 어떤 변수가 시장을 움직이고 있는지 서술하십시오.
+- 예: "VIX의 하락 기조(-0.5% 기여)가 시장 상승의 주요 동력으로 작용..."
+
+## 2. Key Risk Factors (Quantitative)
+- 리스크 점수와 레짐 신뢰도를 언급하십시오.
+- (데이터가 있다면) VPIN(독성 주문 흐름)이나 OFI(주문 불균형) 개념을 사용하여 시장 미세구조 리스크를 평가하십시오.
+- 데이터가 없다면 일반적인 변동성(VIX) 및 금리 리스크를 서술하십시오.
+
+## 3. Valuation & Liquidity Logic
+- Net Liquidity 및 Digital M2(암호화폐 유동성) 관점에서 자산 가격의 정당성을 평가하십시오.
+- 현재 유동성 환경이 Risk-On에 유리한지 불리한지 논리적으로 서술하십시오.
+
+## 4. Strategic Recommendation
+- 기관 투자자를 위한 구체적인 액션 플랜(Overweight/Underweight)을 제시하십시오.
+- 단순 매수/매도가 아닌, "조정 시 매수", "변동성 매도" 등 구조적 전략을 제안하십시오.
+
+**톤앤매너:**
+- 매우 전문적이고 드라이한 IB(Investment Banking) 스타일
+- 명확한 근거 제시 (Data-Driven)
+- 불필요한 미사여구 제거
+"""
+        return prompt
+
+    async def _call_claude_ib(self, prompt: str) -> str:
+        try:
+            client = APIConfig.get_client('anthropic')
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=3000,
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.content[0].text
+        except Exception as e:
+            self._log(f"Claude IB generation failed: {e}")
+            return f"Error generating IB report: {e}"
+
+    async def _call_gpt_ib(self, prompt: str) -> str:
+        try:
+            client = APIConfig.get_client('openai')
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a Chief Market Strategist at a top-tier investment bank."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=2000,
+                temperature=0.3
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            self._log(f"GPT IB generation failed: {e}")
+            return f"Error generating IB report: {e}"
+
     def _create_market_summary(self, result: Dict) -> str:
         """시장 요약 생성"""
         fred = result.get('fred_summary', {})

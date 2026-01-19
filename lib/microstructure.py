@@ -518,6 +518,90 @@ class DepthAnalyzer:
 
 
 # ============================================================================
+# Volume Anomaly Detector
+# ============================================================================
+
+class VolumeAnomalyDetector:
+    """
+    이상 거래량(Anomaly Volume) 감지기
+    
+    Rule: 현재 거래량이 20일(또는 20주기) 이동평균 대비 
+    3표준편차(3-sigma) 이상 급증 시 True 반환
+    """
+    
+    def __init__(self, window: int = 20, threshold_sigma: float = 3.0):
+        self.window = window
+        self.threshold_sigma = threshold_sigma
+        self.volume_history: deque = deque(maxlen=window + 1)
+        
+    def add_volume(self, volume: float) -> Tuple[bool, float, float]:
+        """
+        거래량 추가 및 이상 감지
+        
+        Returns:
+            (is_anomaly, z_score, mean_volume)
+        """
+        self.volume_history.append(volume)
+        
+        if len(self.volume_history) < self.window:
+            return False, 0.0, 0.0
+            
+        # 최근 volume을 제외한 이전 window개 데이터로 통계 계산
+        recent_history = list(self.volume_history)[:-1]
+        mean = np.mean(recent_history)
+        std = np.std(recent_history)
+        
+        if std == 0:
+            return False, 0.0, mean
+            
+        z_score = (volume - mean) / std
+        is_anomaly = z_score > self.threshold_sigma
+        
+        return is_anomaly, z_score, mean
+
+
+# ============================================================================
+# OFI Estimator (OHLC Fallback)
+# ============================================================================
+
+class OFIEstimator:
+    """
+    OFI 근사 추정기 (Tick 데이터 부재 시 OHLC 활용)
+    
+    Logic:
+    - (Close - Open) / (High - Low) 를 통해 매수/매도 압력 강도 추정
+    - 거래량을 곱하여 Flow Imbalance 근사
+    """
+    
+    @staticmethod
+    def estimate_from_ohlc(
+        open_p: float, 
+        high_p: float, 
+        low_p: float, 
+        close_p: float, 
+        volume: float
+    ) -> float:
+        """
+        OHLC 기반 OFI 근사치 계산
+        """
+        price_range = high_p - low_p
+        
+        if price_range == 0:
+            return 0.0
+            
+        # CLV (Close Location Value) or Money Flow Multiplier
+        # (Close - Low) - (High - Close) / (High - Low)
+        # = (2 * Close - High - Low) / (High - Low)
+        # 범위: -1 ~ 1
+        pressure = (2 * close_p - high_p - low_p) / price_range
+        
+        # 거래량을 곱해 Flow 양 추정
+        estimated_ofi = pressure * volume
+        
+        return estimated_ofi
+
+
+# ============================================================================
 # Unified Microstructure Analyzer
 # ============================================================================
 
@@ -525,14 +609,15 @@ class MicrostructureAnalyzer:
     """
     통합 마이크로스트럭처 분석기
 
-    OFI + VPIN + Depth 분석 통합
+    OFI + VPIN + Depth + Anomaly Volume 분석 통합
     """
 
     def __init__(
         self,
         ofi_levels: int = 5,
         vpin_bucket_size: float = 1000.0,
-        vpin_n_buckets: int = 50
+        vpin_n_buckets: int = 50,
+        volume_anomaly_window: int = 20
     ):
         self.ofi_calculator = OFICalculator(levels=ofi_levels)
         self.vpin_calculator = VPINCalculator(
@@ -540,6 +625,7 @@ class MicrostructureAnalyzer:
             n_buckets=vpin_n_buckets
         )
         self.depth_analyzer = DepthAnalyzer()
+        self.volume_detector = VolumeAnomalyDetector(window=volume_anomaly_window)
 
         # 히스토리
         self.metrics_history: deque = deque(maxlen=1000)
@@ -593,9 +679,9 @@ class MicrostructureAnalyzer:
         self.metrics_history.append(metrics)
         return metrics
 
-    def process_trade(self, trade: Trade) -> Optional[float]:
+    def process_trade(self, trade: Trade) -> Dict[str, Any]:
         """
-        체결 데이터 처리
+        체결 데이터 처리 및 이상 거래량 감지
 
         Parameters:
         -----------
@@ -604,9 +690,19 @@ class MicrostructureAnalyzer:
 
         Returns:
         --------
-        Optional[float] : 새 VPIN (버킷 완료 시)
+        Dict: VPIN 업데이트 결과 및 이상 거래량 여부
         """
-        return self.vpin_calculator.add_trade(trade)
+        # VPIN 업데이트
+        new_vpin = self.vpin_calculator.add_trade(trade)
+        
+        # 이상 거래량 감지 (체결량 기준)
+        is_anomaly, z_score, mean_vol = self.volume_detector.add_volume(trade.quantity)
+        
+        return {
+            'vpin': new_vpin,
+            'is_volume_anomaly': is_anomaly,
+            'volume_z_score': z_score
+        }
 
     def _determine_signal(
         self,

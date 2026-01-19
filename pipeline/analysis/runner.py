@@ -26,6 +26,7 @@ from lib.graph_clustered_portfolio import GraphClusteredPortfolio, ClusteringMet
 from lib.integrated_strategy import IntegratedStrategy
 from lib.volume_analyzer import VolumeAnalyzer
 from lib.event_tracker import EventTracker
+from lib.crypto_macro import CryptoMacroAnalyzer
 
 from pipeline.schemas import MarketQualityMetrics, BubbleRiskMetrics
 
@@ -395,5 +396,23 @@ async def run_analysis(result: Any, market_data: Dict, fred_summary: Any, quick_
             print(f"      ✓ Events Matched: {tracking_result.events_matched}")
         except Exception as e:
             print(f"      ✗ Event tracking error: {e}")
+
+    # 2.13 Crypto Macro Analysis
+    if not quick_mode:
+        print("\n[2.13] Crypto Macro Analysis (Digital M2)...")
+        try:
+            crypto_analyzer = CryptoMacroAnalyzer()
+            crypto_result = crypto_analyzer.run_analysis()
+            
+            # Store result
+            result.crypto_macro_analysis = crypto_result
+            
+            # Print summary
+            m2_data = crypto_result.get('digital_m2', {})
+            impact = crypto_result.get('impact_analysis', '')
+            print(f"      ✓ Digital M2: ${m2_data.get('current_m2_proxy', 0):.2f} (WoW: {m2_data.get('wow_change_pct', 0):.2f}%)")
+            print(f"      ✓ Impact: {impact[:50]}...")
+        except Exception as e:
+            print(f"      ✗ Crypto macro error: {e}")
 
     return result

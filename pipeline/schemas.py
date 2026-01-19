@@ -1,5 +1,54 @@
 from dataclasses import dataclass, field, asdict
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
+
+@dataclass
+class FREDSummary:
+    """FRED 데이터 요약"""
+    timestamp: str
+    fed_funds: float = 0.0
+    treasury_2y: float = 0.0
+    treasury_10y: float = 0.0
+    treasury_30y: float = 0.0
+    spread_10y2y: float = 0.0
+    spread_10y3m: float = 0.0
+    hy_oas: float = 0.0
+    cpi_yoy: float = 0.0
+    core_pce_yoy: float = 0.0
+    breakeven_5y: float = 0.0
+    breakeven_10y: float = 0.0
+    unemployment: float = 0.0
+    initial_claims: int = 0
+    rrp: float = 0.0
+    rrp_delta: float = 0.0
+    rrp_delta_pct: float = 0.0
+    tga: float = 0.0
+    tga_delta: float = 0.0
+    fed_assets: float = 0.0
+    fed_assets_delta: float = 0.0
+    net_liquidity: float = 0.0
+    liquidity_regime: str = "Normal"
+    curve_inverted: bool = False
+    curve_status: str = "Normal"
+    signals: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class IndicatorsSummary:
+    """시장 지표 요약"""
+    timestamp: str
+    vix_current: float = 0.0
+    fear_greed_level: str = "Neutral"
+    risk_score: float = 50.0
+    opportunity_score: float = 50.0
+    signals: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    raw_data: Dict = field(default_factory=dict)
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
 
 @dataclass
 class MarketQualityMetrics:
@@ -36,6 +85,92 @@ class BubbleRiskMetrics:
             'highest_risk_score': self.highest_risk_score,
             'methodology_notes': self.methodology_notes
         }
+
+@dataclass
+class RegimeResult:
+    timestamp: str
+    regime: str
+    trend: str
+    volatility: str
+    confidence: float
+    description: str
+    strategy: str
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class Event:
+    type: str
+    importance: str
+    description: str
+    timestamp: str
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class LiquiditySignal:
+    signal: str
+    causality_results: Dict[str, float]
+    
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class CriticalPathResult:
+    risk_score: float
+    risk_level: str
+    primary_risk_path: str
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class ETFFlowResult:
+    rotation_signal: str
+    style_signal: str
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class DebateResult:
+    full_mode_position: str
+    reference_mode_position: str
+    modes_agree: bool
+    final_recommendation: str
+    confidence: float
+    risk_level: str
+    dissent_records: List[Dict]
+    warnings: List[str]
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class RealtimeSignal:
+    timestamp: str
+    symbol: str
+    ofi: float
+    vpin: float
+    signal: str
+    
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class AIReport:
+    timestamp: str
+    report_path: str
+    ib_report_path: str
+    highlights: Dict[str, Any]
+    content: str = ""
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
 
 @dataclass
 class EIMASResult:

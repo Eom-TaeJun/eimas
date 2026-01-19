@@ -230,8 +230,8 @@ def cmd_risk_check(args):
     print(f"VaR 99%: {risk.var_99:.2%}")
     print(f"CVaR 95%: {risk.cvar_95:.2%}")
     print(f"Max Drawdown: {risk.max_drawdown:.2%}")
-    print(f"Volatility: {risk.volatility:.2%}")
-    print(f"Sharpe Ratio: {risk.sharpe_ratio:.2f}")
+    print(f"Volatility: {risk.annual_vol:.2%}")
+    print(f"Sharpe Ratio: {risk.sharpe_estimate:.2f}")
 
 
 # ============================================================================
@@ -348,7 +348,7 @@ def cmd_report_daily(args):
 
 def cmd_run(args):
     """통합 파이프라인 실행"""
-    from pipeline.pipeline_run import run_integrated_pipeline
+    from pipeline.runner import run_integrated_pipeline
     import asyncio
 
     print_header("Running Integrated Pipeline")

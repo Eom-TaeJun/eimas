@@ -172,20 +172,48 @@ class CorrelationMonitor:
         print(f"Fetching data for {len(self.assets)} assets...")
 
         try:
-            df = yf.download(
+            # yfinance download
+            data = yf.download(
                 self.assets,
                 period=period,
                 progress=False,
-            )['Close'] if len(self.assets) > 1 else \
-                yf.download(self.assets[0], period=period, progress=False)['Close']
+                auto_adjust=True
+            )
+            
+            # Extract Close prices safely
+            if isinstance(data.columns, pd.MultiIndex):
+                # Multi-ticker: columns are (Price, Ticker)
+                if 'Close' in data.columns.get_level_values(0):
+                     df = data['Close']
+                else:
+                     # If only one level or different structure
+                     df = data
+            else:
+                # Single ticker or flat structure
+                if 'Close' in data.columns:
+                    df = pd.DataFrame({self.assets[0]: data['Close']})
+                else:
+                    df = data
 
-            # Handle MultiIndex if present
+            # Final check to flatten columns if still MultiIndex
             if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
+                df.columns = df.columns.get_level_values(-1)
 
             # Drop assets with too much missing data
-            valid_cols = df.columns[df.notna().sum() > len(df) * 0.8]
-            df = df[valid_cols].dropna()
+            if not df.empty:
+                # Filter columns that have enough data
+                valid_cols = []
+                for col in df.columns:
+                    # Check non-NaN ratio
+                    if df[col].notna().sum() > len(df) * 0.6: # Relaxed to 60%
+                        valid_cols.append(col)
+                
+                if valid_cols:
+                    # Handle different trading calendars (e.g. Crypto vs Stocks)
+                    # Forward fill missing values (e.g. weekends for stocks when mixed with crypto)
+                    df = df[valid_cols].ffill().dropna()
+                else:
+                    df = pd.DataFrame()
 
             self.data = df
             self.returns = df.pct_change().dropna()
@@ -195,6 +223,8 @@ class CorrelationMonitor:
 
         except Exception as e:
             print(f"Error fetching data: {e}")
+            import traceback
+            traceback.print_exc()
             return pd.DataFrame()
 
     def calculate_rolling_correlations(

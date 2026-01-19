@@ -23,7 +23,7 @@ import re
 
 import sys
 sys.path.append('..')
-from core.debate_framework import (
+from core.archive.debate_framework import (
     DebateFramework,
     DebateParticipant,
     DebateConfig,
