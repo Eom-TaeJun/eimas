@@ -24,21 +24,16 @@ from datetime import datetime
 from pathlib import Path
 
 # Pipeline Modules
-from pipeline.schemas import EIMASResult
-from pipeline.mod_collectors import (
+from pipeline import (
+    EIMASResult,
     collect_fred_data, collect_market_data,
-    collect_crypto_data, collect_market_indicators
-)
-from pipeline.mod_analyzers import (
+    collect_crypto_data, collect_market_indicators,
     detect_regime, detect_events, analyze_liquidity,
-    analyze_critical_path, analyze_etf_flow, generate_explanation
+    analyze_critical_path, analyze_etf_flow, generate_explanation,
+    run_dual_mode_debate, run_realtime_stream,
+    save_result_json, save_to_trading_db, save_to_event_db,
+    generate_ai_report
 )
-from pipeline.mod_debate import run_dual_mode_debate
-from pipeline.mod_realtime import run_realtime_stream
-from pipeline.mod_storage import (
-    save_result_json, save_to_trading_db, save_to_event_db
-)
-from pipeline.mod_report import generate_ai_report
 
 async def run_integrated_pipeline(
     enable_realtime: bool = False,
