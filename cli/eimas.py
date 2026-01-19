@@ -348,7 +348,8 @@ def cmd_report_daily(args):
 
 def cmd_run(args):
     """통합 파이프라인 실행"""
-    from pipeline.runner import run_integrated_pipeline
+    # Import from the new main_integrated which has the refactored pipeline
+    from main_integrated import run_integrated_pipeline
     import asyncio
 
     print_header("Running Integrated Pipeline")
@@ -357,8 +358,7 @@ def cmd_run(args):
         enable_realtime=args.realtime,
         realtime_duration=args.duration,
         quick_mode=args.quick,
-        output_dir=args.output,
-        full_mode=args.full
+        generate_report=False # CLI doesn't have explicit report flag in run command yet, or use args if added
     ))
 
 
