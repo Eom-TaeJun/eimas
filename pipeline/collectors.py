@@ -1,8 +1,26 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Collectors
-==========================
-Phase 1: 데이터 수집 모듈
+EIMAS Pipeline - Collectors Module
+===================================
+
+Purpose:
+    Phase 1 데이터 수집 담당 (Data Collection)
+
+Functions:
+    - collect_fred_data() -> FREDSummary
+    - collect_market_data(lookback_days) -> Dict[str, DataFrame]
+    - collect_crypto_data() -> Dict[str, DataFrame]
+    - collect_market_indicators() -> IndicatorsSummary
+
+Dependencies:
+    - lib.fred_collector
+    - lib.data_collector
+    - lib.market_indicators
+
+Example:
+    from pipeline.collectors import collect_fred_data
+    fred = collect_fred_data()
+    print(fred.net_liquidity)
 """
 
 import pandas as pd
@@ -14,6 +32,9 @@ from lib.fred_collector import FREDCollector
 from lib.data_collector import DataManager
 from lib.market_indicators import MarketIndicatorsCollector
 from pipeline.schemas import FREDSummary, IndicatorsSummary
+from pipeline.exceptions import get_logger, log_error, CollectionError
+
+logger = get_logger("collectors")
 
 def collect_fred_data() -> FREDSummary:
     """FRED 데이터 수집"""
@@ -53,7 +74,7 @@ def collect_fred_data() -> FREDSummary:
             warnings=summary.warnings
         )
     except Exception as e:
-        print(f"      ✗ FRED error: {e}")
+        log_error(logger, "FRED collection failed", e)
         return FREDSummary(timestamp=datetime.now().isoformat())
 
 def collect_market_data(lookback_days: int = 365) -> Dict[str, pd.DataFrame]:
@@ -75,7 +96,7 @@ def collect_market_data(lookback_days: int = 365) -> Dict[str, pd.DataFrame]:
         print(f"      ✓ Collected {len(market_data)} tickers")
         return market_data
     except Exception as e:
-        print(f"      ✗ Market data error: {e}")
+        log_error(logger, "Market data collection failed", e)
         return {}
 
 def collect_crypto_data() -> Dict[str, pd.DataFrame]:
@@ -92,7 +113,7 @@ def collect_crypto_data() -> Dict[str, pd.DataFrame]:
         print(f"      ✓ Collected {len(crypto_data)} crypto tickers")
         return crypto_data
     except Exception as e:
-        print(f"      ✗ Crypto data error: {e}")
+        log_error(logger, "Crypto data collection failed", e)
         return {}
 
 def collect_market_indicators() -> IndicatorsSummary:
@@ -113,6 +134,6 @@ def collect_market_indicators() -> IndicatorsSummary:
             raw_data=summary.to_dict()
         )
     except Exception as e:
-        print(f"      ✗ Indicators error: {e}")
+        log_error(logger, "Indicator collection failed", e)
         return IndicatorsSummary(timestamp=datetime.now().isoformat())
 

@@ -1,8 +1,29 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Analyzers
-=========================
-Phase 2: 시장 분석 모듈
+EIMAS Pipeline - Analyzers Module
+==================================
+
+Purpose:
+    Phase 2 시장 분석 담당 (Market Analysis)
+
+Functions:
+    - detect_regime(ticker) -> RegimeResult
+    - detect_events(fred_summary, market_data) -> List[Event]
+    - analyze_liquidity() -> LiquiditySignal
+    - analyze_critical_path(market_data) -> CriticalPathResult
+    - analyze_etf_flow() -> ETFFlowResult
+    - generate_explanation(market_data) -> Dict
+
+Dependencies:
+    - lib.regime_detector
+    - lib.event_framework
+    - lib.liquidity_analysis
+    - lib.critical_path
+
+Example:
+    from pipeline.analyzers import detect_regime
+    regime = detect_regime('SPY')
+    print(regime.confidence)
 """
 
 from typing import Dict, List, Any

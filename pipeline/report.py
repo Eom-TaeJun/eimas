@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Reporting
-=========================
-Phase 6: AI 리포트 생성 모듈
+EIMAS Pipeline - Report Module
+===============================
+
+Purpose:
+    Phase 6 AI 리포트 생성 담당 (AI Reporting)
+
+Functions:
+    - generate_ai_report(result, market_data) -> AIReport
+
+Dependencies:
+    - lib.ai_report_generator
+
+Example:
+    from pipeline.report import generate_ai_report
+    report = await generate_ai_report(result, market_data)
+    print(report.report_path)
 """
 
 import asyncio

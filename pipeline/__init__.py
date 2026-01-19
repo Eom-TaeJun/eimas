@@ -4,13 +4,13 @@ EIMAS Pipeline Package
 모듈화된 분석 파이프라인 구성 요소
 """
 
-from .mod_collectors import (
+from .collectors import (
     collect_fred_data,
     collect_market_data,
     collect_crypto_data,
     collect_market_indicators
 )
-from .mod_analyzers import (
+from .analyzers import (
     detect_regime,
     detect_events,
     analyze_liquidity,
@@ -18,19 +18,19 @@ from .mod_analyzers import (
     analyze_etf_flow,
     generate_explanation
 )
-from .mod_debate import (
+from .debate import (
     run_dual_mode_debate,
     extract_consensus
 )
-from .mod_realtime import (
+from .realtime import (
     run_realtime_stream
 )
-from .mod_storage import (
+from .storage import (
     save_result_json,
     save_to_trading_db,
     save_to_event_db
 )
-from .mod_report import (
+from .report import (
     generate_ai_report
 )
 from .schemas import (

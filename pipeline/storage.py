@@ -1,8 +1,24 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Storage
-=======================
-Phase 5: 데이터 저장 모듈
+EIMAS Pipeline - Storage Module
+================================
+
+Purpose:
+    Phase 5 데이터 저장 담당 (Data Storage)
+
+Functions:
+    - save_result_json(result, output_dir) -> str
+    - save_to_trading_db(signals)
+    - save_to_event_db(events)
+
+Dependencies:
+    - lib.trading_db
+    - lib.event_db
+
+Example:
+    from pipeline.storage import save_result_json
+    path = save_result_json(result)
+    print(f"Saved to {path}")
 """
 
 import json

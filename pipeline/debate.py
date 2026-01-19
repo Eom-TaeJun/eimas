@@ -1,8 +1,23 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Debate
-======================
-Phase 3: 멀티 에이전트 토론 모듈
+EIMAS Pipeline - Debate Module
+===============================
+
+Purpose:
+    Phase 3 멀티 에이전트 토론 담당 (Multi-Agent Debate)
+
+Functions:
+    - run_dual_mode_debate(market_data) -> DebateResult
+    - extract_consensus(debate_result) -> Dict
+
+Dependencies:
+    - agents.orchestrator
+    - lib.dual_mode_analyzer
+
+Example:
+    from pipeline.debate import run_dual_mode_debate
+    result = await run_dual_mode_debate(market_data)
+    print(result.final_recommendation)
 """
 
 import asyncio
@@ -12,28 +27,27 @@ import pandas as pd
 # EIMAS 라이브러리
 from agents.orchestrator import MetaOrchestrator
 from lib.dual_mode_analyzer import DualModeAnalyzer, ModeResult, AnalysisMode
-from lib.data_collector import DataManager
 from pipeline.schemas import DebateResult
 
 async def run_single_mode(mode_name: str, lookback: int, query: str, 
-                          market_data: Dict[str, pd.DataFrame] = None) -> ModeResult:
+                          market_data: Dict[str, pd.DataFrame]) -> ModeResult:
     """단일 모드 분석 실행"""
     print(f"\n[{mode_name}] Running mode analysis (lookback={lookback})...")
     
-    # 데이터가 없으면 수집 (Reference mode용)
-    if market_data is None:
-        dm = DataManager(lookback_days=lookback)
-        tickers_config = {
-            'market': [
-                {'ticker': 'SPY'}, {'ticker': 'QQQ'}, {'ticker': 'IWM'},
-                {'ticker': 'TLT'}, {'ticker': 'GLD'}
-            ]
-        }
-        market_data, _ = dm.collect_all(tickers_config)
+    # 데이터 필터링 (이미 수집된 데이터에서 lookback 기간만큼 자르기)
+    filtered_data = {}
+    if market_data:
+        for ticker, df in market_data.items():
+            if not df.empty:
+                # 최근 n일 데이터만 슬라이싱
+                filtered_data[ticker] = df.tail(lookback)
+    else:
+        print(f"      ⚠ No market data provided for {mode_name}")
+        filtered_data = {}
 
     try:
         orchestrator = MetaOrchestrator(verbose=False)
-        result = await orchestrator.run_with_debate(query, market_data)
+        result = await orchestrator.run_with_debate(query, filtered_data)
         
         # 결과 파싱
         consensus_by_topic = result.get('debate', {}).get('consensus', {})
@@ -90,8 +104,8 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     # 1. Full Mode
     full_result = await run_single_mode('FULL', lookback_full, query, market_data)
     
-    # 2. Reference Mode (데이터 별도 수집)
-    ref_result = await run_single_mode('REFERENCE', lookback_ref, query, None)
+    # 2. Reference Mode (데이터 필터링하여 사용)
+    ref_result = await run_single_mode('REFERENCE', lookback_ref, query, market_data)
     
     # 3. Compare
     print("\n[3.3] Comparing modes...")

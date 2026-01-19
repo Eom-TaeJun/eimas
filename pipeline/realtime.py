@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
 """
-EIMAS Pipeline Realtime
-========================
-Phase 4: 실시간 데이터 스트리밍 모듈
+EIMAS Pipeline - Realtime Module
+=================================
+
+Purpose:
+    Phase 4 실시간 스트리밍 담당 (Real-time Streaming)
+
+Functions:
+    - run_realtime_stream(duration, symbols) -> List[RealtimeSignal]
+
+Dependencies:
+    - lib.binance_stream
+    - lib.realtime_pipeline
+
+Example:
+    from pipeline.realtime import run_realtime_stream
+    signals = await run_realtime_stream(duration=30)
+    print(signals[-1].vpin)
 """
 
 import asyncio
