@@ -16,7 +16,14 @@ from .analyzers import (
     analyze_liquidity,
     analyze_critical_path,
     analyze_etf_flow,
-    generate_explanation
+    generate_explanation,
+    analyze_genius_act,
+    analyze_theme_etf,
+    analyze_shock_propagation,
+    optimize_portfolio_mst,
+    analyze_volume_anomalies,
+    track_events_with_news,
+    run_adaptive_portfolio
 )
 from .debate import (
     run_dual_mode_debate,
@@ -27,11 +34,14 @@ from .realtime import (
 )
 from .storage import (
     save_result_json,
+    save_result_md,
     save_to_trading_db,
     save_to_event_db
 )
 from .report import (
-    generate_ai_report
+    generate_ai_report,
+    run_whitening_check,
+    run_fact_check
 )
 from .schemas import (
     EIMASResult,
@@ -46,7 +56,11 @@ from .schemas import (
     RealtimeSignal,
     AIReport,
     MarketQualityMetrics,
-    BubbleRiskMetrics
+    BubbleRiskMetrics,
+    GeniusActResult,
+    ThemeETFResult,
+    ShockAnalysisResult,
+    PortfolioResult
 )
 
 __all__ = [
@@ -63,6 +77,13 @@ __all__ = [
     'analyze_critical_path',
     'analyze_etf_flow',
     'generate_explanation',
+    'analyze_genius_act',
+    'analyze_theme_etf',
+    'analyze_shock_propagation',
+    'optimize_portfolio_mst',
+    'analyze_volume_anomalies',
+    'track_events_with_news',
+    'run_adaptive_portfolio',
     
     # Debate
     'run_dual_mode_debate',
@@ -78,6 +99,8 @@ __all__ = [
     
     # Report
     'generate_ai_report',
+    'run_whitening_check',
+    'run_fact_check',
     
     # Schemas
     'EIMASResult',
@@ -92,5 +115,9 @@ __all__ = [
     'RealtimeSignal',
     'AIReport',
     'MarketQualityMetrics',
-    'BubbleRiskMetrics'
+    'BubbleRiskMetrics',
+    'GeniusActResult',
+    'ThemeETFResult',
+    'ShockAnalysisResult',
+    'PortfolioResult'
 ]

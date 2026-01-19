@@ -173,6 +173,47 @@ class AIReport:
         return asdict(self)
 
 @dataclass
+class GeniusActResult:
+    regime: str
+    signals: List[Dict]
+    digital_m2: float
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class ThemeETFResult:
+    theme: str
+    score: float
+    constituents: List[str]
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class ShockAnalysisResult:
+    impact_score: float
+    contagion_path: List[str]
+    vulnerable_assets: List[str]
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
+class PortfolioResult:
+    weights: Dict[str, float]
+    risk_contribution: Dict[str, float]
+    diversification_ratio: float
+    mst_hubs: List[str]
+    details: Dict
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+@dataclass
 class EIMASResult:
     """통합 실행 결과"""
     timestamp: str
@@ -297,21 +338,27 @@ class EIMASResult:
         md.append(f"**Generated**: {self.timestamp}")
         md.append("")
 
+        # Helper to get value from dict or object
+        def get_val(obj, key, default=None):
+            if obj is None: return default
+            if isinstance(obj, dict): return obj.get(key, default)
+            return getattr(obj, key, default)
+
         # 1. Data Summary
         md.append("## 1. Data Summary")
         if self.fred_summary:
-            md.append(f"- **RRP**: ${self.fred_summary.get('rrp', 0):.0f}B")
-            md.append(f"- **Net Liquidity**: ${self.fred_summary.get('net_liquidity', 0):.0f}B")
+            md.append(f"- **RRP**: ${get_val(self.fred_summary, 'rrp', 0):.0f}B")
+            md.append(f"- **Net Liquidity**: ${get_val(self.fred_summary, 'net_liquidity', 0):.0f}B")
         md.append(f"- **Tickers**: {self.market_data_count} (Crypto: {self.crypto_data_count})")
         md.append("")
 
         # 2. Regime
         md.append("## 2. Regime Analysis")
         if self.regime:
-            md.append(f"- **Regime**: {self.regime.get('regime', 'Unknown')}")
-            md.append(f"- **Volatility**: {self.regime.get('volatility', 'Unknown')}")
-            if self.regime.get('gmm_regime'):
-                md.append(f"- **GMM**: {self.regime.get('gmm_regime')} (Entropy: {self.regime.get('entropy', 0):.3f})")
+            md.append(f"- **Regime**: {get_val(self.regime, 'regime', 'Unknown')}")
+            md.append(f"- **Volatility**: {get_val(self.regime, 'volatility', 'Unknown')}")
+            if get_val(self.regime, 'gmm_regime'):
+                md.append(f"- **GMM**: {get_val(self.regime, 'gmm_regime')} (Entropy: {get_val(self.regime, 'entropy', 0):.3f})")
         md.append("")
 
         # 3. Risk

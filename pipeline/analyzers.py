@@ -13,12 +13,20 @@ Functions:
     - analyze_critical_path(market_data) -> CriticalPathResult
     - analyze_etf_flow() -> ETFFlowResult
     - generate_explanation(market_data) -> Dict
+    - analyze_genius_act() -> GeniusActResult (Advanced)
+    - analyze_theme_etf() -> ThemeETFResult (Advanced)
+    - analyze_shock_propagation(market_data) -> ShockAnalysisResult (Advanced)
+    - optimize_portfolio_mst(market_data) -> PortfolioResult (Advanced)
 
 Dependencies:
     - lib.regime_detector
     - lib.event_framework
     - lib.liquidity_analysis
     - lib.critical_path
+    - lib.genius_act_macro
+    - lib.custom_etf_builder
+    - lib.shock_propagation_graph
+    - lib.graph_clustered_portfolio
 
 Example:
     from pipeline.analyzers import detect_regime
@@ -38,11 +46,26 @@ from lib.critical_path import CriticalPathAggregator
 from lib.etf_flow_analyzer import ETFFlowAnalyzer
 from lib.explanation_generator import MarketExplanationGenerator
 
+# Advanced Libraries
+from lib.genius_act_macro import GeniusActMacroStrategy
+from lib.custom_etf_builder import CustomETFBuilder
+from lib.shock_propagation_graph import ShockPropagationGraph
+from lib.graph_clustered_portfolio import GraphClusteredPortfolio
+
+# Missing Microstructure & Adaptive Modules
+from lib.volume_analyzer import VolumeAnalyzer
+from lib.event_tracker import EventTracker
+from lib.adaptive_agents import AdaptivePortfolioManager, MarketCondition
+
 # Schemas
 from pipeline.schemas import (
     RegimeResult, Event, LiquiditySignal, 
-    CriticalPathResult, ETFFlowResult, FREDSummary
+    CriticalPathResult, ETFFlowResult, FREDSummary,
+    GeniusActResult, ThemeETFResult, ShockAnalysisResult, PortfolioResult
 )
+from pipeline.exceptions import get_logger, log_error
+
+logger = get_logger("analyzers")
 
 def detect_regime(ticker: str = 'SPY') -> RegimeResult:
     """시장 레짐 탐지"""
@@ -61,7 +84,7 @@ def detect_regime(ticker: str = 'SPY') -> RegimeResult:
             strategy=result.strategy
         )
     except Exception as e:
-        print(f"      ✗ Regime error: {e}")
+        log_error(logger, "Regime detection failed", e)
         return RegimeResult(
             timestamp=datetime.now().isoformat(),
             regime="Unknown", trend="Unknown", volatility="Unknown",
@@ -95,15 +118,13 @@ def detect_events(fred_summary: FREDSummary, market_data: Dict[str, pd.DataFrame
                 ))
                 print(f"      ⚠ {e.event_type.value}: {e.description}")
         
-        # 시장 이벤트 로직 추가 가능
-        
         if not events:
             print("      ✓ No events detected")
             
         return events
         
     except Exception as e:
-        print(f"      ✗ Event detection error: {e}")
+        log_error(logger, "Event detection failed", e)
         return []
 
 def analyze_liquidity() -> LiquiditySignal:
@@ -121,7 +142,7 @@ def analyze_liquidity() -> LiquiditySignal:
             causality_results=result.get('causality_results', {})
         )
     except Exception as e:
-        print(f"      ✗ Liquidity analysis error: {e}")
+        log_error(logger, "Liquidity analysis failed", e)
         return LiquiditySignal(signal="NEUTRAL", causality_results={})
 
 def analyze_critical_path(market_data: Dict[str, pd.DataFrame]) -> CriticalPathResult:
@@ -144,7 +165,7 @@ def analyze_critical_path(market_data: Dict[str, pd.DataFrame]) -> CriticalPathR
             details=getattr(result, 'path_scores', {})
         )
     except Exception as e:
-        print(f"      ✗ Critical path error: {e}")
+        log_error(logger, "Critical path analysis failed", e)
         return CriticalPathResult(
             risk_score=0.0, risk_level="Unknown", 
             primary_risk_path="N/A", details={}
@@ -166,7 +187,7 @@ def analyze_etf_flow() -> ETFFlowResult:
             details=result
         )
     except Exception as e:
-        print(f"      ✗ ETF flow error: {e}")
+        log_error(logger, "ETF flow analysis failed", e)
         return ETFFlowResult(rotation_signal="N/A", style_signal="N/A", details={})
 
 def generate_explanation(market_data: Dict[str, pd.DataFrame]) -> Dict:
@@ -181,5 +202,160 @@ def generate_explanation(market_data: Dict[str, pd.DataFrame]) -> Dict:
             
         return explanation
     except Exception as e:
-        print(f"      ✗ Explanation error: {e}")
+        log_error(logger, "Explanation generation failed", e)
+        return {}
+
+# ============================================================================
+# Advanced Analyzers (Restored)
+# ============================================================================
+
+def analyze_genius_act() -> GeniusActResult:
+    """Genius Act (스테이블코인 유동성) 분석"""
+    print("\n[2.7] Genius Act Macro analysis...")
+    try:
+        strategy = GeniusActMacroStrategy()
+        signals = strategy.analyze_stablecoin_issuance()
+        m2 = strategy.calculate_digital_m2()
+        
+        regime = "NEUTRAL"
+        if signals:
+            regime = signals[-1].get('regime', 'NEUTRAL')
+            
+        print(f"      ✓ Digital M2: ${m2:,.0f}")
+        print(f"      ✓ Regime: {regime}")
+        
+        return GeniusActResult(
+            regime=regime,
+            signals=signals,
+            digital_m2=m2,
+            details={'signals_count': len(signals)}
+        )
+    except Exception as e:
+        log_error(logger, "Genius Act analysis failed", e)
+        return GeniusActResult(regime="N/A", signals=[], digital_m2=0.0, details={})
+
+def analyze_theme_etf() -> ThemeETFResult:
+    """테마 ETF 분석"""
+    print("\n[2.8] Theme ETF analysis...")
+    try:
+        builder = CustomETFBuilder()
+        result = builder.build_theme_etf("AI & Semiconductor")
+        
+        print(f"      ✓ Theme: {result.get('theme', 'Unknown')}")
+        
+        return ThemeETFResult(
+            theme=result.get('theme', 'Unknown'),
+            score=result.get('score', 0.0),
+            constituents=result.get('constituents', []),
+            details=result
+        )
+    except Exception as e:
+        log_error(logger, "Theme ETF analysis failed", e)
+        return ThemeETFResult(theme="N/A", score=0.0, constituents=[], details={})
+
+def analyze_shock_propagation(market_data: Dict[str, pd.DataFrame]) -> ShockAnalysisResult:
+    """충격 전파 시뮬레이션"""
+    print("\n[2.9] Shock propagation analysis...")
+    try:
+        # returns DataFrame 생성
+        returns_df = pd.DataFrame()
+        for ticker, df in market_data.items():
+            if not df.empty and 'Close' in df.columns:
+                returns_df[ticker] = df['Close'].pct_change()
+        returns_df = returns_df.dropna()
+        
+        graph = ShockPropagationGraph()
+        graph.build_from_returns(returns_df)
+        
+        # SPY 충격 시뮬레이션
+        impact = graph.simulate_shock('SPY', shock_size=-0.05)
+        
+        print(f"      ✓ SPY Shock Impact: {len(impact.get('affected_nodes', []))} nodes affected")
+        
+        return ShockAnalysisResult(
+            impact_score=impact.get('total_impact', 0.0),
+            contagion_path=impact.get('propagation_path', []),
+            vulnerable_assets=impact.get('vulnerable_assets', []),
+            details=impact
+        )
+    except Exception as e:
+        log_error(logger, "Shock propagation analysis failed", e)
+        return ShockAnalysisResult(impact_score=0.0, contagion_path=[], vulnerable_assets=[], details={})
+
+def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioResult:
+    """GC-HRP 및 MST 기반 포트폴리오 최적화"""
+    print("\n[2.10] Graph-Clustered Portfolio optimization...")
+    try:
+        optimizer = GraphClusteredPortfolio()
+        result = optimizer.optimize(market_data)
+        
+        weights = result.get('weights', {})
+        mst_info = result.get('mst_info', {})
+        
+        top_weights = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:3]
+        top_str = ", ".join([f"{t}:{w:.0%}" for t, w in top_weights])
+        
+        print(f"      ✓ Top Allocation: {top_str}")
+        print(f"      ✓ Diversification Ratio: {result.get('diversification_ratio', 0):.2f}")
+        
+        return PortfolioResult(
+            weights=weights,
+            risk_contribution=result.get('risk_contribution', {}),
+            diversification_ratio=result.get('diversification_ratio', 0.0),
+            mst_hubs=mst_info.get('hubs', []),
+            details=result
+        )
+    except Exception as e:
+        log_error(logger, "Portfolio optimization failed", e)
+        return PortfolioResult(weights={}, risk_contribution={}, diversification_ratio=0.0, mst_hubs=[], details={})
+
+# ============================================================================
+# Missing Advanced Analyzers (Restored)
+# ============================================================================
+
+def analyze_volume_anomalies(market_data: Dict[str, pd.DataFrame]) -> List[Dict]:
+    """거래량 이상 징후 탐지"""
+    print("\n[2.11] Volume anomaly detection...")
+    try:
+        analyzer = VolumeAnalyzer()
+        anomalies = analyzer.detect_anomalies(market_data)
+        print(f"      ✓ Anomalies: {len(anomalies)} detected")
+        return anomalies
+    except Exception as e:
+        log_error(logger, "Volume anomaly detection failed", e)
+        return []
+
+async def track_events_with_news(market_data: Dict[str, pd.DataFrame]) -> Dict:
+    """이상 징후 발생 시 뉴스 검색 (Event Tracking)"""
+    print("\n[2.12] Event tracking (anomaly -> news)...")
+    try:
+        tracker = EventTracker()
+        # 최근 데이터 기준 이상 감지 및 뉴스 검색
+        # 주의: API 호출 비용 발생 가능
+        results = await tracker.detect_and_track(market_data)
+        print(f"      ✓ Tracked Events: {len(results.get('events', []))}")
+        return results
+    except Exception as e:
+        log_error(logger, "Event tracking failed", e)
+        return {}
+
+def run_adaptive_portfolio(regime_result: RegimeResult) -> Dict:
+    """적응형 포트폴리오 전략 수립"""
+    print("\n[2.13] Adaptive portfolio agents...")
+    try:
+        manager = AdaptivePortfolioManager()
+        
+        # RegimeResult -> MarketCondition 변환
+        condition = MarketCondition(
+            timestamp=regime_result.timestamp,
+            regime_confidence=regime_result.confidence * 100, # 0-100 scale
+            trend=regime_result.trend,
+            volatility=regime_result.volatility
+        )
+        
+        allocation = manager.propose_allocation(condition)
+        print(f"      ✓ Adaptive Allocation: {allocation}")
+        return allocation
+    except Exception as e:
+        log_error(logger, "Adaptive portfolio analysis failed", e)
         return {}

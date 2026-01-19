@@ -24,15 +24,11 @@ from datetime import datetime
 from pathlib import Path
 
 # Pipeline Modules
-from pipeline import (
-    EIMASResult,
-    collect_fred_data, collect_market_data,
-    collect_crypto_data, collect_market_indicators,
-    detect_regime, detect_events, analyze_liquidity,
-    analyze_critical_path, analyze_etf_flow, generate_explanation,
-    run_dual_mode_debate, run_realtime_stream,
-    save_result_json, save_to_trading_db, save_to_event_db,
-    generate_ai_report
+from pipeline.storage import (
+    save_result_json, save_result_md, save_to_trading_db, save_to_event_db
+)
+from pipeline.report import (
+    generate_ai_report, run_whitening_check, run_fact_check
 )
 
 async def run_integrated_pipeline(
@@ -76,6 +72,27 @@ async def run_integrated_pipeline(
         etf_res = analyze_etf_flow()
         result.etf_flow_result = etf_res.to_dict()
         
+        # Advanced Analysis
+        ga_res = analyze_genius_act()
+        result.genius_act_signals = ga_res.signals
+        result.genius_act_regime = ga_res.regime
+        
+        theme_res = analyze_theme_etf()
+        result.theme_etf_analysis = theme_res.to_dict()
+        
+        shock_res = analyze_shock_propagation(market_data)
+        result.shock_propagation = shock_res.to_dict()
+        
+        port_res = optimize_portfolio_mst(market_data)
+        result.portfolio_weights = port_res.weights
+        
+        # Microstructure & Event Tracking
+        vol_anomalies = analyze_volume_anomalies(market_data)
+        result.volume_anomalies = vol_anomalies
+        
+        tracked_events = await track_events_with_news(market_data)
+        result.event_tracking = tracked_events
+        
         expl_res = generate_explanation(market_data)
         # result.market_explanation = expl_res # 스키마에 추가 필요할 수 있음
 
@@ -93,6 +110,11 @@ async def run_integrated_pipeline(
     result.confidence = debate_res.confidence
     result.risk_level = debate_res.risk_level
     result.warnings.extend(debate_res.warnings)
+    
+    # Adaptive Portfolio
+    if not quick_mode:
+        adaptive_alloc = run_adaptive_portfolio(regime_res)
+        result.adaptive_portfolios = adaptive_alloc
 
     # Phase 4: Realtime (Optional)
     if enable_realtime:
@@ -105,11 +127,30 @@ async def run_integrated_pipeline(
     print("\n[Phase 5] Saving Results...")
     save_to_event_db(events)
     output_file = save_result_json(result)
+    save_result_md(result)
 
     # Phase 6: Report (Optional)
+    report_content = ""
     if generate_report:
         print("\n[Phase 6] Generating Report...")
-        await generate_ai_report(result, market_data)
+        ai_report = await generate_ai_report(result, market_data)
+        report_content = ai_report.content
+
+    # Phase 7: Validation (Whitening & Fact Check)
+    if generate_report:
+        print("\n" + "=" * 50)
+        print("PHASE 7: VALIDATION")
+        print("=" * 50)
+        
+        whitening = run_whitening_check(result)
+        result.whitening_summary = whitening
+        
+        if report_content:
+            fact_grade = await run_fact_check(report_content)
+            result.fact_check_grade = fact_grade
+            
+        # Update JSON with validation results
+        save_result_json(result)
 
     # Summary
     elapsed = (datetime.now() - start_time).total_seconds()

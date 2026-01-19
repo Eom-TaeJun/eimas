@@ -55,6 +55,29 @@ def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
         print(f"      ✗ JSON save error: {e}")
         return ""
 
+def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
+    """결과를 Markdown 파일로 저장"""
+    print("\n[5.4] Saving Markdown summary...")
+    
+    if output_dir is None:
+        output_dir = Path(__file__).parent.parent / "outputs"
+    
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = output_dir / f"integrated_{timestamp_str}.md"
+
+    try:
+        md_content = result.to_markdown()
+        with open(output_file, 'w', encoding='utf-8') as f:
+            with open(output_file, 'w') as f:
+                f.write(md_content)
+        print(f"      ✓ Saved: {output_file}")
+        return str(output_file)
+    except Exception as e:
+        print(f"      ✗ Markdown save error: {e}")
+        return ""
+
 def save_to_trading_db(signals: List[RealtimeSignal]):
     """트레이딩 DB에 시그널 저장"""
     print("\n[5.2] Saving to Signal Database...")

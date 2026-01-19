@@ -127,7 +127,8 @@ async def run_research(request: ResearchRequest):
     사용자의 쿼리를 분석하고 멀티 에이전트 토론을 수행하여 결과를 반환합니다.
     (실제로는 통합 파이프라인을 실행하고 관련 섹션을 추출합니다)
     """
-    from pipeline.runner import run_integrated_pipeline
+    # Updated import for modular pipeline
+    from main_integrated import run_integrated_pipeline
     
     try:
         # 통합 파이프라인 실행
