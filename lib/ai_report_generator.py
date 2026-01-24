@@ -1116,6 +1116,19 @@ class AIReportGenerator:
             if ark.get('new_positions'):
                 lines.append(f"- 신규 편입: {', '.join(ark['new_positions'])}")
 
+        # 6. Extended Metrics
+        ext = result.get('extended_data', {})
+        if ext:
+            lines.append("\n**Extended Market Metrics (Valuation & Sentiment):**")
+            pcr = ext.get('put_call_ratio', {})
+            if pcr: lines.append(f"- Put/Call Ratio: {pcr.get('ratio', 0.0):.2f} ({pcr.get('sentiment')})")
+            
+            fund = ext.get('fundamentals', {})
+            if fund: lines.append(f"- SP500 Earnings Yield: {fund.get('earnings_yield', 0.0):.2f}%")
+            
+            stable = ext.get('digital_liquidity', {})
+            if stable: lines.append(f"- Stablecoin Market Cap: ${stable.get('total_mcap', 0)/1e9:.1f}B")
+
         return "\n".join(lines)
 
     def _build_ib_prompt(self, result: Dict, shap_text: str, drivers: List) -> str:

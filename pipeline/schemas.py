@@ -321,6 +321,9 @@ class EIMASResult:
     proof_of_index: Dict = field(default_factory=dict)
     dtw_similarity: Dict = field(default_factory=dict)
     dbscan_outliers: Dict = field(default_factory=dict)
+    
+    # Extended Data Sources (PCR, Valuation, Crypto)
+    extended_data: Dict = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -483,6 +486,19 @@ class EIMASResult:
                 md.append(f"- **New Positions**: {', '.join(ark['new_positions'])}")
             if not (ark.get('consensus_buys') or ark.get('consensus_sells')):
                 md.append("- No major consensus trades detected")
+
+        # NEW: Extended Metrics (PCR, Valuation)
+        if self.extended_data:
+            md.append("### Extended Market Metrics")
+            ext = self.extended_data
+            pcr = ext.get('put_call_ratio', {})
+            if pcr: md.append(f"- **Put/Call Ratio**: {pcr.get('ratio', 0):.2f} ({pcr.get('sentiment')})")
+            
+            fund = ext.get('fundamentals', {})
+            if fund: md.append(f"- **SP500 Earnings Yield**: {fund.get('earnings_yield', 0):.2f}%")
+            
+            stable = ext.get('digital_liquidity', {})
+            if stable: md.append(f"- **Stablecoin Mcap**: ${stable.get('total_mcap', 0)/1e9:.1f}B")
 
         md.append("")
 

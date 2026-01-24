@@ -1,434 +1,192 @@
+#!/usr/bin/env python3
 """
-Extended Data Sources - 확장 데이터 소스
+Extended Data Sources Collector
+================================
+무료 API를 활용한 확장 데이터 수집 모듈
 
-1. On-Chain Data (DeFiLlama, etc.)
-2. Middle East Market Data (Saudi, UAE, Qatar, etc.)
-3. Alternative Data Sources
+1. Yahoo Finance Options: Put/Call Ratio 계산
+2. Yahoo Finance Fundamentals: PE Ratio, Earnings Yield
+3. DefiLlama: Stablecoin Market Cap (Digital Liquidity)
+4. FRED: High Yield Spreads (Risk Appetite)
+
+Usage:
+    collector = ExtendedDataCollector()
+    data = await collector.collect_all()
 """
 
-import requests
+import yfinance as yf
 import pandas as pd
+import numpy as np
+import aiohttp
+import asyncio
+from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-import json
-import time
-
-
-# ============================================================================
-# On-Chain Data (DeFiLlama)
-# ============================================================================
-
-@dataclass
-class TVLData:
-    """Total Value Locked 데이터"""
-    protocol: str
-    chain: str
-    tvl: float
-    tvl_change_24h: float
-    tvl_change_7d: float
-    timestamp: str
-
-
-@dataclass
-class StablecoinData:
-    """스테이블코인 시장 데이터"""
-    symbol: str
-    name: str
-    circulating: float
-    circulating_change_7d: float
-    price: float
-    peg_deviation: float
-
-
-class DeFiLlamaCollector:
-    """
-    DeFiLlama API를 통한 온체인 데이터 수집
-
-    무료 API, 인증 불필요
-    https://defillama.com/docs/api
-    """
-
-    BASE_URL = "https://api.llama.fi"
-    STABLECOINS_URL = "https://stablecoins.llama.fi"
-
-    def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'Accept': 'application/json'
-        })
-
-    def get_protocols_tvl(self) -> List[Dict]:
-        """전체 프로토콜 TVL 조회"""
-        try:
-            resp = self.session.get(f"{self.BASE_URL}/protocols")
-            resp.raise_for_status()
-            data = resp.json()
-
-            # 상위 20개만
-            protocols = []
-            for p in data[:20]:
-                protocols.append({
-                    'name': p.get('name'),
-                    'chain': p.get('chain', 'Multi'),
-                    'tvl': p.get('tvl', 0),
-                    'change_1d': p.get('change_1d', 0),
-                    'change_7d': p.get('change_7d', 0),
-                    'category': p.get('category', 'Unknown')
-                })
-
-            return protocols
-        except Exception as e:
-            print(f"[DeFiLlama] Error fetching protocols: {e}")
-            return []
-
-    def get_chain_tvl(self, chain: str = "Ethereum") -> Dict:
-        """특정 체인 TVL 조회"""
-        try:
-            resp = self.session.get(f"{self.BASE_URL}/v2/historicalChainTvl/{chain}")
-            resp.raise_for_status()
-            data = resp.json()
-
-            if data:
-                latest = data[-1]
-                prev_day = data[-2] if len(data) > 1 else latest
-                prev_week = data[-7] if len(data) > 7 else latest
-
-                return {
-                    'chain': chain,
-                    'tvl': latest.get('tvl', 0),
-                    'tvl_change_1d': (latest['tvl'] / prev_day['tvl'] - 1) * 100 if prev_day['tvl'] else 0,
-                    'tvl_change_7d': (latest['tvl'] / prev_week['tvl'] - 1) * 100 if prev_week['tvl'] else 0,
-                    'timestamp': datetime.fromtimestamp(latest.get('date', 0)).isoformat()
-                }
-            return {}
-        except Exception as e:
-            print(f"[DeFiLlama] Error fetching chain TVL: {e}")
-            return {}
-
-    def get_stablecoins(self) -> List[StablecoinData]:
-        """스테이블코인 시장 데이터 조회"""
-        try:
-            resp = self.session.get(f"{self.STABLECOINS_URL}/stablecoins?includePrices=true")
-            resp.raise_for_status()
-            data = resp.json()
-
-            stablecoins = []
-            for s in data.get('peggedAssets', [])[:10]:
-                circulating = s.get('circulating', {}).get('peggedUSD', 0)
-                price = s.get('price', 1.0)
-
-                stablecoins.append(StablecoinData(
-                    symbol=s.get('symbol', ''),
-                    name=s.get('name', ''),
-                    circulating=circulating,
-                    circulating_change_7d=0,  # API에서 직접 제공 안 함
-                    price=price if price else 1.0,
-                    peg_deviation=abs(price - 1.0) * 100 if price else 0
-                ))
-
-            return stablecoins
-        except Exception as e:
-            print(f"[DeFiLlama] Error fetching stablecoins: {e}")
-            return []
-
-    def get_yields(self, pool_count: int = 10) -> List[Dict]:
-        """DeFi Yield 데이터 조회"""
-        try:
-            resp = self.session.get(f"{self.BASE_URL}/pools")
-            resp.raise_for_status()
-            data = resp.json()
-
-            # TVL 기준 상위 풀
-            pools = sorted(data.get('data', []), key=lambda x: x.get('tvlUsd', 0), reverse=True)
-
-            result = []
-            for p in pools[:pool_count]:
-                result.append({
-                    'pool': p.get('pool', ''),
-                    'project': p.get('project', ''),
-                    'chain': p.get('chain', ''),
-                    'symbol': p.get('symbol', ''),
-                    'tvl': p.get('tvlUsd', 0),
-                    'apy': p.get('apy', 0),
-                    'apy_base': p.get('apyBase', 0),
-                    'apy_reward': p.get('apyReward', 0)
-                })
-
-            return result
-        except Exception as e:
-            print(f"[DeFiLlama] Error fetching yields: {e}")
-            return []
-
-    def get_summary(self) -> Dict:
-        """온체인 데이터 요약"""
-        chains = ['Ethereum', 'Solana', 'Arbitrum', 'Base', 'Polygon']
-
-        chain_tvls = {}
-        total_tvl = 0
-        for chain in chains:
-            data = self.get_chain_tvl(chain)
-            if data:
-                chain_tvls[chain] = data
-                total_tvl += data.get('tvl', 0)
-
-        stablecoins = self.get_stablecoins()
-        total_stablecoin = sum(s.circulating for s in stablecoins)
-
-        return {
-            'timestamp': datetime.now().isoformat(),
-            'total_tvl': total_tvl,
-            'chain_tvls': chain_tvls,
-            'stablecoin_market_cap': total_stablecoin,
-            'top_stablecoins': [
-                {'symbol': s.symbol, 'circulating': s.circulating, 'peg_deviation': s.peg_deviation}
-                for s in stablecoins[:5]
-            ]
-        }
-
-
-# ============================================================================
-# Middle East Market Data
-# ============================================================================
-
-class MiddleEastMarketCollector:
-    """
-    중동 시장 데이터 수집
-
-    지원 시장:
-    - Saudi Arabia (Tadawul)
-    - UAE (DFM, ADX)
-    - Qatar (QSE)
-    - Kuwait (Boursa Kuwait)
-    """
-
-    # 중동 시장 ETF 및 지수
-    MENA_TICKERS = {
-        # ETF
-        'KSA': 'iShares MSCI Saudi Arabia ETF',
-        'UAE': 'iShares MSCI UAE ETF',
-        # 'GULF': 상장폐지됨 (2026-01-10 확인)
-        'TUR': 'iShares MSCI Turkey ETF',
-        'EGPT': 'VanEck Egypt Index ETF',
-        'QAT': 'iShares MSCI Qatar ETF',
-
-        # 주요 기업 ADR
-        'ARAMCO': 'Saudi Aramco (참고용)',
-        'EIBOR': 'Emirates NBD (참고용)',
-    }
-
-    # 중동 주요 지수 (Yahoo Finance 심볼)
-    MENA_INDICES = {
-        '^TASI': 'Tadawul All Share Index (Saudi)',
-        '^DFMGI': 'Dubai Financial Market General Index',
-        '^ADI': 'Abu Dhabi Securities Exchange Index',
-        '^QSI': 'Qatar Stock Exchange Index',
-    }
-
-    def __init__(self):
-        import yfinance as yf
-        self.yf = yf
-
-    def get_etf_data(self, period: str = '1mo') -> Dict[str, pd.DataFrame]:
-        """중동 ETF 데이터 수집"""
-        data = {}
-        for ticker in ['KSA', 'UAE', 'TUR', 'QAT']:
-            try:
-                df = self.yf.download(ticker, period=period, progress=False)
-                if len(df) > 0:
-                    data[ticker] = df
-            except Exception as e:
-                print(f"[MENA] Error fetching {ticker}: {e}")
-
-        return data
-
-    def get_performance_summary(self) -> Dict:
-        """중동 시장 성과 요약"""
-        etf_data = self.get_etf_data('3mo')
-
-        summary = {
-            'timestamp': datetime.now().isoformat(),
-            'etfs': {}
-        }
-
-        for ticker, df in etf_data.items():
-            if len(df) < 2:
-                continue
-
-            close = df['Close']
-            current = float(close.iloc[-1])
-            prev_day = float(close.iloc[-2]) if len(close) > 1 else current
-            prev_week = float(close.iloc[-5]) if len(close) > 5 else current
-            prev_month = float(close.iloc[-22]) if len(close) > 22 else current
-
-            summary['etfs'][ticker] = {
-                'name': self.MENA_TICKERS.get(ticker, ticker),
-                'price': current,
-                'return_1d': (current / prev_day - 1) * 100,
-                'return_1w': (current / prev_week - 1) * 100,
-                'return_1m': (current / prev_month - 1) * 100,
-                'volume': float(df['Volume'].iloc[-1])
-            }
-
-        # 지역별 평균 수익률
-        if summary['etfs']:
-            returns_1m = [e['return_1m'] for e in summary['etfs'].values()]
-            summary['avg_return_1m'] = sum(returns_1m) / len(returns_1m)
-
-        return summary
-
-    def get_oil_correlation(self) -> Dict:
-        """중동 시장과 유가 상관관계"""
-        try:
-            # 데이터 수집
-            tickers = ['KSA', 'UAE', 'USO']  # 사우디, UAE, 유가
-            data = {}
-            for ticker in tickers:
-                df = self.yf.download(ticker, period='1y', progress=False)
-                if len(df) > 0:
-                    data[ticker] = df['Close']
-
-            if len(data) < 3:
-                return {}
-
-            # 상관관계 계산
-            combined = pd.DataFrame(data)
-            returns = combined.pct_change().dropna()
-            corr = returns.corr()
-
-            return {
-                'timestamp': datetime.now().isoformat(),
-                'ksa_oil_corr': float(corr.loc['KSA', 'USO']),
-                'uae_oil_corr': float(corr.loc['UAE', 'USO']),
-                'interpretation': self._interpret_oil_corr(float(corr.loc['KSA', 'USO']))
-            }
-        except Exception as e:
-            print(f"[MENA] Error calculating oil correlation: {e}")
-            return {}
-
-    def _interpret_oil_corr(self, corr: float) -> str:
-        """유가 상관관계 해석"""
-        if corr > 0.7:
-            return "강한 양의 상관관계 - 유가 상승 시 중동 시장 상승 기대"
-        elif corr > 0.4:
-            return "중간 양의 상관관계 - 유가가 중동 시장에 부분적 영향"
-        elif corr > 0:
-            return "약한 양의 상관관계 - 유가 외 요인이 더 중요"
-        else:
-            return "음의 상관관계 - 비정상적 상황, 추가 분석 필요"
-
-
-# ============================================================================
-# 통합 데이터 수집기
-# ============================================================================
 
 class ExtendedDataCollector:
-    """확장 데이터 통합 수집"""
-
     def __init__(self):
-        self.defi = DeFiLlamaCollector()
-        self.mena = MiddleEastMarketCollector()
+        self.headers = {'User-Agent': 'Mozilla/5.0'}
 
-    def collect_all(self) -> Dict:
+    async def collect_all(self) -> Dict[str, Any]:
         """모든 확장 데이터 수집"""
-        print("[ExtendedData] Collecting on-chain data...")
-        onchain = self.defi.get_summary()
+        print("\n[Extended Data] Collecting additional metrics...")
+        
+        results = {}
+        
+        # 병렬 실행
+        task_pcr = self.calculate_put_call_ratio('SPY')
+        task_fund = self.get_sp500_fundamentals()
+        task_stable = self.get_stablecoin_mcap()
+        task_spread = self.get_credit_spreads()
+        
+        pcr, fund, stable, spread = await asyncio.gather(
+            task_pcr, task_fund, task_stable, task_spread, 
+            return_exceptions=True
+        )
+        
+        # 결과 처리
+        if not isinstance(pcr, Exception):
+            results['put_call_ratio'] = pcr
+            print(f"      ✓ SPY Put/Call Ratio: {pcr.get('ratio', 0.0):.2f}")
+            
+        if not isinstance(fund, Exception):
+            results['fundamentals'] = fund
+            print(f"      ✓ SP500 Earnings Yield: {fund.get('earnings_yield', 0.0):.2f}%")
+            
+        if not isinstance(stable, Exception):
+            results['digital_liquidity'] = stable
+            print(f"      ✓ Stablecoin Market Cap: ${stable.get('total_mcap', 0)/1e9:.1f}B")
+            
+        if not isinstance(spread, Exception):
+            results['credit_spreads'] = spread
+            print(f"      ✓ High Yield Spread: {spread.get('value', 0.0):.2f}%")
+            
+        return results
 
-        print("[ExtendedData] Collecting MENA market data...")
-        mena = self.mena.get_performance_summary()
-        oil_corr = self.mena.get_oil_correlation()
+    async def calculate_put_call_ratio(self, ticker: str) -> Dict[str, float]:
+        """
+        옵션 체인을 통한 Put/Call Ratio 계산 (Volume 기준)
+        """
+        try:
+            # 동기 함수인 yfinance를 비동기로 실행
+            def _get_options():
+                obj = yf.Ticker(ticker)
+                # 가장 가까운 만기일 2개 선택
+                expirations = obj.options[:2]
+                total_puts = 0
+                total_calls = 0
+                
+                for exp in expirations:
+                    opt = obj.option_chain(exp)
+                    total_puts += opt.puts['volume'].sum()
+                    total_calls += opt.calls['volume'].sum()
+                
+                return total_puts, total_calls
 
-        return {
-            'timestamp': datetime.now().isoformat(),
-            'onchain': onchain,
-            'mena_markets': mena,
-            'mena_oil_correlation': oil_corr
-        }
+            loop = asyncio.get_event_loop()
+            puts, calls = await loop.run_in_executor(None, _get_options)
+            
+            ratio = puts / calls if calls > 0 else 0.0
+            
+            # 해석
+            sentiment = "NEUTRAL"
+            if ratio > 1.0: sentiment = "BEARISH/HEDGING" # 풋이 더 많음 (공포)
+            elif ratio < 0.7: sentiment = "BULLISH/GREED" # 콜이 훨씬 많음 (탐욕)
+            
+            return {
+                "ratio": float(ratio),
+                "total_puts": int(puts),
+                "total_calls": int(calls),
+                "sentiment": sentiment
+            }
+        except Exception as e:
+            # print(f"Error calculating PCR: {e}")
+            return {"ratio": 0.0, "sentiment": "ERROR"}
 
-    def get_risk_signals(self) -> List[Dict]:
-        """확장 데이터 기반 리스크 시그널"""
-        signals = []
+    async def get_sp500_fundamentals(self) -> Dict[str, float]:
+        """
+        S&P 500 (SPY) 펀더멘털 데이터
+        - PE Ratio -> Earnings Yield (1/PE)
+        """
+        try:
+            def _get_info():
+                return yf.Ticker('SPY').info
 
-        # 1. 스테이블코인 De-peg 체크
-        stablecoins = self.defi.get_stablecoins()
-        for s in stablecoins:
-            if s.peg_deviation > 0.5:  # 0.5% 이상 괴리
-                signals.append({
-                    'type': 'stablecoin_depeg',
-                    'severity': 'HIGH' if s.peg_deviation > 1.0 else 'MEDIUM',
-                    'symbol': s.symbol,
-                    'deviation': s.peg_deviation,
-                    'message': f"{s.symbol} 페깅 이탈 {s.peg_deviation:.2f}%"
-                })
+            loop = asyncio.get_event_loop()
+            info = await loop.run_in_executor(None, _get_info)
+            
+            # Trailing PE가 없으면 기본값 사용 (안전장치)
+            pe_ratio = info.get('trailingPE', 25.0) 
+            if pe_ratio is None: pe_ratio = 25.0
+            
+            earnings_yield = (1.0 / pe_ratio) * 100
+            
+            return {
+                "pe_ratio": float(pe_ratio),
+                "earnings_yield": float(earnings_yield)
+            }
+        except Exception as e:
+            return {"pe_ratio": 0.0, "earnings_yield": 0.0}
 
-        # 2. TVL 급락 체크
-        eth_tvl = self.defi.get_chain_tvl('Ethereum')
-        if eth_tvl.get('tvl_change_7d', 0) < -10:
-            signals.append({
-                'type': 'tvl_drop',
-                'severity': 'HIGH',
-                'chain': 'Ethereum',
-                'change': eth_tvl['tvl_change_7d'],
-                'message': f"Ethereum TVL 7일간 {eth_tvl['tvl_change_7d']:.1f}% 감소"
-            })
+    async def get_stablecoin_mcap(self) -> Dict[str, float]:
+        """
+        DefiLlama API를 통한 스테이블코인 시총 (디지털 유동성)
+        """
+        url = "https://stablecoins.llama.fi/stablecoins?includePrices=true"
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        # 상위 5개 스테이블코인 합산 (USDT, USDC, DAI 등)
+                        pegged_coins = data.get('peggedAssets', [])
+                        total_mcap = 0.0
+                        
+                        top_coins = sorted(pegged_coins, key=lambda x: x.get('circulating', {}).get('peggedUSD', 0), reverse=True)[:5]
+                        
+                        for coin in top_coins:
+                            mcap = coin.get('circulating', {}).get('peggedUSD', 0)
+                            total_mcap += mcap
+                            
+                        return {
+                            "total_mcap": float(total_mcap),
+                            "top_coin": top_coins[0]['symbol'] if top_coins else "None"
+                        }
+        except Exception:
+            pass
+        return {"total_mcap": 0.0}
 
-        # 3. 중동 시장 급변 체크
-        mena = self.mena.get_performance_summary()
-        for ticker, data in mena.get('etfs', {}).items():
-            if abs(data.get('return_1d', 0)) > 3:  # 일일 3% 이상 변동
-                signals.append({
-                    'type': 'mena_volatility',
-                    'severity': 'MEDIUM',
-                    'ticker': ticker,
-                    'return_1d': data['return_1d'],
-                    'message': f"{ticker} 일일 {data['return_1d']:+.1f}% 변동"
-                })
+    async def get_credit_spreads(self) -> Dict[str, float]:
+        """
+        FRED 데이터 대신 yfinance로 근사치 계산 (BAMLC0A0CM 대용)
+        High Yield (HYG) vs Treasury (IEF) 비율로 추세 확인
+        * 실제 FRED API 키가 있으면 FRED 사용 권장
+        """
+        try:
+            def _get_spread():
+                # HYG (High Yield)와 IEF (7-10Y Treasury)의 최근 가격
+                data = yf.download(['HYG', 'IEF'], period='5d', progress=False)['Close']
+                if len(data) > 0:
+                    # 간단한 Risk On/Off 비율
+                    # HYG/IEF가 오르면 Risk On (스프레드 축소와 유사 효과)
+                    ratio = data['HYG'].iloc[-1] / data['IEF'].iloc[-1]
+                    
+                    # 5일 변화율
+                    change = (ratio - (data['HYG'].iloc[0] / data['IEF'].iloc[0])) * 100
+                    return float(ratio), float(change)
+                return 0.0, 0.0
 
-        return signals
-
-
-# ============================================================================
-# 테스트
-# ============================================================================
+            loop = asyncio.get_event_loop()
+            ratio, change = await loop.run_in_executor(None, _get_spread)
+            
+            return {
+                "risk_ratio_hyg_ief": ratio,
+                "change_5d": change,
+                "interpretation": "Risk ON" if change > 0 else "Risk OFF"
+            }
+        except Exception:
+            return {"value": 0.0}
 
 if __name__ == "__main__":
-    print("Extended Data Sources Test")
-    print("=" * 60)
-
     collector = ExtendedDataCollector()
-
-    # 온체인 데이터
-    print("\n[1] On-Chain Data (DeFiLlama)")
-    print("-" * 40)
-    onchain = collector.defi.get_summary()
-    print(f"  Total TVL: ${onchain.get('total_tvl', 0)/1e9:.2f}B")
-    print(f"  Stablecoin Market Cap: ${onchain.get('stablecoin_market_cap', 0)/1e9:.2f}B")
-    print("  Top Stablecoins:")
-    for s in onchain.get('top_stablecoins', [])[:3]:
-        print(f"    - {s['symbol']}: ${s['circulating']/1e9:.2f}B, peg: {s['peg_deviation']:.3f}%")
-
-    # 중동 시장
-    print("\n[2] Middle East Markets")
-    print("-" * 40)
-    mena = collector.mena.get_performance_summary()
-    for ticker, data in mena.get('etfs', {}).items():
-        print(f"  {ticker}: ${data['price']:.2f}, 1M: {data['return_1m']:+.1f}%")
-
-    # 유가 상관관계
-    oil_corr = collector.mena.get_oil_correlation()
-    if oil_corr:
-        print(f"\n  Oil Correlation:")
-        print(f"    KSA-Oil: {oil_corr.get('ksa_oil_corr', 0):.2f}")
-        print(f"    Interpretation: {oil_corr.get('interpretation', 'N/A')}")
-
-    # 리스크 시그널
-    print("\n[3] Risk Signals")
-    print("-" * 40)
-    signals = collector.get_risk_signals()
-    if signals:
-        for s in signals:
-            print(f"  [{s['severity']}] {s['message']}")
-    else:
-        print("  No risk signals detected")
-
-    print("\n" + "=" * 60)
+    data = asyncio.run(collector.collect_all())
+    print(data)

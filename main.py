@@ -48,6 +48,9 @@ from pipeline.analyzers import (
     analyze_ark_trades
 )
 
+# Extended Data
+from lib.extended_data_sources import ExtendedDataCollector
+
 async def run_integrated_pipeline(
     enable_realtime: bool = False,
     realtime_duration: int = 30,
@@ -65,6 +68,11 @@ async def run_integrated_pipeline(
     # Phase 1: Data Collection
     print("\n[Phase 1] Collecting Data...")
     result.fred_summary = collect_fred_data()
+    
+    # Extended Data Collection (Async)
+    ext_collector = ExtendedDataCollector()
+    result.extended_data = await ext_collector.collect_all()
+    
     market_data = collect_market_data(lookback_days=90 if quick_mode else 365)
     result.market_data_count = len(market_data)
     
