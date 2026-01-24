@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIMAS Portfolio Report - 2026-01-20</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .report-header {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .report-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 8px;
+        }
+
+        .report-subtitle {
+            color: #8b949e;
+            font-size: 1rem;
+        }
+
+        /* Executive Summary Banner */
+        .executive-banner {
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .executive-banner.bullish {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+        }
+
+        .executive-banner.bearish {
+            background: linear-gradient(135deg, #da3633 0%, #f85149 100%);
+        }
+
+        .executive-banner.neutral {
+            background: linear-gradient(135deg, #9e6a03 0%, #d29922 100%);
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        /* Section */
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #e6edf3;
+        }
+
+        .card-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-bullish { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .badge-bearish { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .badge-neutral { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .badge-info { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+
+        /* Agent Cards */
+        .agent-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .agent-card.bullish::before { background: #3fb950; }
+        .agent-card.bearish::before { background: #f85149; }
+        .agent-card.neutral::before { background: #d29922; }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .agent-position {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .agent-confidence {
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .agent-reasoning {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #30363d;
+            color: #8b949e;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Debate Flow */
+        .debate-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .debate-round {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .debate-round-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+
+        .debate-message {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .debate-agent {
+            font-weight: 600;
+            color: #a371f7;
+            margin-bottom: 4px;
+        }
+
+        /* Risk Meter */
+        .risk-meter {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .risk-bar {
+            height: 12px;
+            background: #0d1117;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .risk-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #6e7681;
+            font-size: 0.75rem;
+        }
+
+        /* News Card */
+        .news-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .news-content {
+            color: #8b949e;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .news-content h3 {
+            color: #e6edf3;
+            margin: 16px 0 8px 0;
+            font-size: 1rem;
+        }
+
+        /* Scenario Cards */
+        .scenario-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .scenario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .scenario-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .scenario-prob {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .scenario-target {
+            color: #8b949e;
+            margin-bottom: 12px;
+        }
+
+        .scenario-triggers {
+            list-style: none;
+            padding: 0;
+        }
+
+        .scenario-triggers li {
+            padding: 4px 0;
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .scenario-triggers li::before {
+            content: '→ ';
+            color: #58a6ff;
+        }
+
+        /* Sector Table */
+        .sector-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sector-table th,
+        .sector-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .sector-table th {
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .rating-overweight { color: #3fb950; font-weight: 600; }
+        .rating-neutral { color: #d29922; font-weight: 600; }
+        .rating-underweight { color: #f85149; font-weight: 600; }
+
+        /* Entry Exit Strategy */
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .strategy-box {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .strategy-box h4 {
+            color: #58a6ff;
+            margin-bottom: 16px;
+            font-size: 1rem;
+        }
+
+        .price-level {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .price-level:last-child {
+            border-bottom: none;
+        }
+
+        /* Technical Indicators */
+        .indicator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .indicator-item {
+            background: #21262d;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .indicator-label {
+            color: #6e7681;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+
+        .indicator-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* AI Analysis */
+        .ai-analysis {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 24px;
+            line-height: 1.8;
+        }
+
+        .ai-analysis h1, .ai-analysis h2, .ai-analysis h3 {
+            color: #58a6ff;
+            margin: 20px 0 12px 0;
+        }
+
+        .ai-analysis h1 { font-size: 1.5rem; }
+        .ai-analysis h2 { font-size: 1.25rem; }
+        .ai-analysis h3 { font-size: 1.1rem; }
+
+        .ai-analysis ul, .ai-analysis ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .ai-analysis li {
+            margin-bottom: 6px;
+        }
+
+        .ai-analysis strong {
+            color: #3fb950;
+        }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 32px;
+            color: #6e7681;
+            font-size: 0.85rem;
+            border-top: 1px solid #30363d;
+            margin-top: 40px;
+        }
+
+        .data-sources {
+            margin-top: 16px;
+            color: #6e7681;
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .report-title { font-size: 1.8rem; }
+            .executive-banner { padding: 20px; }
+            .summary-value { font-size: 1.4rem; }
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        /* Consensus Box */
+        .consensus-box {
+            background: linear-gradient(135deg, #21262d 0%, rgba(88, 166, 255, 0.1) 100%);
+            border: 2px solid #58a6ff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+            text-align: center;
+        }
+
+        .consensus-title {
+            color: #58a6ff;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .consensus-result {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        /* Conflict Warning */
+        .conflict-warning {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .conflict-title {
+            color: #f85149;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* Signal Cards */
+        .signal-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .signal-card.critical::before { background: #f85149; }
+        .signal-card.alert::before { background: #d29922; }
+        .signal-card.warning::before { background: #58a6ff; }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .signal-ticker {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #58a6ff;
+        }
+
+        .signal-level {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .level-critical { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .level-alert { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .level-warning { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+
+        .signal-indicator {
+            color: #8b949e;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .signal-value {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .signal-value-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .signal-value-label {
+            color: #6e7681;
+            font-size: 0.75rem;
+        }
+
+        .signal-value-number {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .signal-guide {
+            background: rgba(63, 185, 80, 0.1);
+            border-left: 3px solid #3fb950;
+            padding: 12px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 12px;
+        }
+
+        .signal-guide-title {
+            color: #3fb950;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .signal-guide-text {
+            color: #8b949e;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .signal-theory {
+            background: rgba(163, 113, 247, 0.1);
+            border-left: 3px solid #a371f7;
+            padding: 12px;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .signal-theory-title {
+            color: #a371f7;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .signal-theory-text {
+            color: #8b949e;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        /* Risk Metrics Table */
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        .metrics-table th {
+            background: #0d1117;
+            color: #8b949e;
+            font-weight: 500;
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 2px solid #30363d;
+            position: sticky;
+            top: 0;
+        }
+
+        .metrics-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .metrics-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .metric-positive { color: #3fb950; }
+        .metric-negative { color: #f85149; }
+        .metric-neutral { color: #e6edf3; }
+
+        .metric-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-bar-fill {
+            height: 6px;
+            border-radius: 3px;
+            background: #58a6ff;
+        }
+
+        .metrics-legend {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .metrics-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Signal Summary */
+        .signal-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .signal-summary-card {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .signal-count {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .signal-count-label {
+            color: #6e7681;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+
+    <div class="report-header">
+        <h1 class="report-title">EIMAS Portfolio Report</h1>
+        <p class="report-subtitle">Economic Intelligence Multi-Agent System | Generated: 2026-01-20T04:59:07.914988</p>
+    </div>
+    
+
+    <div class="executive-banner bullish">
+        <div class="summary-item">
+            <div class="summary-label">Final Recommendation</div>
+            <div class="summary-value">BULLISH</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Confidence</div>
+            <div class="summary-value">75.6%</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Risk Score</div>
+            <div class="summary-value">11.2/100</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Risk Level</div>
+            <div class="summary-value">LOW</div>
+        </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📈</span>
+            Market Regime Analysis
+        </h2>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Current Regime</span>
+                </div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: #3fb950; margin-bottom: 8px;">
+                    Bull (Low Vol)
+                </div>
+                <div style="color: #8b949e; margin-bottom: 4px;">
+                    Trend: Weak Uptrend
+                </div>
+                <div style="color: #8b949e; margin-bottom: 4px;">
+                    Volatility: Normal
+                </div>
+                <div style="color: #8b949e;">
+                    Confidence: 75%
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Liquidity Status</span>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #8b949e; font-size: 0.85rem;">Net Liquidity</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">$5,801.3B</div>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">RRP</div>
+                        <div>$1.2B</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">TGA</div>
+                        <div>$779.2B</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Interest Rates</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">Fed Funds</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">3.64%</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">10Y Treasury</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">4.17%</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">10Y-2Y Spread</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">0.65%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 16px; background: #21262d; border-radius: 8px;"><strong>전략:</strong> 주식 비중 확대, 성장주/소형주 선호</div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🤖</span>
+            Multi-Agent Debate Analysis
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            AI 에이전트들이 서로 다른 데이터 기간을 분석하여 독립적인 의견을 제시하고, 토론을 통해 합의에 도달합니다.
+        </p>
+
+        <div class="cards-grid">
+            <div class="agent-card bullish">
+                <div class="agent-name">📊 FULL Mode Agent</div>
+                <div style="color: #6e7681; font-size: 0.85rem; margin-bottom: 8px;">365일 장기 데이터 분석</div>
+                <div class="agent-position" style="color: #3fb950;">
+                    BULLISH
+                </div>
+                <div class="agent-reasoning">
+                    장기 추세, 구조적 변화, 거시경제 사이클을 고려한 분석 결과입니다.
+                </div>
+            </div>
+
+            <div class="agent-card bullish">
+                <div class="agent-name">⚡ REFERENCE Mode Agent</div>
+                <div style="color: #6e7681; font-size: 0.85rem; margin-bottom: 8px;">90일 단기 데이터 분석</div>
+                <div class="agent-position" style="color: #3fb950;">
+                    BULLISH
+                </div>
+                <div class="agent-reasoning">
+                    최근 모멘텀, 단기 이벤트, 시장 심리를 반영한 분석 결과입니다.
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="consensus-box">
+            <div class="consensus-title">✅ Agent Consensus Reached</div>
+            <div class="consensus-result" style="color: #3fb950;">BULLISH</div>
+            <div style="color: #8b949e; margin-top: 8px;">
+                Both analysis modes (FULL 365-day & REFERENCE 90-day) agree on the market outlook.
+            </div>
+        </div>
+        
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">⚠️</span>
+            Risk Analysis
+        </h2>
+
+        <div class="risk-meter">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.1rem; font-weight: 600;">Overall Risk Score</span>
+                <span style="font-size: 1.8rem; font-weight: 700; color: #3fb950;">11.2/100</span>
+            </div>
+            <div class="risk-bar">
+                <div class="risk-fill" style="width: 11.173329254438066%; background: #3fb950;"></div>
+            </div>
+            <div class="risk-labels">
+                <span>Low Risk</span>
+                <span>Medium</span>
+                <span>High Risk</span>
+            </div>
+        </div>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Risk Score Breakdown</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div class="price-level">
+                        <span>Base Risk (CriticalPath)</span>
+                        <span style="font-weight: 600;">11.2</span>
+                    </div>
+                    <div class="price-level">
+                        <span>Microstructure Adjustment</span>
+                        <span style="font-weight: 600; color: #e6edf3;">
+                            +0.0
+                        </span>
+                    </div>
+                    <div class="price-level">
+                        <span>Bubble Risk Adjustment</span>
+                        <span style="font-weight: 600; color: #e6edf3;">
+                            +0.0
+                        </span>
+                    </div>
+                    <div class="price-level" style="border-top: 2px solid #30363d; margin-top: 8px; padding-top: 8px;">
+                        <span style="font-weight: 600;">Final Risk Score</span>
+                        <span style="font-weight: 700; color: #3fb950;">11.2</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Market Quality</span>
+                    <span class="card-badge badge-info">Microstructure</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div style="color: #6e7681; font-size: 0.85rem;">Average Liquidity Score</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">N/A/100</div>
+                </div>
+                
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Bubble Risk</span>
+                    <span class="card-badge" style="background: #6e768120; color: #6e7681;">N/A</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div style="color: #6e7681; font-size: 0.85rem;">Greenwood-Shleifer 버블 탐지</div>
+                    <div style="font-size: 1.2rem; font-weight: 600; color: #6e7681; margin-top: 4px;">N/A</div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🔔</span>
+            Detailed Market Signals
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            기술적/통계적 지표 기반 시그널 탐지 결과입니다. 각 시그널에는 행동 가이드와 학술적 근거가 포함됩니다.
+        </p>
+
+        
+    <div class="signal-summary">
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #f85149;">1</div>
+            <div class="signal-count-label">Critical Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #d29922;">1</div>
+            <div class="signal-count-label">Alert Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #58a6ff;">1</div>
+            <div class="signal-count-label">Warning Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count">3</div>
+            <div class="signal-count-label">Total Signals</div>
+        </div>
+    </div>
+    
+        
+        <div class="signal-card critical">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">HYG</span>
+                    <span style="color: #6e7681; margin-left: 8px;">High Yield Bond ETF</span>
+                </div>
+                <span class="signal-level level-critical">CRITICAL</span>
+            </div>
+            <div class="signal-indicator">Credit Spread: 하이일드 스프레드 급등 - 신용 스트레스 증가</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">4.20</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">3.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.80</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #f85149;">68.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급락 시 패닉셀 주의. 펀더멘털 확인 후 분할 매수 기회 탐색 가능.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">신용스프레드와 경기: Gilchrist & Zakrajsek(2012) - 신용스프레드의 거시경제 예측력.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">SPY</span>
+                    <span style="color: #6e7681; margin-left: 8px;">S&P 500 ETF</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">Price Z-Score: 가격이 평균 대비 2.3 표준편차 상승</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">612.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">600.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.30</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">35.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">평균회귀(Mean Reversion): Poterba & Summers(1988) - 주가는 장기적으로 평균회귀.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">QQQ</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Nasdaq 100 ETF</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">RSI: RSI 과매수 구간 진입</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">72.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">1.80</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">42.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가.</div></div>
+        </div>
+        
+
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📉</span>
+            Asset Risk Metrics
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            자산별 위험조정수익률 및 리스크 메트릭입니다. Sharpe(1966), Sortino & Price(1994), VaR(RiskMetrics 1994), CVaR(Artzner 1999) 방법론 적용.
+        </p>
+
+        
+    <div class="cards-grid" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Average Sharpe Ratio</span>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #3fb950;">
+                0.80
+            </div>
+            <div style="color: #6e7681; font-size: 0.85rem; margin-top: 8px;">
+                Good
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Average Max Drawdown</span>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #3fb950;">
+                -9.8%
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">High Risk Assets</span>
+                <span class="card-badge badge-bearish">1</span>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem;">
+                TLT
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Low Risk Assets</span>
+                <span class="card-badge badge-bullish">1</span>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem;">
+                SPY
+            </div>
+        </div>
+    </div>
+    
+
+        <div style="overflow-x: auto;">
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sharpe<br><span style="font-weight: 400; font-size: 0.75rem;">위험조정수익률</span></th>
+                        <th>Sortino<br><span style="font-weight: 400; font-size: 0.75rem;">하방위험조정</span></th>
+                        <th>VaR 95%<br><span style="font-weight: 400; font-size: 0.75rem;">최대손실추정</span></th>
+                        <th>CVaR 95%<br><span style="font-weight: 400; font-size: 0.75rem;">꼬리위험</span></th>
+                        <th>Max DD<br><span style="font-weight: 400; font-size: 0.75rem;">최대낙폭</span></th>
+                        <th>Calmar<br><span style="font-weight: 400; font-size: 0.75rem;">MDD대비수익</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td><strong>QQQ</strong><br><span style="color: #6e7681; font-size: 0.8rem;">Nasdaq 100</span></td>
+            <td style="color: #3fb950; font-weight: 600;">1.62</td>
+            <td style="color: #3fb950; font-weight: 600;">2.40</td>
+            <td style="color: #f85149;">-2.20%</td>
+            <td style="color: #f85149;">-3.50%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #d29922; font-weight: 600;">-12.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 24.0%; background: #d29922;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">1.50</td>
+        </tr>
+        
+        <tr>
+            <td><strong>SPY</strong><br><span style="color: #6e7681; font-size: 0.8rem;">S&P 500</span></td>
+            <td style="color: #3fb950; font-weight: 600;">1.45</td>
+            <td style="color: #3fb950; font-weight: 600;">2.10</td>
+            <td style="color: #f85149;">-1.80%</td>
+            <td style="color: #f85149;">-2.80%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-8.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 17.0%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">1.80</td>
+        </tr>
+        
+        <tr>
+            <td><strong>GLD</strong><br><span style="color: #6e7681; font-size: 0.8rem;">Gold ETF</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.85</td>
+            <td style="color: #d29922; font-weight: 600;">1.20</td>
+            <td style="color: #f85149;">-1.20%</td>
+            <td style="color: #f85149;">-1.80%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-6.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 12.0%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">1.10</td>
+        </tr>
+        
+        <tr>
+            <td><strong>HYG</strong><br><span style="color: #6e7681; font-size: 0.8rem;">High Yield Bond</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.42</td>
+            <td style="color: #d29922; font-weight: 600;">0.65</td>
+            <td style="color: #f85149;">-0.80%</td>
+            <td style="color: #f85149;">-1.20%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-4.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 9.0%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">0.80</td>
+        </tr>
+        
+        <tr>
+            <td><strong>TLT</strong><br><span style="color: #6e7681; font-size: 0.8rem;">20+ Year Treasury</span></td>
+            <td style="color: #f85149; font-weight: 600;">-0.32</td>
+            <td style="color: #f85149; font-weight: 600;">-0.45</td>
+            <td style="color: #f85149;">-1.50%</td>
+            <td style="color: #f85149;">-2.20%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #f85149; font-weight: 600;">-18.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 36.0%; background: #f85149;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">-0.20</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        
+    <div class="metrics-legend">
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #3fb950;"></div>
+            <span>Sharpe > 1.0 (우수)</span>
+        </div>
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #d29922;"></div>
+            <span>0 < Sharpe < 1.0 (보통)</span>
+        </div>
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #f85149;"></div>
+            <span>Sharpe < 0 (저조)</span>
+        </div>
+    </div>
+    
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📰</span>
+            Events & Market News
+        </h2>
+
+        
+        
+        <div style="color: #6e7681;">No news data available. Run with --report flag to fetch news.</div>
+    </div>
+    
+
+
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">💼</span>
+            Portfolio Strategy
+        </h2>
+
+        <div class="strategy-grid">
+            
+            
+            
+        <div class="strategy-box">
+            <h4>🎯 Adaptive Portfolio Signals</h4>
+            <div class="price-level"><span style="text-transform: capitalize;">aggressive</span><span style="color: #58a6ff;">AGGRESSIVE_ENTRY</span></div><div class="price-level"><span style="text-transform: capitalize;">balanced</span><span style="color: #58a6ff;">AGGRESSIVE_ENTRY</span></div><div class="price-level"><span style="text-transform: capitalize;">conservative</span><span style="color: #58a6ff;">ENTRY</span></div>
+        </div>
+        
+        </div>
+
+        
+    </div>
+    
+
+
+
+    <div class="report-footer">
+        <p><strong>EIMAS - Economic Intelligence Multi-Agent System</strong></p>
+        <p style="margin-top: 8px;">
+            This report is generated by AI agents analyzing macroeconomic data, market indicators,
+            and real-time news. The recommendations should be used as reference only and do not
+            constitute financial advice.
+        </p>
+        <div class="data-sources">
+            Data Sources: FRED (Federal Reserve), Yahoo Finance, Perplexity AI, OpenAI GPT-4o, Anthropic Claude
+        </div>
+    </div>
+    
+</div></body></html>

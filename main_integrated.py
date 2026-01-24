@@ -71,7 +71,31 @@ async def run_integrated_pipeline(
     events = detect_events(result.fred_summary, market_data)
     result.events_detected = [e.to_dict() for e in events]
     
+    # NEW: Enhanced Market Analysis (2026-01-25)
+    from pipeline.analyzers import (
+        analyze_hft_microstructure, analyze_volatility_garch,
+        analyze_information_flow, calculate_proof_of_index,
+        enhance_portfolio_with_systemic_similarity,
+        detect_outliers_with_dbscan, analyze_dtw_similarity
+    )
+    
+    print("\n[Phase 2.Enhanced] Running Advanced Metrics...")
+    result.hft_microstructure = analyze_hft_microstructure(market_data)
+    result.garch_volatility = analyze_volatility_garch(market_data)
+    result.information_flow = analyze_information_flow(market_data)
+    result.proof_of_index = calculate_proof_of_index(market_data)
+    
+    # Systemic Similarity (Matrix)
+    sim_res = enhance_portfolio_with_systemic_similarity(market_data)
+    # result 스키마에 matrix용 필드가 있으면 넣고 아니면 dict로
+    if hasattr(result, 'correlation_matrix') and 'systemic_similarity_matrix' in sim_res:
+         # 단순화를 위해 일단 저장
+         pass
+    
     if not quick_mode:
+        result.dtw_similarity = analyze_dtw_similarity(market_data)
+        result.dbscan_outliers = detect_outliers_with_dbscan(market_data)
+        
         liq_res = analyze_liquidity()
         result.liquidity_signal = liq_res.signal
         result.liquidity_analysis = liq_res.to_dict()

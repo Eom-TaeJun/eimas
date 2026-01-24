@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EIMAS Portfolio Report - 2026-01-20</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Header */
+        .report-header {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .report-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #58a6ff;
+            margin-bottom: 8px;
+        }
+
+        .report-subtitle {
+            color: #8b949e;
+            font-size: 1rem;
+        }
+
+        /* Executive Summary Banner */
+        .executive-banner {
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+        }
+
+        .executive-banner.bullish {
+            background: linear-gradient(135deg, #238636 0%, #2ea043 100%);
+        }
+
+        .executive-banner.bearish {
+            background: linear-gradient(135deg, #da3633 0%, #f85149 100%);
+        }
+
+        .executive-banner.neutral {
+            background: linear-gradient(135deg, #9e6a03 0%, #d29922 100%);
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-bottom: 4px;
+        }
+
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        /* Section */
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e6edf3;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .section-icon {
+            font-size: 1.5rem;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-weight: 600;
+            color: #e6edf3;
+        }
+
+        .card-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-bullish { background: rgba(63, 185, 80, 0.2); color: #3fb950; }
+        .badge-bearish { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .badge-neutral { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .badge-info { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+
+        /* Agent Cards */
+        .agent-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .agent-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .agent-card.bullish::before { background: #3fb950; }
+        .agent-card.bearish::before { background: #f85149; }
+        .agent-card.neutral::before { background: #d29922; }
+
+        .agent-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .agent-position {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .agent-confidence {
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .agent-reasoning {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #30363d;
+            color: #8b949e;
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Debate Flow */
+        .debate-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .debate-round {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .debate-round-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+
+        .debate-message {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .debate-agent {
+            font-weight: 600;
+            color: #a371f7;
+            margin-bottom: 4px;
+        }
+
+        /* Risk Meter */
+        .risk-meter {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .risk-bar {
+            height: 12px;
+            background: #0d1117;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        .risk-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #6e7681;
+            font-size: 0.75rem;
+        }
+
+        /* News Card */
+        .news-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .news-content {
+            color: #8b949e;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
+
+        .news-content h3 {
+            color: #e6edf3;
+            margin: 16px 0 8px 0;
+            font-size: 1rem;
+        }
+
+        /* Scenario Cards */
+        .scenario-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .scenario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .scenario-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .scenario-prob {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .scenario-target {
+            color: #8b949e;
+            margin-bottom: 12px;
+        }
+
+        .scenario-triggers {
+            list-style: none;
+            padding: 0;
+        }
+
+        .scenario-triggers li {
+            padding: 4px 0;
+            color: #8b949e;
+            font-size: 0.9rem;
+        }
+
+        .scenario-triggers li::before {
+            content: '→ ';
+            color: #58a6ff;
+        }
+
+        /* Sector Table */
+        .sector-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sector-table th,
+        .sector-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .sector-table th {
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .rating-overweight { color: #3fb950; font-weight: 600; }
+        .rating-neutral { color: #d29922; font-weight: 600; }
+        .rating-underweight { color: #f85149; font-weight: 600; }
+
+        /* Entry Exit Strategy */
+        .strategy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .strategy-box {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .strategy-box h4 {
+            color: #58a6ff;
+            margin-bottom: 16px;
+            font-size: 1rem;
+        }
+
+        .price-level {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .price-level:last-child {
+            border-bottom: none;
+        }
+
+        /* Technical Indicators */
+        .indicator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .indicator-item {
+            background: #21262d;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .indicator-label {
+            color: #6e7681;
+            font-size: 0.8rem;
+            margin-bottom: 4px;
+        }
+
+        .indicator-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        /* AI Analysis */
+        .ai-analysis {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 24px;
+            line-height: 1.8;
+        }
+
+        .ai-analysis h1, .ai-analysis h2, .ai-analysis h3 {
+            color: #58a6ff;
+            margin: 20px 0 12px 0;
+        }
+
+        .ai-analysis h1 { font-size: 1.5rem; }
+        .ai-analysis h2 { font-size: 1.25rem; }
+        .ai-analysis h3 { font-size: 1.1rem; }
+
+        .ai-analysis ul, .ai-analysis ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .ai-analysis li {
+            margin-bottom: 6px;
+        }
+
+        .ai-analysis strong {
+            color: #3fb950;
+        }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 32px;
+            color: #6e7681;
+            font-size: 0.85rem;
+            border-top: 1px solid #30363d;
+            margin-top: 40px;
+        }
+
+        .data-sources {
+            margin-top: 16px;
+            color: #6e7681;
+            font-size: 0.8rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 16px; }
+            .report-title { font-size: 1.8rem; }
+            .executive-banner { padding: 20px; }
+            .summary-value { font-size: 1.4rem; }
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        /* Consensus Box */
+        .consensus-box {
+            background: linear-gradient(135deg, #21262d 0%, rgba(88, 166, 255, 0.1) 100%);
+            border: 2px solid #58a6ff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-top: 24px;
+            text-align: center;
+        }
+
+        .consensus-title {
+            color: #58a6ff;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .consensus-result {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        /* Conflict Warning */
+        .conflict-warning {
+            background: rgba(248, 81, 73, 0.1);
+            border: 1px solid #f85149;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .conflict-title {
+            color: #f85149;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        /* Signal Cards */
+        .signal-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .signal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .signal-card.critical::before { background: #f85149; }
+        .signal-card.alert::before { background: #d29922; }
+        .signal-card.warning::before { background: #58a6ff; }
+
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .signal-ticker {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #58a6ff;
+        }
+
+        .signal-level {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .level-critical { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .level-alert { background: rgba(210, 153, 34, 0.2); color: #d29922; }
+        .level-warning { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+
+        .signal-indicator {
+            color: #8b949e;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+
+        .signal-value {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .signal-value-item {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .signal-value-label {
+            color: #6e7681;
+            font-size: 0.75rem;
+        }
+
+        .signal-value-number {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .signal-guide {
+            background: rgba(63, 185, 80, 0.1);
+            border-left: 3px solid #3fb950;
+            padding: 12px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 12px;
+        }
+
+        .signal-guide-title {
+            color: #3fb950;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .signal-guide-text {
+            color: #8b949e;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .signal-theory {
+            background: rgba(163, 113, 247, 0.1);
+            border-left: 3px solid #a371f7;
+            padding: 12px;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .signal-theory-title {
+            color: #a371f7;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .signal-theory-text {
+            color: #8b949e;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            font-style: italic;
+        }
+
+        /* Risk Metrics Table */
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            font-size: 0.9rem;
+        }
+
+        .metrics-table th {
+            background: #0d1117;
+            color: #8b949e;
+            font-weight: 500;
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 2px solid #30363d;
+            position: sticky;
+            top: 0;
+        }
+
+        .metrics-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .metrics-table tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .metric-positive { color: #3fb950; }
+        .metric-negative { color: #f85149; }
+        .metric-neutral { color: #e6edf3; }
+
+        .metric-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-bar-fill {
+            height: 6px;
+            border-radius: 3px;
+            background: #58a6ff;
+        }
+
+        .metrics-legend {
+            display: flex;
+            gap: 24px;
+            margin-top: 16px;
+            padding: 12px;
+            background: #21262d;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .metrics-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Signal Summary */
+        .signal-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .signal-summary-card {
+            background: #21262d;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .signal-count {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .signal-count-label {
+            color: #6e7681;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+
+    <div class="report-header">
+        <h1 class="report-title">EIMAS Portfolio Report</h1>
+        <p class="report-subtitle">Economic Intelligence Multi-Agent System | Generated: 2026-01-20T04:59:07.914988</p>
+    </div>
+    
+
+    <div class="executive-banner bullish">
+        <div class="summary-item">
+            <div class="summary-label">Final Recommendation</div>
+            <div class="summary-value">BULLISH</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Confidence</div>
+            <div class="summary-value">75.6%</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Risk Score</div>
+            <div class="summary-value">11.2/100</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Risk Level</div>
+            <div class="summary-value">LOW</div>
+        </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📈</span>
+            Market Regime Analysis
+        </h2>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Current Regime</span>
+                </div>
+                <div style="font-size: 1.8rem; font-weight: 700; color: #3fb950; margin-bottom: 8px;">
+                    Bull (Low Vol)
+                </div>
+                <div style="color: #8b949e; margin-bottom: 4px;">
+                    Trend: Weak Uptrend
+                </div>
+                <div style="color: #8b949e; margin-bottom: 4px;">
+                    Volatility: Normal
+                </div>
+                <div style="color: #8b949e;">
+                    Confidence: 75%
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Liquidity Status</span>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <div style="color: #8b949e; font-size: 0.85rem;">Net Liquidity</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">$5,801.3B</div>
+                </div>
+                <div style="display: flex; gap: 20px;">
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">RRP</div>
+                        <div>$1.2B</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">TGA</div>
+                        <div>$779.2B</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Interest Rates</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">Fed Funds</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">3.64%</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">10Y Treasury</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">4.17%</div>
+                    </div>
+                    <div>
+                        <div style="color: #6e7681; font-size: 0.8rem;">10Y-2Y Spread</div>
+                        <div style="font-size: 1.2rem; font-weight: 600;">0.65%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 16px; padding: 16px; background: #21262d; border-radius: 8px;"><strong>전략:</strong> 주식 비중 확대, 성장주/소형주 선호</div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🤖</span>
+            Multi-Agent Debate Analysis
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            AI 에이전트들이 서로 다른 데이터 기간을 분석하여 독립적인 의견을 제시하고, 토론을 통해 합의에 도달합니다.
+        </p>
+
+        <div class="cards-grid">
+            <div class="agent-card bullish">
+                <div class="agent-name">📊 FULL Mode Agent</div>
+                <div style="color: #6e7681; font-size: 0.85rem; margin-bottom: 8px;">365일 장기 데이터 분석</div>
+                <div class="agent-position" style="color: #3fb950;">
+                    BULLISH
+                </div>
+                <div class="agent-reasoning">
+                    장기 추세, 구조적 변화, 거시경제 사이클을 고려한 분석 결과입니다.
+                </div>
+            </div>
+
+            <div class="agent-card bullish">
+                <div class="agent-name">⚡ REFERENCE Mode Agent</div>
+                <div style="color: #6e7681; font-size: 0.85rem; margin-bottom: 8px;">90일 단기 데이터 분석</div>
+                <div class="agent-position" style="color: #3fb950;">
+                    BULLISH
+                </div>
+                <div class="agent-reasoning">
+                    최근 모멘텀, 단기 이벤트, 시장 심리를 반영한 분석 결과입니다.
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="consensus-box">
+            <div class="consensus-title">✅ Agent Consensus Reached</div>
+            <div class="consensus-result" style="color: #3fb950;">BULLISH</div>
+            <div style="color: #8b949e; margin-top: 8px;">
+                Both analysis modes (FULL 365-day & REFERENCE 90-day) agree on the market outlook.
+            </div>
+        </div>
+        
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">⚠️</span>
+            Risk Analysis
+        </h2>
+
+        <div class="risk-meter">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.1rem; font-weight: 600;">Overall Risk Score</span>
+                <span style="font-size: 1.8rem; font-weight: 700; color: #3fb950;">11.2/100</span>
+            </div>
+            <div class="risk-bar">
+                <div class="risk-fill" style="width: 11.173329254438066%; background: #3fb950;"></div>
+            </div>
+            <div class="risk-labels">
+                <span>Low Risk</span>
+                <span>Medium</span>
+                <span>High Risk</span>
+            </div>
+        </div>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Risk Score Breakdown</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div class="price-level">
+                        <span>Base Risk (CriticalPath)</span>
+                        <span style="font-weight: 600;">11.2</span>
+                    </div>
+                    <div class="price-level">
+                        <span>Microstructure Adjustment</span>
+                        <span style="font-weight: 600; color: #e6edf3;">
+                            +0.0
+                        </span>
+                    </div>
+                    <div class="price-level">
+                        <span>Bubble Risk Adjustment</span>
+                        <span style="font-weight: 600; color: #e6edf3;">
+                            +0.0
+                        </span>
+                    </div>
+                    <div class="price-level" style="border-top: 2px solid #30363d; margin-top: 8px; padding-top: 8px;">
+                        <span style="font-weight: 600;">Final Risk Score</span>
+                        <span style="font-weight: 700; color: #3fb950;">11.2</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Market Quality</span>
+                    <span class="card-badge badge-info">Microstructure</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div style="color: #6e7681; font-size: 0.85rem;">Average Liquidity Score</div>
+                    <div style="font-size: 1.5rem; font-weight: 600;">N/A/100</div>
+                </div>
+                
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Bubble Risk</span>
+                    <span class="card-badge" style="background: #6e768120; color: #6e7681;">N/A</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <div style="color: #6e7681; font-size: 0.85rem;">Greenwood-Shleifer 버블 탐지</div>
+                    <div style="font-size: 1.2rem; font-weight: 600; color: #6e7681; margin-top: 4px;">N/A</div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🔔</span>
+            Detailed Market Signals
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            기술적/통계적 지표 기반 시그널 탐지 결과입니다. 각 시그널에는 행동 가이드와 학술적 근거가 포함됩니다.
+        </p>
+
+        
+    <div class="signal-summary">
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #f85149;">0</div>
+            <div class="signal-count-label">Critical Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #d29922;">6</div>
+            <div class="signal-count-label">Alert Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count" style="color: #58a6ff;">5</div>
+            <div class="signal-count-label">Warning Signals</div>
+        </div>
+        <div class="signal-summary-card">
+            <div class="signal-count">11</div>
+            <div class="signal-count-label">Total Signals</div>
+        </div>
+    </div>
+    
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">IWM</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Russell 2000</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">price_z: Russell 2000 가격 급등 (Z=2.40)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">270.93</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.40</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">17.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">IWM</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Russell 2000</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">rsi: Russell 2000 RSI 과매수 (88.0)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">87.96</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">24.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">GLD</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Gold ETF</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">price_z: Gold ETF 가격 급등 (Z=2.64)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">448.63</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.64</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">18.2%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">GLD</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Gold ETF</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">rsi: Gold ETF RSI 과매수 (87.0)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">86.99</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">23.5%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">SLV</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Silver ETF</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">price_z: Silver ETF 가격 급등 (Z=2.16)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">86.72</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.16</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">15.8%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></div>
+        </div>
+        
+        <div class="signal-card alert">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">XLE</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Energy</span>
+                </div>
+                <span class="signal-level level-alert">ALERT</span>
+            </div>
+            <div class="signal-indicator">price_z: Energy 가격 급등 (Z=2.77)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">48.85</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #f85149;">2.77</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">18.8%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">HYG</span>
+                    <span style="color: #6e7681; margin-left: 8px;">High Yield Corporate</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">price_z: High Yield Corporate 가격 급등 (Z=1.71)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">81.19</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.50</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">1.71</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">13.5%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">신용스프레드와 경기: 하이일드 스프레드 확대는 경기침체 선행지표. Gilchrist & Zakrajsek(2012): 신용스프레드의 거시경제 예측력.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">HYG</span>
+                    <span style="color: #6e7681; margin-left: 8px;">High Yield Corporate</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">rsi: High Yield Corporate RSI 과매수 (77.4)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">77.38</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">18.7%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">GLD</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Gold ETF</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">bollinger: Gold ETF 볼린저 밴드 상단 돌파 (%B=1.05)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">1.05</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">1.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">7.8%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">상단 돌파는 강한 상승 모멘텀이나 과열 신호. 추격 매수 주의.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">볼린저밴드 상단돌파: 강한 모멘텀 또는 과열 신호. 추세 지속과 평균회귀 중 판단 필요.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">SLV</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Silver ETF</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">rsi: Silver ETF RSI 과매수 (77.7)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">77.71</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">18.9%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></div>
+        </div>
+        
+        <div class="signal-card warning">
+            <div class="signal-header">
+                <div>
+                    <span class="signal-ticker">XLE</span>
+                    <span style="color: #6e7681; margin-left: 8px;">Energy</span>
+                </div>
+                <span class="signal-level level-warning">WARNING</span>
+            </div>
+            <div class="signal-indicator">rsi: Energy RSI 과매수 (72.0)</div>
+            <div class="signal-value">
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Value</div>
+                    <div class="signal-value-number">72.04</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Threshold</div>
+                    <div class="signal-value-number">70.00</div>
+                </div>
+                <div class="signal-value-item">
+                    <div class="signal-value-label">Z-Score</div>
+                    <div class="signal-value-number" style="color: #e6edf3;">0.00</div>
+                </div>
+                <div class="signal-value-item"><div class="signal-value-label">Risk Prob</div><div class="signal-value-number" style="color: #e6edf3;">16.0%</div></div>
+            </div>
+            <div class="signal-guide"><div class="signal-guide-title">Action Guide</div><div class="signal-guide-text">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</div></div>
+            <div class="signal-theory"><div class="signal-theory-title">Academic Reference</div><div class="signal-theory-text">기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></div>
+        </div>
+        
+
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📉</span>
+            Asset Risk Metrics
+        </h2>
+
+        <p style="color: #8b949e; margin-bottom: 20px;">
+            자산별 위험조정수익률 및 리스크 메트릭입니다. Sharpe(1966), Sortino & Price(1994), VaR(RiskMetrics 1994), CVaR(Artzner 1999) 방법론 적용.
+        </p>
+
+        
+    <div class="cards-grid" style="margin-bottom: 20px;">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Average Sharpe Ratio</span>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #3fb950;">
+                0.89
+            </div>
+            <div style="color: #6e7681; font-size: 0.85rem; margin-top: 8px;">
+                Good
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Average Max Drawdown</span>
+            </div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #d29922;">
+                -10.1%
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">High Risk Assets</span>
+                <span class="card-badge badge-bearish">6</span>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem;">
+                SPY, QQQ, TLT, USO, XLK
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">Low Risk Assets</span>
+                <span class="card-badge badge-bullish">5</span>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem;">
+                IWM, GLD, SLV, XLV, XLE
+            </div>
+        </div>
+    </div>
+    
+
+        <div style="overflow-x: auto;">
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Ticker</th>
+                        <th>Sharpe<br><span style="font-weight: 400; font-size: 0.75rem;">위험조정수익률</span></th>
+                        <th>Sortino<br><span style="font-weight: 400; font-size: 0.75rem;">하방위험조정</span></th>
+                        <th>VaR 95%<br><span style="font-weight: 400; font-size: 0.75rem;">최대손실추정</span></th>
+                        <th>CVaR 95%<br><span style="font-weight: 400; font-size: 0.75rem;">꼬리위험</span></th>
+                        <th>Max DD<br><span style="font-weight: 400; font-size: 0.75rem;">최대낙폭</span></th>
+                        <th>Calmar<br><span style="font-weight: 400; font-size: 0.75rem;">MDD대비수익</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td><strong>SLV</strong><br><span style="color: #6e7681; font-size: 0.8rem;">SLV</span></td>
+            <td style="color: #3fb950; font-weight: 600;">6.08</td>
+            <td style="color: #3fb950; font-weight: 600;">10.83</td>
+            <td style="color: #f85149;">-3.14%</td>
+            <td style="color: #f85149;">-5.84%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-9.4%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 18.841406971004975%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">34.04</td>
+        </tr>
+        
+        <tr>
+            <td><strong>GLD</strong><br><span style="color: #6e7681; font-size: 0.8rem;">GLD</span></td>
+            <td style="color: #3fb950; font-weight: 600;">4.24</td>
+            <td style="color: #3fb950; font-weight: 600;">5.59</td>
+            <td style="color: #f85149;">-1.21%</td>
+            <td style="color: #f85149;">-2.64%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-4.9%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 9.804671092059776%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">17.91</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLV</strong><br><span style="color: #6e7681; font-size: 0.8rem;">XLV</span></td>
+            <td style="color: #3fb950; font-weight: 600;">2.29</td>
+            <td style="color: #3fb950; font-weight: 600;">5.12</td>
+            <td style="color: #f85149;">-1.03%</td>
+            <td style="color: #f85149;">-1.33%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-5.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 11.097815564668764%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">6.69</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLE</strong><br><span style="color: #6e7681; font-size: 0.8rem;">XLE</span></td>
+            <td style="color: #3fb950; font-weight: 600;">2.14</td>
+            <td style="color: #3fb950; font-weight: 600;">3.99</td>
+            <td style="color: #f85149;">-1.49%</td>
+            <td style="color: #f85149;">-2.52%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-5.1%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 10.264183210746742%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">9.57</td>
+        </tr>
+        
+        <tr>
+            <td><strong>IWM</strong><br><span style="color: #6e7681; font-size: 0.8rem;">IWM</span></td>
+            <td style="color: #3fb950; font-weight: 600;">1.75</td>
+            <td style="color: #3fb950; font-weight: 600;">2.90</td>
+            <td style="color: #f85149;">-1.78%</td>
+            <td style="color: #f85149;">-2.22%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-8.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 16.931676359099814%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">4.36</td>
+        </tr>
+        
+        <tr>
+            <td><strong>^VIX</strong><br><span style="color: #6e7681; font-size: 0.8rem;">^VIX</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.46</td>
+            <td style="color: #d29922; font-weight: 600;">0.86</td>
+            <td style="color: #f85149;">-11.35%</td>
+            <td style="color: #f85149;">-13.31%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #f85149; font-weight: 600;">-49.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 98.03179236842526%; background: #f85149;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">1.20</td>
+        </tr>
+        
+        <tr>
+            <td><strong>HYG</strong><br><span style="color: #6e7681; font-size: 0.8rem;">HYG</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.27</td>
+            <td style="color: #d29922; font-weight: 600;">0.42</td>
+            <td style="color: #f85149;">-0.26%</td>
+            <td style="color: #f85149;">-0.34%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-1.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 1.923064835894671%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">5.95</td>
+        </tr>
+        
+        <tr>
+            <td><strong>BTC-USD</strong><br><span style="color: #6e7681; font-size: 0.8rem;">BTC-USD</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.13</td>
+            <td style="color: #d29922; font-weight: 600;">0.20</td>
+            <td style="color: #f85149;">-2.62%</td>
+            <td style="color: #f85149;">-4.03%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-8.9%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 17.782898203700924%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">1.00</td>
+        </tr>
+        
+        <tr>
+            <td><strong>ETH-USD</strong><br><span style="color: #6e7681; font-size: 0.8rem;">ETH-USD</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.09</td>
+            <td style="color: #d29922; font-weight: 600;">0.13</td>
+            <td style="color: #f85149;">-4.50%</td>
+            <td style="color: #f85149;">-6.34%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #d29922; font-weight: 600;">-15.0%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 29.970681600299777%; background: #d29922;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">0.61</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLF</strong><br><span style="color: #6e7681; font-size: 0.8rem;">XLF</span></td>
+            <td style="color: #d29922; font-weight: 600;">0.02</td>
+            <td style="color: #d29922; font-weight: 600;">0.03</td>
+            <td style="color: #f85149;">-1.72%</td>
+            <td style="color: #f85149;">-2.03%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-5.7%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 11.347520128952997%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">0.93</td>
+        </tr>
+        
+        <tr>
+            <td><strong>SPY</strong><br><span style="color: #6e7681; font-size: 0.8rem;">SPY</span></td>
+            <td style="color: #f85149; font-weight: 600;">-0.00</td>
+            <td style="color: #f85149; font-weight: 600;">-0.00</td>
+            <td style="color: #f85149;">-1.22%</td>
+            <td style="color: #f85149;">-1.74%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-5.1%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 10.142704388104498%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">0.98</td>
+        </tr>
+        
+        <tr>
+            <td><strong>USO</strong><br><span style="color: #6e7681; font-size: 0.8rem;">USO</span></td>
+            <td style="color: #f85149; font-weight: 600;">-0.37</td>
+            <td style="color: #f85149; font-weight: 600;">-0.63</td>
+            <td style="color: #f85149;">-2.44%</td>
+            <td style="color: #f85149;">-3.00%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-9.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 19.009858633960715%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">-0.47</td>
+        </tr>
+        
+        <tr>
+            <td><strong>QQQ</strong><br><span style="color: #6e7681; font-size: 0.8rem;">QQQ</span></td>
+            <td style="color: #f85149; font-weight: 600;">-0.48</td>
+            <td style="color: #f85149; font-weight: 600;">-0.63</td>
+            <td style="color: #f85149;">-2.03%</td>
+            <td style="color: #f85149;">-2.18%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-7.9%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 15.76043109652522%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">-0.37</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLK</strong><br><span style="color: #6e7681; font-size: 0.8rem;">XLK</span></td>
+            <td style="color: #f85149; font-weight: 600;">-0.75</td>
+            <td style="color: #f85149; font-weight: 600;">-1.01</td>
+            <td style="color: #f85149;">-2.60%</td>
+            <td style="color: #f85149;">-2.89%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #d29922; font-weight: 600;">-10.5%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 21.03048859475256%; background: #d29922;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">-0.98</td>
+        </tr>
+        
+        <tr>
+            <td><strong>TLT</strong><br><span style="color: #6e7681; font-size: 0.8rem;">TLT</span></td>
+            <td style="color: #f85149; font-weight: 600;">-2.45</td>
+            <td style="color: #f85149; font-weight: 600;">-3.53</td>
+            <td style="color: #f85149;">-1.02%</td>
+            <td style="color: #f85149;">-1.21%</td>
+            <td>
+                <div class="metric-bar">
+                    <span style="color: #3fb950; font-weight: 600;">-4.8%</span>
+                    <div style="flex: 1; background: #0d1117; border-radius: 3px; height: 6px;">
+                        <div class="metric-bar-fill" style="width: 9.577853910122048%; background: #3fb950;"></div>
+                    </div>
+                </div>
+            </td>
+            <td style="color: #58a6ff;">-3.19</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+
+        
+    <div class="metrics-legend">
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #3fb950;"></div>
+            <span>Sharpe > 1.0 (우수)</span>
+        </div>
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #d29922;"></div>
+            <span>0 < Sharpe < 1.0 (보통)</span>
+        </div>
+        <div class="metrics-legend-item">
+            <div class="legend-dot" style="background: #f85149;"></div>
+            <span>Sharpe < 0 (저조)</span>
+        </div>
+    </div>
+    
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📰</span>
+            Events & Market News
+        </h2>
+
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">^VIX</span>
+                    <span class="card-badge badge-neutral">1일 급등 (+18.8%)</span>
+                </div>
+                <div style="color: #8b949e; font-size: 0.9rem; line-height: 1.6;">
+                    ^VIX는 주식 시장의 변동성을 측정하는 지표로, 최근 1일 동안 18.79% 급등한 것은 시장의 불확실성이 급격히 증가했음을 나타냅니다. 이러한 급등은 주로 예상치 못한 경제 지표 발표, 지정학적 긴장, 또는 주요 기업의 실적 발표에 대한 우려로 인해 발생할 수 있습니다. 현재 시장이 Bull (Low Vol) 상태임에도 불구하고 VIX의 급등은 투자자들...
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">ETH-USD</span>
+                    <span class="card-badge badge-neutral">추세 전환 가능성</span>
+                </div>
+                <div style="color: #8b949e; font-size: 0.9rem; line-height: 1.6;">
+                    ETH-USD는 최근 20일 동안 8.43% 상승했으나, 단기적으로는 1일과 5일 변화에서 각각 -1.95%와 -3.01%의 하락을 보였습니다. 이는 단기 조정 국면일 가능성이 있으며, 현재 시장 레짐이 Bull (Low Vol)인 점을 고려할 때, 장기적인 상승 추세가 지속될 가능성이 있습니다. 변동성이 비교적 낮아 리스크 점수가 11.2/100으로 안정...
+                </div>
+            </div>
+            </div>
+        
+        
+        <div class="news-card">
+            <div class="card-header">
+                <span class="card-title">📰 Market News (Perplexity AI)</span>
+            </div>
+            <div class="news-content">### 1. 미국 주식시장 상황 및 전망 (Bull Low Vol 레짐)
+미국 주식시장은 최근 약세를 보이며 S&P500 지수가 1월 18일 6901포인트로 0.57% 하락, 1월 14일 6926.60포인트(-0.53%)로 마감했으나 작년 대비 14.08% 상승한 상태다[1][4]. 지난 주 3대 지수(다우 0.3%, S&P500 0.4%, 나스닥 0.7% 하락)는 트럼프 대통령의 신용카드 금리 10% 제한 정책 여파로 금융주(비자, JP모건 등 3~4%↓)가 약세를 주도했으나, 11월 소매판매 0.6% 호조와 근원 PPI 0.0%로 '연착륙' 기대가 지지한다[2][4][6]. 전망으로는 2026년 상반기 S&P500 7400 상단 돌파 후 3분기 6200 하단 변동(상고하저 패턴), 연중 두 자릿수 상승 가능성 높으나 PER 고점과 정책 불확실성으로 변동성 확대 우려[3][5][7].
+
+### 2. Fed 통화정책 및 금리 전망
+연준은 1월 FOMC(27~28일) 블랙아웃 기간으로, 1월 금리 동결 확률 85.1% 반영 중이며 올해 1~2회 추가 인하 전망으로 달러 약세 지속 예상[2][5][8]. 트럼프 정책(신용카드 금리 제한 등)으로 인플레 압력 우려 있지만, 내부 이견 속 연착륙 시나리오 지배적[4][8].
+
+### 3. 주요 경제 지표 발표 일정
+- 1월 22일: 작년 3분기 GDP 수정치(최초 4.3%↑), 10~11월 PCE 가격지수[2].
+- 주요 기업 실적: 넷플릭스(20일), 존슨앤드존슨·찰스슈왑(21일), 인텔·P&G(22일)[2].
+
+### 4. 주요 종목 최근 뉴스
+- **^VIX**: 검색 결과에서 직접 언급 없으나, 시장 약세(나스닥 주간 0.7%↓, 금융주 급락) 속 변동성 확대 우려로 상승 압력 예상[2][4].
+- **ETH-USD**: 검색 결과에서 직접 언급 없으나, 미국 증시 AI·성장 테마 속 암호화폐 연동성 고려 시 나스닥 약세 영향 가능[4].</div>
+        </div>
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🎯</span>
+            Scenario Analysis
+        </h2>
+        <div class="cards-grid">
+        <div class="scenario-card">
+            <div class="scenario-header">
+                <span class="scenario-name" style="color: #58a6ff;">Base Case (기본 시나리오)</span>
+                <span class="scenario-prob" style="color: #58a6ff;">55%</span>
+            </div>
+            <div class="scenario-target">
+                <div>Expected Return: <strong>+8% ~ +12%</strong></div>
+                <div>S&P 500 Target: <strong>7,200 ~ 7,400</strong></div>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem; margin-bottom: 12px;">
+                현재 포지션 유지, 조정 시 추가 매수
+            </div>
+            <div style="font-size: 0.85rem; color: #6e7681;">Key Triggers:</div>
+            <ul class="scenario-triggers"><li>현재 경제 지표 추세 유지</li><li>Fed 정책 예상대로 진행</li><li>기업 실적 컨센서스 부합</li></ul>
+        </div>
+        
+        <div class="scenario-card">
+            <div class="scenario-header">
+                <span class="scenario-name" style="color: #3fb950;">Bull Case (강세 시나리오)</span>
+                <span class="scenario-prob" style="color: #3fb950;">30%</span>
+            </div>
+            <div class="scenario-target">
+                <div>Expected Return: <strong>+15% ~ +20%</strong></div>
+                <div>S&P 500 Target: <strong>7,600 ~ 8,000</strong></div>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem; margin-bottom: 12px;">
+                주식 비중 최대 확대, 성장주/소형주 집중, 레버리지 ETF 활용
+            </div>
+            <div style="font-size: 0.85rem; color: #6e7681;">Key Triggers:</div>
+            <ul class="scenario-triggers"><li>인플레이션 예상보다 빠른 안정화</li><li>Fed 금리 인하 가속화</li><li>AI 생산성 향상 가시화</li><li>중국 경기 부양책 효과</li></ul>
+        </div>
+        
+        <div class="scenario-card">
+            <div class="scenario-header">
+                <span class="scenario-name" style="color: #f85149;">Bear Case (약세 시나리오)</span>
+                <span class="scenario-prob" style="color: #f85149;">15%</span>
+            </div>
+            <div class="scenario-target">
+                <div>Expected Return: <strong>-10% ~ -15%</strong></div>
+                <div>S&P 500 Target: <strong>5,800 ~ 6,200</strong></div>
+            </div>
+            <div style="color: #8b949e; font-size: 0.9rem; margin-bottom: 12px;">
+                주식 비중 최소화, 현금/채권 확대, 인버스 ETF 헤지
+            </div>
+            <div style="font-size: 0.85rem; color: #6e7681;">Key Triggers:</div>
+            <ul class="scenario-triggers"><li>인플레이션 재상승</li><li>Fed 긴축 재개</li><li>경기 침체 진입</li><li>지정학적 리스크 확대</li></ul>
+        </div>
+        </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🏭</span>
+            Sector Recommendations
+        </h2>
+
+        <table class="sector-table">
+            <thead>
+                <tr>
+                    <th>Sector</th>
+                    <th>Rating</th>
+                    <th>Rationale</th>
+                    <th>ETFs</th>
+                </tr>
+            </thead>
+            <tbody>
+                
+        <tr>
+            <td>기술</td>
+            <td class="rating-overweight">Overweight ▲</td>
+            <td>낮은 금리와 유동성 풍부로 기술주에 대한 투자 매력 증가</td>
+            <td>XLK, VGT</td>
+        </tr>
+        
+        <tr>
+            <td>헬스케어</td>
+            <td class="rating-overweight">Overweight ▲</td>
+            <td>방어적 성격과 지속적인 혁신으로 안정적 성장 기대</td>
+            <td>XLV, IYH</td>
+        </tr>
+        
+        <tr>
+            <td>소비재</td>
+            <td class="rating-neutral">Neutral ●</td>
+            <td>소비 심리 개선에도 불구하고 금리 인하 가능성으로 인한 변동성 존재</td>
+            <td>-</td>
+        </tr>
+        
+        <tr>
+            <td>에너지</td>
+            <td class="rating-neutral">Neutral ●</td>
+            <td>글로벌 수요 회복 기대에도 불구하고 정책 불확실성 존재</td>
+            <td>-</td>
+        </tr>
+        
+        <tr>
+            <td>금융</td>
+            <td class="rating-underweight">Underweight ▼</td>
+            <td>신용카드 금리 제한 정책으로 인한 수익성 압박</td>
+            <td>-</td>
+        </tr>
+        
+        <tr>
+            <td>부동산</td>
+            <td class="rating-underweight">Underweight ▼</td>
+            <td>금리 변동성 및 정책 불확실성으로 인한 투자 매력 감소</td>
+            <td>-</td>
+        </tr>
+        
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 20px;">
+            <div style="color: #6e7681; font-size: 0.85rem; margin-bottom: 8px;">🔥 Hot Industries:</div>
+            <span style="background: #a371f720; color: #a371f7; padding: 4px 12px; border-radius: 20px; margin-right: 8px; font-size: 0.85rem;">인공지능</span><span style="background: #a371f720; color: #a371f7; padding: 4px 12px; border-radius: 20px; margin-right: 8px; font-size: 0.85rem;">재생 에너지</span>
+        </div>
+        
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">💼</span>
+            Portfolio Strategy
+        </h2>
+
+        <div class="strategy-grid">
+            
+        <div class="strategy-box">
+            <h4>📥 Entry Levels</h4>
+            <div class="price-level"><span>1차 진입</span><span>$691.66 (30%)</span></div><div class="price-level"><span>2차 진입</span><span>$681.22 (30%)</span></div><div class="price-level"><span>3차 진입</span><span>$674.48 (40%)</span></div>
+        </div>
+        
+            
+        <div class="strategy-box">
+            <h4>📤 Take Profit Levels</h4>
+            <div class="price-level"><span>1차 청산 (+0.5%)</span><span>$695.16</span></div><div class="price-level"><span>2차 청산 (+3.5%)</span><span>$716.01</span></div><div class="price-level"><span>3차 청산 (+5.5%)</span><span>$729.92</span></div>
+            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #30363d; color: #f85149;">
+                Stop Loss: $654.24 (-5.4%)
+            </div>
+        </div>
+        
+            
+        <div class="strategy-box">
+            <h4>🎯 Adaptive Portfolio Signals</h4>
+            <div class="price-level"><span style="text-transform: capitalize;">aggressive</span><span style="color: #58a6ff;">AGGRESSIVE_ENTRY</span></div><div class="price-level"><span style="text-transform: capitalize;">balanced</span><span style="color: #58a6ff;">AGGRESSIVE_ENTRY</span></div><div class="price-level"><span style="text-transform: capitalize;">conservative</span><span style="color: #58a6ff;">ENTRY</span></div>
+        </div>
+        
+        </div>
+
+        <div class="ai-analysis" style="margin-top: 20px;"><h4 style="color: #58a6ff; margin-bottom: 12px;">GPT Investment Recommendations</h4><div style="white-space: pre-wrap;">현재 시장 상황을 고려한 투자 권고는 다음과 같습니다:
+
+1. **자산배분 권고**:
+   - 주식: 70%
+   - 채권: 20%
+   - 현금: 10%
+
+2. **섹터 선호도**:
+   - 기술주: Overweight
+   - 헬스케어: Overweight
+   - 필수소비재: Neutral
+   - 에너지: Underweight
+
+3. **구체적인 ETF 또는 종목 제안**:
+   - 기술주: QQQ (Invesco QQQ Trust)
+   - 헬스케어: XLV (Health Care Select Sector SPDR Fund)
+   - 필수소비재: XLP (Consumer Staples Select Sector SPDR Fund)
+
+4. **진입/청산 전략**:
+   - 진입: 현재 시장의 강세를 활용하여 점진적으로 포지션을 확대. 특히 기술주와 헬스케어 섹터에 집중.
+   - 청산: 시장 변동성이 증가하거나 지정학적 리스크가 커질 경우, 포지션을 축소하고 현금 비중을 늘림.
+
+5. **리스크 관리 방안**:
+   - 포트폴리오의 10% 이상 손실 발생 시 리밸런싱 검토.
+   - 지정학적 리스크 및 금리 변동에 대한 지속적인 모니터링.
+   - 분산 투자로 개별 종목 리스크 최소화.
+
+이러한 전략을 통해 시장의 강세를 최대한 활용하면서도 리스크를 관리할 수 있습니다.</div></div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">📊</span>
+            Technical Indicators
+        </h2>
+        <div class="indicator-grid">
+            <div class="indicator-item">
+                <div class="indicator-label">VIX</div>
+                <div class="indicator-value">18.84</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">RSI (14)</div>
+                <div class="indicator-value">52.02</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">MACD</div>
+                <div class="indicator-value">3.66</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">MA 50</div>
+                <div class="indicator-value">$679.88</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">MA 200</div>
+                <div class="indicator-value">$630.71</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">Current Price</div>
+                <div class="indicator-value">$691.66</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">Support</div>
+                <div class="indicator-value">$674.48</div>
+            </div>
+            
+            <div class="indicator-item">
+                <div class="indicator-label">Resistance</div>
+                <div class="indicator-value">$695.16</div>
+            </div>
+            </div>
+    </div>
+    
+
+    <div class="section">
+        <h2 class="section-title">
+            <span class="section-icon">🤖</span>
+            AI Comprehensive Analysis (Claude)
+        </h2>
+        <div class="ai-analysis"><h1>시장 종합 분석 리포트</p><p>#<h1>1. 현재 시장 상황 해석</p><p>##<h1>📈 <strong>Bull (Low Vol) 레짐의 의미<strong>
+현재 시장은 <strong>최적의 투자 환경<strong>에 있습니다. Bull (Low Vol) 레짐은 상승 추세가 유지되면서도 변동성이 낮아 안정적인 수익 창출이 가능한 상태를 의미합니다.</p><p><strong>핵심 지표 분석:<strong><br>• <strong>유동성<strong>: $5,801.3B의 풍부한 시장 유동성으로 자산 가격 상승 동력 확보<br>• <strong>리스크 점수<strong>: 11.2/100으로 매우 낮은 위험도<br>• <strong>신뢰도<strong>: 76%의 높은 신뢰도로 분석 결과의 안정성 확보</p><p>하지만 <strong>주의할 점<strong>은 VIX가 18.8% 급등한 것으로, 단기적 변동성 확대 가능성을 시사합니다.</p><p>#<h1>2. 주요 리스크 요인</p><p>##<h1>⚠️ <strong>정책 불확실성<strong><br>• <strong>트럼프 신정부 정책<strong>: 신용카드 금리 10% 제한 정책으로 금융주 3-4% 하락<br>• <strong>인플레이션 우려<strong>: 정책 변화로 인한 물가 상승 압력 가능성</p><p>##<h1>⚠️ <strong>밸류에이션 부담<strong><br>• S&P 500 PER 고점 수준으로 추가 상승 여력 제한<br>• 2026년 하반기 조정 가능성 (6,200 하단 변동 전망)</p><p>##<h1>⚠️ <strong>기술적 신호<strong><br>• VIX 급등으로 단기 변동성 확대<br>• ETH-USD 추세 전환 가능성으로 리스크 자산 조정 우려</p><p>#<h1>3. 기회 요인</p><p>##<h1>🚀 <strong>경제 펀더멘털 견조<strong><br>• <strong>소매판매<strong> 0.6% 호조로 소비 회복력 확인<br>• <strong>근원 PPI<strong> 0.0%로 인플레이션 안정화 신호<br>• <strong>연착륙 시나리오<strong> 지배적</p><p>##<h1>🚀 <strong>통화정책 지원<strong><br>• Fed 추가 금리 인하 여지 (연내 1-2회 예상)<br>• 달러 약세 지속으로 리스크 자산 선호도 증가</p><p>##<h1>🚀 <strong>유동성 환경<strong><br>• TGA $17B 감소로 시장 유동성 공급 증가<br>• Net Liquidity 풍부한 상태 유지</p><p>#<h1>4. 섹터/자산군별 전망</p><p>##<h1>📊 <strong>주식 시장<strong>
+<strong>🟢 긍정적 섹터:<strong><br>• <strong>성장주/소형주<strong>: Bull (Low Vol) 레짐에서 선호<br>• <strong>기술주<strong>: 나스닥 단기 조정 후 재상승 기대<br>• <strong>소비 관련주<strong>: 소매판매 호조 수혜</p><p><strong>🟡 주의 섹터:<strong><br>• <strong>금융주<strong>: 트럼프 정책 영향으로 단기 부담<br>• <strong>대형 가치주<strong>: 상대적 매력도 제한</p><p>##<h1>📊 <strong>대안 투자<strong>
+<strong>암호화폐 (ETH 등):<strong> 추세 전환 가능성으로 신중 접근 필요</p><p><strong>채권:<strong> 금리 인하 기대로 장기채 매력도 증가</p><p>#<h1>5. 투자자 유형별 권고사항</p><p>##<h1>👨‍💼 <strong>보수적 투자자<strong>
+<strong>전략<strong>: 점진적 리스크 확대<br>• 주식 비중 50-60% 유지<br>• 대형주 중심 포트폴리오<br>• 배당주 및 안정 성장주 선호<br>• VIX 급등 시 추가 매수 기회 활용</p><p>##<h1>👩‍💻 <strong>적극적 투자자<strong>  
+<strong>전략<strong>: 성장 모멘텀 적극 활용<br>• 주식 비중 70-80% 확대<br>• 성장주/소형주 비중 증대<br>• 기술주 단기 조정 시 매수 기회 포착<br>• 섹터 로테이션 전략 구사</p><p>##<h1>🏢 <strong>기관 투자자<strong>
+<strong>전략<strong>: 전술적 자산배분 조정<br>• 리스크 패리티 전략 적용<br>• 변동성 확대 대비 헤징 전략 병행<br>• 2026년 하반기 조정 대비 현금 비중 점진적 확대<br>• ESG/테마 투자 지속 확대</p><p>#<h1>📋 <strong>결론 및 핵심 포인트<strong></p><p>✅ <strong>현재는 Bull (Low Vol) 최적 투자 환경<strong>
+✅ <strong>리스크 자산 선호 전략 유효<strong>  
+✅ <strong>단기 변동성 확대는 매수 기회로 활용<strong>
+✅ <strong>2026년 상반기까지 상승 모멘텀 지속 전망<strong></p><p>⚠️ <strong>주의사항<strong>: VIX 급등과 정책 불확실성으로 포지션 관리에 유의하되, 전체적인 Bull 레짐 하에서는 하락을 매수 기회로 활용하는 전략이 유효할 것으로 판단됩니다.</div>
+    </div>
+    
+
+    <div class="report-footer">
+        <p><strong>EIMAS - Economic Intelligence Multi-Agent System</strong></p>
+        <p style="margin-top: 8px;">
+            This report is generated by AI agents analyzing macroeconomic data, market indicators,
+            and real-time news. The recommendations should be used as reference only and do not
+            constitute financial advice.
+        </p>
+        <div class="data-sources">
+            Data Sources: FRED (Federal Reserve), Yahoo Finance, Perplexity AI, OpenAI GPT-4o, Anthropic Claude
+        </div>
+    </div>
+    
+</div></body></html>

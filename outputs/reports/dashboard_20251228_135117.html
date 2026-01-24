@@ -1,0 +1,3813 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="3600">
+    <title>Market Anomaly Dashboard - 2025-12-28</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" 
+            onerror="window.chartJsLoadFailed = true; console.error('Chart.js CDN 로드 실패');"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e4e4e7;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        /* 헤더 */
+        .header {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header-left h1 {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            background: linear-gradient(90deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header-left .timestamp {
+            color: #9ca3af;
+            font-size: 0.95rem;
+        }
+        
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+        
+        .status-badge {
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: white;
+            background: #22c55e;
+        }
+        
+        .signal-count {
+            text-align: center;
+        }
+        
+        .signal-count .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+        
+        .signal-count .label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        /* 그리드 레이아웃 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card h3 {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .card .value {
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        
+        .card .sub {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+        
+        .critical { color: #ef4444; }
+        .alert { color: #f97316; }
+        .warning { color: #eab308; }
+        .normal { color: #22c55e; }
+        
+        /* 차트 섹션 */
+        .chart-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .chart-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chart-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            color: #e4e4e7;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+        
+        /* 테이블 */
+        .table-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-x: auto;
+        }
+        
+        .table-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: #e4e4e7;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            color: #9ca3af;
+            position: sticky;
+            top: 0;
+        }
+        
+        .level-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .action-guide {
+            max-width: 300px;
+            font-size: 0.85rem;
+            color: #93c5fd;
+        }
+        
+        /* AI 요약 */
+        .summary-section {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        
+        .summary-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            color: #a78bfa;
+        }
+        
+        .summary-content {
+            line-height: 1.8;
+        }
+        
+        .summary-content h3, .summary-content h4 {
+            color: #c4b5fd;
+            margin: 16px 0 8px 0;
+        }
+        
+        /* 해석 섹션 */
+        .interpretation-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .interpretation-item {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            line-height: 1.7;
+        }
+        
+        /* 뉴스 섹션 */
+        .news-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .news-item {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .news-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .news-ticker {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .news-level {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: white;
+        }
+        
+        .news-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #d1d5db;
+        }
+        
+        .news-content h4 {
+            color: #93c5fd;
+            margin: 12px 0 8px 0;
+        }
+        
+        /* Regime 섹션 스타일 */
+        .regime-section {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .regime-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .regime-card h3 {
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            color: #a5b4fc;
+        }
+        
+        .regime-main {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .regime-icon {
+            font-size: 3rem;
+            margin-bottom: 8px;
+        }
+        
+        .regime-label {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .regime-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 16px;
+        }
+        
+        .regime-stat {
+            text-align: center;
+        }
+        
+        .regime-stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .regime-stat-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        .sector-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+        
+        .sector-icon {
+            font-size: 0.9rem;
+        }
+        
+        .sector-name {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .sector-ticker {
+            color: #60a5fa;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .sector-cross {
+            color: #9ca3af;
+            font-size: 0.75rem;
+        }
+        
+        .sector-conf {
+            color: #a5b4fc;
+            font-size: 0.8rem;
+        }
+        
+        /* 자산군별 위험 현황 스타일 */
+        .asset-class-item {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .asset-class-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .asset-class-icon {
+            font-size: 1.2rem;
+        }
+        
+        .asset-class-name {
+            flex: 1;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #e4e4e7;
+        }
+        
+        .asset-class-status {
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .asset-class-body {
+            margin-top: 8px;
+        }
+        
+        .asset-class-bar-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .asset-class-bar {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .asset-class-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        .asset-class-avg {
+            font-weight: 600;
+            color: #d1d5db;
+        }
+        
+        .asset-class-high-risk {
+            color: #fca5a5;
+        }
+        
+        /* Regime Confidence 스타일 */
+        .regime-confidence-section {
+            margin-top: 16px;
+        }
+        
+        .regime-confidence-item {
+            margin-bottom: 12px;
+        }
+        
+        .regime-confidence-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 6px;
+        }
+        
+        .regime-confidence-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        
+        .regime-confidence-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .regime-confidence-value {
+            font-size: 0.9rem;
+            color: #d1d5db;
+            text-align: right;
+        }
+        
+        .regime-transition-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .regime-transition-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        .regime-transition-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .allocation-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .allocation-name {
+            width: 50px;
+            font-size: 0.9rem;
+        }
+        
+        .allocation-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .allocation-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .allocation-pct {
+            width: 40px;
+            text-align: right;
+            font-weight: 600;
+        }
+        
+        .sector-rec {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sector-rec-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+        
+        .sector-rec-value {
+            font-size: 0.9rem;
+            color: #e4e4e7;
+        }
+        
+        /* Crypto Panel 스타일 */
+        .crypto-panel {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 179, 8, 0.1) 100%);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .crypto-panel h3 {
+            color: #f97316;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .crypto-panel h4 {
+            color: #fbbf24;
+            margin: 16px 0 12px 0;
+            font-size: 1rem;
+        }
+        
+        .crypto-collection-status {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .crypto-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1rem;
+        }
+        
+        .crypto-status .status-icon {
+            font-size: 1.2rem;
+        }
+        
+        .crypto-status .fallback-badge {
+            background: #eab308;
+            color: #000;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .crypto-status-details {
+            margin-top: 12px;
+            display: grid;
+            gap: 6px;
+        }
+        
+        .crypto-status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        
+        .crypto-status-item .ticker {
+            font-weight: 600;
+            color: #f97316;
+            width: 80px;
+        }
+        
+        .crypto-status-item .name {
+            flex: 1;
+            color: #e4e4e7;
+        }
+        
+        .crypto-status-item .source {
+            color: #9ca3af;
+            font-size: 0.75rem;
+        }
+        
+        .crypto-signals {
+            margin-bottom: 16px;
+        }
+        
+        .crypto-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .crypto-table th,
+        .crypto-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .crypto-table th {
+            background: rgba(0, 0, 0, 0.2);
+            color: #f97316;
+            font-weight: 600;
+        }
+        
+        .crypto-news {
+            margin-top: 16px;
+        }
+        
+        .crypto-news-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-left: 3px solid #f97316;
+        }
+        
+        .crypto-news-item .news-ticker {
+            color: #f97316;
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        
+        .crypto-news-item .news-headline {
+            color: #e4e4e7;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+        
+        .crypto-news-item .news-summary {
+            color: #9ca3af;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        
+        .crypto-note {
+            background: rgba(249, 115, 22, 0.1);
+            border-left: 3px solid #f97316;
+            padding: 10px 14px;
+            margin-top: 12px;
+            border-radius: 0 6px 6px 0;
+            font-size: 0.85rem;
+            color: #fbbf24;
+        }
+        
+        /* Risk Panel 스타일 (NEW in v2.1) */
+        .risk-panel {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .risk-panel h3 {
+            color: #a78bfa;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .risk-panel h4 {
+            color: #c4b5fd;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        
+        .risk-panel-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr 1.5fr;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .risk-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .risk-summary {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .risk-summary-icon {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+        
+        .risk-summary-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        
+        .risk-summary-label {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+        
+        .risk-summary-sub {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        
+        .risk-level-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .risk-level-item:last-child {
+            border-bottom: none;
+        }
+        
+        .risk-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .risk-label {
+            flex: 1;
+            font-size: 0.9rem;
+        }
+        
+        .risk-count {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #e4e4e7;
+        }
+        
+        .risk-asset-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .risk-asset-item:last-child {
+            border-bottom: none;
+        }
+        
+        .risk-ticker {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .risk-prob {
+            font-weight: 600;
+        }
+        
+        .risk-note {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 3px solid #a78bfa;
+            padding: 12px 16px;
+            border-radius: 0 8px 8px 0;
+            font-size: 0.85rem;
+            color: #c4b5fd;
+            line-height: 1.5;
+        }
+        
+        .risk-note p {
+            margin: 4px 0;
+        }
+        
+        /* 전체 자산별 위험확률 테이블 (NEW) */
+        .risk-table-section {
+            margin-top: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .risk-table-section h4 {
+            color: #60a5fa;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+        
+        .risk-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .risk-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        
+        .risk-table th,
+        .risk-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .risk-table th {
+            background: rgba(96, 165, 250, 0.15);
+            color: #93c5fd;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        
+        .risk-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        .risk-bar-container {
+            width: 80px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .risk-bar {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 1200px) {
+            .risk-panel-grid { grid-template-columns: 1fr; }
+        }
+        
+        /* Critical Path 섹션 스타일 */
+        .section-title {
+            font-size: 1.8rem;
+            margin: 32px 0 24px 0;
+            color: #a5b4fc;
+            border-bottom: 2px solid rgba(165, 180, 252, 0.3);
+            padding-bottom: 12px;
+        }
+        
+        .critical-path-section {
+            margin-bottom: 32px;
+        }
+        
+        .cp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .cp-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .cp-card h3 {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #a5b4fc;
+        }
+        
+        /* Risk Gauge */
+        .risk-gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .risk-gauge {
+            position: relative;
+            width: 200px;
+            height: 100px;
+        }
+        
+        .risk-gauge::before {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 100px;
+            border-radius: 200px 200px 0 0;
+            background: conic-gradient(
+                from 180deg at 50% 100%,
+                var(--risk-color) 0deg,
+                var(--risk-color) calc(var(--risk-value) * 1.8deg),
+                rgba(255, 255, 255, 0.1) calc(var(--risk-value) * 1.8deg),
+                rgba(255, 255, 255, 0.1) 180deg
+            );
+            mask: radial-gradient(circle at 50% 100%, transparent 70px, black 70px);
+            -webkit-mask: radial-gradient(circle at 50% 100%, transparent 70px, black 70px);
+        }
+        
+        .risk-gauge::after {
+            content: '';
+            position: absolute;
+            width: 140px;
+            height: 70px;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 140px 140px 0 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            z-index: 1;
+        }
+        
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--risk-color);
+            z-index: 2;
+        }
+        
+        .gauge-level {
+            position: absolute;
+            top: 70%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            font-weight: 600;
+            z-index: 2;
+        }
+        
+        /* Regime Status */
+        .regime-status-content {
+            text-align: center;
+        }
+        
+        .regime-status-icon {
+            font-size: 3rem;
+            margin-bottom: 8px;
+        }
+        
+        .regime-status-label {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+        
+        .regime-confidence {
+            margin-bottom: 16px;
+        }
+        
+        .confidence-label {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #eab308);
+            transition: width 0.3s;
+        }
+        
+        .confidence-value {
+            font-size: 0.9rem;
+            color: #d1d5db;
+        }
+        
+        .transition-prob {
+            margin-top: 12px;
+        }
+        
+        .transition-label {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+        
+        .transition-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        /* Path Contributions */
+        .path-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .path-bar-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .path-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            color: #d1d5db;
+        }
+        
+        .path-bar-value {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .path-bar-container {
+            width: 100%;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .path-bar {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.3s;
+        }
+        
+        /* Risk Matrix */
+        .matrix-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        
+        .matrix-grid {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        
+        .matrix-quadrant {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+        }
+        
+        .quadrant-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            text-align: center;
+        }
+        
+        .matrix-marker {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+        }
+        
+        .matrix-marker-label {
+            position: absolute;
+            font-size: 0.75rem;
+            color: #ef4444;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            z-index: 11;
+        }
+        
+        .matrix-axes {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            padding: 0 20px;
+            font-size: 0.75rem;
+            color: #9ca3af;
+        }
+        
+        .axis-label {
+            font-size: 0.75rem;
+        }
+        
+        .axis-x {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .axis-y {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+        }
+        
+        .matrix-info {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .matrix-info-item {
+            font-size: 0.9rem;
+            color: #d1d5db;
+        }
+        
+        /* Warnings */
+        .warnings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .warning-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid #ef4444;
+            border-radius: 6px;
+        }
+        
+        .warning-icon {
+            font-size: 1.2rem;
+        }
+        
+        .warning-text {
+            flex: 1;
+            color: #fca5a5;
+            font-size: 0.95rem;
+        }
+        
+        /* Crypto Sentiment */
+        .crypto-sentiment-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 24px;
+        }
+        
+        .crypto-sentiment-card h4 {
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            color: #a5b4fc;
+        }
+        
+        .crypto-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        
+        .crypto-metric {
+            text-align: center;
+        }
+        
+        .crypto-metric-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+        
+        .crypto-metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+        
+        .crypto-metric-level {
+            font-size: 0.85rem;
+            color: #d1d5db;
+        }
+        
+        .leading-indicator-badge {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+            color: #fca5a5;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        @media (max-width: 1200px) {
+            .cp-grid { grid-template-columns: 1fr; }
+            .crypto-metrics { grid-template-columns: 1fr; }
+        }
+        
+        /* Signal News 섹션 스타일 */
+        .signal-news-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .signal-news-section h3 {
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+            color: #a5b4fc;
+        }
+        
+        .signal-news-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .signal-news-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .signal-news-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .signal-news-header:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .signal-news-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .signal-news-ticker {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .signal-news-name {
+            color: #e4e4e7;
+        }
+        
+        .signal-news-level {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .signal-news-toggle {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            transition: transform 0.2s;
+        }
+        
+        .signal-news-content {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .signal-news-description {
+            font-size: 0.9rem;
+            color: #d1d5db;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .signal-news-text {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #9ca3af;
+        }
+        
+        /* Spillover 섹션 스타일 */
+        .spillover-detail-section {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .spillover-detail-section h4 {
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            color: #a5b4fc;
+        }
+        
+        .spillover-detail-section h5 {
+            margin: 16px 0 12px 0;
+            font-size: 0.95rem;
+            color: #c4b5fd;
+        }
+        
+        .spillover-summary {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .spillover-metric {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .spillover-metric-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        .spillover-metric-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .spillover-paths {
+            margin-bottom: 20px;
+        }
+        
+        .spillover-path-item {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .spillover-path-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .spillover-source {
+            font-weight: 600;
+            color: #ef4444;
+        }
+        
+        .spillover-arrow {
+            color: #9ca3af;
+        }
+        
+        .spillover-target {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .spillover-category {
+            margin-left: auto;
+            font-size: 0.75rem;
+            color: #9ca3af;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .spillover-path-strength {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .spillover-strength-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .spillover-strength-value {
+            font-size: 0.85rem;
+            color: #d1d5db;
+            min-width: 40px;
+        }
+        
+        .spillover-impacts {
+            margin-top: 16px;
+        }
+        
+        .spillover-impact-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .impact-asset {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+        
+        .impact-value {
+            font-weight: 600;
+        }
+        
+        /* MA Status 섹션 스타일 */
+        .ma-status-section {
+            padding: 16px;
+        }
+        
+        .ma-status-section h4 {
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            color: #a5b4fc;
+        }
+        
+        .ma-values {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .ma-value-item {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        
+        .ma-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+        
+        .ma-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e4e4e7;
+        }
+        
+        .ma-slope {
+            font-size: 1.5rem;
+            margin-top: 4px;
+        }
+        
+        .ma-deviations {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .ma-deviation-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .ma-deviation-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+        }
+        
+        .ma-deviation-bar-container {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .ma-deviation-bar {
+            position: absolute;
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.3s;
+        }
+        
+        .ma-deviation-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        /* Risk Summary 섹션 스타일 */
+        .risk-summary-section {
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 3px solid #a78bfa;
+            border-radius: 0 8px 8px 0;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .risk-summary-section h4 {
+            margin-bottom: 12px;
+            font-size: 1rem;
+            color: #a78bfa;
+        }
+        
+        .risk-summary-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #c4b5fd;
+        }
+        
+        /* Risk Metrics 섹션 스타일 */
+        .risk-metrics-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .risk-metrics-section h4 {
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+            color: #a78bfa;
+        }
+        
+        .risk-metrics-note {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(139, 92, 246, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid #a78bfa;
+        }
+        
+        .risk-metrics-table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .risk-metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        .risk-metrics-table th,
+        .risk-metrics-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .risk-metrics-table th {
+            background: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .risk-metrics-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        /* Markov Switching Regime 섹션 스타일 */
+        .markov-regime-section {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .markov-regime-section h3 {
+            color: #a78bfa;
+            margin-bottom: 16px;
+            font-size: 1.3rem;
+        }
+        
+        .markov-note-intro {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(139, 92, 246, 0.05);
+            border-radius: 6px;
+            border-left: 3px solid #a78bfa;
+        }
+        
+        .markov-regime-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .markov-regime-card h4 {
+            color: #c4b5fd;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+        }
+        
+        .markov-regime-card h5 {
+            color: #a5b4fc;
+            margin: 16px 0 12px 0;
+            font-size: 1rem;
+        }
+        
+        .markov-note {
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-bottom: 12px;
+        }
+        
+        .markov-transition-section {
+            margin-bottom: 20px;
+        }
+        
+        .transition-matrix-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .transition-matrix-table th,
+        .transition-matrix-table td {
+            padding: 10px 12px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .transition-matrix-table th {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            font-weight: 600;
+        }
+        
+        .markov-metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .markov-metric-card {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        
+        .duration-list,
+        .next-prob-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .duration-item,
+        .next-prob-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .duration-item:last-child,
+        .next-prob-item:last-child {
+            border-bottom: none;
+        }
+        
+        .duration-regime,
+        .next-prob-regime {
+            color: #d1d5db;
+            font-weight: 600;
+        }
+        
+        .duration-value,
+        .next-prob-value {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+        
+        .markov-chart-section {
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .markov-metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* 반응형 */
+        @media (max-width: 1200px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-section { grid-template-columns: 1fr; }
+            .regime-section { grid-template-columns: 1fr; }
+        }
+        
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 16px; text-align: center; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="header-left">
+                <h1>📊 Market Anomaly Dashboard</h1>
+                <div class="timestamp">업데이트: 2025-12-28T13:49:40.337844 | 1시간 캐시</div>
+            </div>
+            <div class="header-right">
+                <div class="signal-count">
+                    <div class="number">50</div>
+                    <div class="label">감지된 신호</div>
+                </div>
+                <div class="status-badge">긴급 주의</div>
+            </div>
+        </div>
+        
+        <!-- 신호 카드 -->
+        <div class="grid">
+            <div class="card">
+                <h3>🔴 Critical 신호</h3>
+                <div class="value critical">2</div>
+                <div class="sub">즉시 주의 필요</div>
+            </div>
+            <div class="card">
+                <h3>🟠 Alert 신호</h3>
+                <div class="value alert">17</div>
+                <div class="sub">모니터링 강화</div>
+            </div>
+            <div class="card">
+                <h3>🟡 Warning 신호</h3>
+                <div class="value warning">22</div>
+                <div class="sub">추세 관찰</div>
+            </div>
+            <div class="card">
+                <h3>🤖 ML 평균 위험</h3>
+                <div class="value" style="font-size: 1.8rem; color: #22c55e;">8.5%</div>
+                <div class="sub">High 0 / Critical 0</div>
+            </div>
+            <div class="card">
+                <h3>📈 가장 활발한 자산</h3>
+                <div class="value" style="font-size: 1.5rem; color: #60a5fa;">SLV</div>
+                <div class="sub">5개 신호 동시 발생</div>
+            </div>
+        </div>
+        
+        <!-- 차트 섹션 -->
+        <div class="chart-section">
+            <div class="chart-card">
+                <h3>📊 신호 분포 현황</h3>
+                <div class="chart-container">
+                    <canvas id="signalChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <h3>📈 지표별 신호 분포</h3>
+                <div class="chart-container">
+                    <canvas id="indicatorChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Critical Path Analysis 섹션 -->
+        
+    <!-- Critical Path Analysis 섹션 -->
+    <div class="critical-path-section">
+        <h2 class="section-title">🎯 Critical Path Analysis</h2>
+        
+        <!-- 섹션 A: Risk Overview -->
+        <div class="cp-grid">
+            <div class="cp-card cp-risk-overview">
+                <h3>전체 위험도</h3>
+                <div class="risk-gauge-container">
+                    <div class="risk-gauge" style="--risk-value: 12.441411213742798; --risk-color: #22c55e;">
+                        <div class="gauge-value">12.4%</div>
+                        <div class="gauge-level" style="color: #22c55e;">LOW</div>
+                    </div>
+                </div>
+                <div class="cp-note" style="font-size: 0.85rem; color: #9ca3af; margin-top: 12px; text-align: center;">
+                    6개 위험 경로의 가중평균 (레짐: BULL)
+                </div>
+            </div>
+            
+            <!-- 섹션 C: Regime Status -->
+            <div class="cp-card cp-regime-status">
+                <h3>레짐 상태</h3>
+                <div class="regime-status-content">
+                    <div class="regime-status-icon" style="color: #22c55e;">📈</div>
+                    <div class="regime-status-label" style="color: #22c55e;">BULL</div>
+                    <div class="regime-confidence">
+                        <div class="confidence-label">레짐 확신도</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: 38.268930304151894%;"></div>
+                        </div>
+                        <div class="confidence-value">38.3%</div>
+                    </div>
+                    <div class="transition-prob">
+                        <div class="transition-label">전환 확률</div>
+                        <div class="transition-value" style="color: #eab308;">30.0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 섹션 B: Path Contributions -->
+        <div class="cp-card cp-path-contributions">
+            <h3>경로별 위험 기여도</h3>
+            <div class="path-bars">
+                
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>암호화폐</span>
+                    <span class="path-bar-value">23.7%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 23.665790826480457%; background: #ef4444;"></div>
+                </div>
+            </div>
+            
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>섹터 로테이션</span>
+                    <span class="path-bar-value">22.0%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 22.024732346149687%; background: #60a5fa;"></div>
+                </div>
+            </div>
+            
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>신용 스트레스</span>
+                    <span class="path-bar-value">16.0%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 15.969228700540643%; background: #60a5fa;"></div>
+                </div>
+            </div>
+            
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>AI/빅테크 집중</span>
+                    <span class="path-bar-value">15.3%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 15.25418765929076%; background: #60a5fa;"></div>
+                </div>
+            </div>
+            
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>변동성/공포</span>
+                    <span class="path-bar-value">14.4%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 14.428787792211525%; background: #60a5fa;"></div>
+                </div>
+            </div>
+            
+            <div class="path-bar-item">
+                <div class="path-bar-label">
+                    <span>유동성/금리</span>
+                    <span class="path-bar-value">8.7%</span>
+                </div>
+                <div class="path-bar-container">
+                    <div class="path-bar" style="width: 8.657272675326915%; background: #60a5fa;"></div>
+                </div>
+            </div>
+            
+            </div>
+        </div>
+        
+        <!-- 섹션 D: Risk Appetite vs Uncertainty -->
+        <div class="cp-card cp-risk-matrix">
+            <h3>리스크 선호도 vs 불확실성</h3>
+            <div class="matrix-container">
+                <div class="matrix-grid">
+                    <div class="matrix-quadrant" style="grid-area: 1 / 1 / 2 / 2; border-right: 2px solid rgba(255,255,255,0.2); border-bottom: 2px solid rgba(255,255,255,0.2);">
+                        <div class="quadrant-label">CRISIS</div>
+                    </div>
+                    <div class="matrix-quadrant" style="grid-area: 1 / 2 / 2 / 3; border-bottom: 2px solid rgba(255,255,255,0.2);">
+                        <div class="quadrant-label">SPECULATIVE</div>
+                    </div>
+                    <div class="matrix-quadrant" style="grid-area: 2 / 1 / 3 / 2; border-right: 2px solid rgba(255,255,255,0.2);">
+                        <div class="quadrant-label">STAGNANT</div>
+                    </div>
+                    <div class="matrix-quadrant" style="grid-area: 2 / 2 / 3 / 3;">
+                        <div class="quadrant-label">NORMAL</div>
+                    </div>
+                    <div class="matrix-marker" style="left: 110.0291847833392px; top: 151.22482777607698px;"></div>
+                    <div class="matrix-marker-label" style="left: 120.0291847833392px; top: 141.22482777607698px;">
+                        MIXED
+                    </div>
+                </div>
+                <div class="matrix-axes">
+                    <div class="axis-label axis-y">Uncertainty (0-100)</div>
+                    <div class="axis-label axis-x">Risk Appetite (0-100)</div>
+                </div>
+            </div>
+            <div class="matrix-info">
+                <div class="matrix-info-item">
+                    <span>Risk Appetite: 55.0</span>
+                </div>
+                <div class="matrix-info-item">
+                    <span>Uncertainty: 24.4</span>
+                </div>
+                <div class="matrix-info-item">
+                    <span>Market State: MIXED</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 섹션 E: Active Warnings -->
+        
+        
+        <!-- 섹션 F: Crypto Sentiment -->
+        
+        <div class="crypto-sentiment-card">
+            <h4>🪙 암호화폐 센티먼트</h4>
+            <div class="crypto-metrics">
+                <div class="crypto-metric">
+                    <div class="crypto-metric-label">센티먼트 점수</div>
+                    <div class="crypto-metric-value" style="color: #eab308;">43.7</div>
+                    <div class="crypto-metric-level">NEUTRAL</div>
+                </div>
+                <div class="crypto-metric">
+                    <div class="crypto-metric-label">BTC-SPY 상관관계</div>
+                    <div class="crypto-metric-value">0.37</div>
+                    <div class="crypto-metric-level">COUPLED</div>
+                </div>
+                
+            </div>
+            
+        </div>
+        
+        
+        <!-- Spillover Analysis 상세 -->
+        
+    <div class="spillover-detail-section">
+        <h4>🔄 충격 전이 분석 (Spillover Analysis)</h4>
+        <div class="spillover-summary">
+            <div class="spillover-metric">
+                <span class="spillover-metric-label">스필오버 위험 점수</span>
+                <span class="spillover-metric-value" style="color: #22c55e;">0.0</span>
+            </div>
+            <div class="spillover-metric">
+                <span class="spillover-metric-label">주요 위험 소스</span>
+                <span class="spillover-metric-value">NONE</span>
+            </div>
+        </div>
+        <div class="spillover-paths">
+            <h5>활성 전이 경로</h5>
+            <p style="color: #9ca3af;">현재 활성화된 충격 전이 경로 없음</p>
+        </div>
+        
+    </div>
+    
+        
+    </div>
+    
+        
+        <!-- 거시경제 환경 섹션 (NEW) -->
+        
+    <div class="cp-card cp-macro-environment">
+        <h3>🌍 거시경제 환경 (Macro Environment)</h3>
+        
+        <div class="yield-curve-visualization">
+            <div class="yield-curve-bar-container">
+                <div class="yield-curve-bar" style="width: 100%; height: 30px; background: linear-gradient(to right, #ef4444 0%, #ef4444 40.0%, #22c55e 40.0%, #22c55e 100%); border-radius: 15px; position: relative;">
+                    <div class="yield-curve-marker" style="position: absolute; left: 54.6%; top: 50%; transform: translate(-50%, -50%); width: 4px; height: 40px; background: white; border: 2px solid #22c55e; border-radius: 2px; box-shadow: 0 0 8px #22c55e;"></div>
+                    <div class="yield-curve-zero-line" style="position: absolute; left: 40.0%; top: 0; width: 2px; height: 100%; background: rgba(255,255,255,0.5);"></div>
+                </div>
+                <div class="yield-curve-labels">
+                    <span style="color: #ef4444;">역전 (-)</span>
+                    <span style="margin-left: auto; color: #22c55e;">정상 (+)</span>
+                </div>
+            </div>
+            <div class="yield-curve-value" style="text-align: center; margin-top: 8px; font-size: 1.2rem; font-weight: 700; color: #22c55e;">
+                ✅ 73.0bp (NORMAL)
+            </div>
+        </div>
+        
+        <div class="macro-metrics-grid">
+            
+        <div class="credit-spread-item">
+            <div class="credit-spread-label">신용 스프레드 변화 (20일)</div>
+            <div class="credit-spread-value" style="color: #eab308; font-size: 1.5rem; font-weight: 700;">
+                📊 +0.8%
+            </div>
+        </div>
+        
+            
+        </div>
+        <div class="macro-interpretation" style="margin-top: 16px; padding: 12px; background: rgba(139, 92, 246, 0.1); border-left: 3px solid #a78bfa; border-radius: 0 6px 6px 0; font-size: 0.9rem; color: #c4b5fd; line-height: 1.6;">
+            ✅ 수익률 곡선 정상 (73.0bp): 경기 확장 국면. | 📊 신용 스프레드 안정 (0.8%): 신용 환경 정상.
+        </div>
+    </div>
+    
+        
+        <!-- Regime 분석 섹션 -->
+        <div class="regime-section">
+            <div class="regime-card regime-main">
+                <h3>📈 시장 국면 (Regime)</h3>
+                
+    <div class="regime-display" style="
+        background: rgba(34, 197, 94, 0.2);
+        border: 1px solid #22c55e40;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+    ">
+        <div style="font-size: 3em; margin-bottom: 0.5rem;">🟢</div>
+        <div style="
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #22c55e;
+            margin-bottom: 0.25rem;
+        ">BULL</div>
+        <div style="color: #9ca3af; font-size: 0.9em;">시장 국면</div>
+        
+    <div style="margin-top: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: #9ca3af;">
+            <span>레짐 확신도</span>
+            <span>38.3%</span>
+        </div>
+        <div style="background: #374151; border-radius: 4px; height: 8px; margin-top: 4px;">
+            <div style="
+                background: #22c55e;
+                width: 38.268930304151894%;
+                height: 100%;
+                border-radius: 4px;
+                transition: width 0.3s;
+            "></div>
+        </div>
+    </div>
+    
+        
+        <div style="margin-top: 0.75rem; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: #9ca3af; font-size: 0.85em;">⚡ 전환 확률</span>
+                <span style="color: #eab308; font-weight: 600;">30.0%</span>
+            </div>
+        </div>
+        
+    </div>
+    
+            </div>
+            
+            <div class="regime-card">
+                
+    <div class="asset-risk-section">
+        <h3 style="color: #f1f5f9; margin-bottom: 1rem;">📊 자산군별 위험 현황</h3>
+        <div style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        ">
+            
+        <div class="asset-category-card" style="
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            border-left: 4px solid #f97316;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+                <span style="font-size: 1.5em;">📈</span>
+                <h4 style="margin: 0; color: #f1f5f9;">주식</h4>
+                <span style="
+                    margin-left: auto;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.75em;
+                    font-weight: 600;
+                    background: #f9731620;
+                    color: #f97316;
+                ">ALERT</span>
+            </div>
+            <div class="risk-counts" style="display: flex; gap: 12px; margin-bottom: 0.75rem; font-size: 0.85em;">
+                <span style="color: #ef4444;">● CRITICAL: 0</span>
+                <span style="color: #f97316;">● ALERT: 1</span>
+                <span style="color: #eab308;">● WARNING: 3</span>
+            </div>
+            <div class="key-signals" style="font-size: 0.85em;">
+                
+            <div class="key-signal-item" style="border-left: 3px solid #f97316; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Emerging Markets</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #eab308; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Financial</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - rsi</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #eab308; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Emerging Markets</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - bollinger</span>
+            </div>
+            
+            </div>
+        </div>
+        
+        <div class="asset-category-card" style="
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            border-left: 4px solid #eab308;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+                <span style="font-size: 1.5em;">📊</span>
+                <h4 style="margin: 0; color: #f1f5f9;">채권</h4>
+                <span style="
+                    margin-left: auto;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.75em;
+                    font-weight: 600;
+                    background: #eab30820;
+                    color: #eab308;
+                ">WARNING</span>
+            </div>
+            <div class="risk-counts" style="display: flex; gap: 12px; margin-bottom: 0.75rem; font-size: 0.85em;">
+                <span style="color: #ef4444;">● CRITICAL: 0</span>
+                <span style="color: #f97316;">● ALERT: 0</span>
+                <span style="color: #eab308;">● WARNING: 2</span>
+            </div>
+            <div class="key-signals" style="font-size: 0.85em;">
+                
+            <div class="key-signal-item" style="border-left: 3px solid #eab308; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">High Yield Corporate</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #eab308; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Short-Term Treasury</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            </div>
+        </div>
+        
+        <div class="asset-category-card" style="
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            border-left: 4px solid #ef4444;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+                <span style="font-size: 1.5em;">🏭</span>
+                <h4 style="margin: 0; color: #f1f5f9;">원자재</h4>
+                <span style="
+                    margin-left: auto;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.75em;
+                    font-weight: 600;
+                    background: #ef444420;
+                    color: #ef4444;
+                ">CRITICAL</span>
+            </div>
+            <div class="risk-counts" style="display: flex; gap: 12px; margin-bottom: 0.75rem; font-size: 0.85em;">
+                <span style="color: #ef4444;">● CRITICAL: 1</span>
+                <span style="color: #f97316;">● ALERT: 12</span>
+                <span style="color: #eab308;">● WARNING: 10</span>
+            </div>
+            <div class="key-signals" style="font-size: 0.85em;">
+                
+            <div class="key-signal-item" style="border-left: 3px solid #ef4444; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Copper</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #f97316; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Gold ETF</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #f97316; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">Gold ETF</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - rsi</span>
+            </div>
+            
+            </div>
+        </div>
+        
+        <div class="asset-category-card" style="
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            border-left: 4px solid #ef4444;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+                <span style="font-size: 1.5em;">💱</span>
+                <h4 style="margin: 0; color: #f1f5f9;">환율</h4>
+                <span style="
+                    margin-left: auto;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.75em;
+                    font-weight: 600;
+                    background: #ef444420;
+                    color: #ef4444;
+                ">CRITICAL</span>
+            </div>
+            <div class="risk-counts" style="display: flex; gap: 12px; margin-bottom: 0.75rem; font-size: 0.85em;">
+                <span style="color: #ef4444;">● CRITICAL: 1</span>
+                <span style="color: #f97316;">● ALERT: 4</span>
+                <span style="color: #eab308;">● WARNING: 2</span>
+            </div>
+            <div class="key-signals" style="font-size: 0.85em;">
+                
+            <div class="key-signal-item" style="border-left: 3px solid #ef4444; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">USD/CNY</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - return_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #f97316; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">USD/CNY</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - price_z</span>
+            </div>
+            
+            <div class="key-signal-item" style="border-left: 3px solid #f97316; padding-left: 8px; margin: 4px 0;">
+                <span style="font-weight: 600;">USD/CNY</span>
+                <span style="color: #9ca3af; font-size: 0.8em;"> - rsi</span>
+            </div>
+            
+            </div>
+        </div>
+        
+        <div class="asset-category-card" style="
+            background: rgba(30, 41, 59, 0.8);
+            border-radius: 12px;
+            padding: 1rem;
+            border-left: 4px solid #22c55e;
+        ">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem;">
+                <span style="font-size: 1.5em;">🪙</span>
+                <h4 style="margin: 0; color: #f1f5f9;">암호화폐</h4>
+                <span style="
+                    margin-left: auto;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 0.75em;
+                    font-weight: 600;
+                    background: #22c55e20;
+                    color: #22c55e;
+                ">STABLE</span>
+            </div>
+            <div class="risk-counts" style="display: flex; gap: 12px; margin-bottom: 0.75rem; font-size: 0.85em;">
+                <span style="color: #ef4444;">● CRITICAL: 0</span>
+                <span style="color: #f97316;">● ALERT: 0</span>
+                <span style="color: #eab308;">● WARNING: 0</span>
+            </div>
+            <div class="key-signals" style="font-size: 0.85em;">
+                <div style="color: #22c55e; font-size: 0.9em;">✓ 이상 신호 없음</div>
+            </div>
+        </div>
+        
+        </div>
+    </div>
+    
+            </div>
+            
+            <div class="regime-card">
+                
+    <div class="ma-status-section">
+        <h4>📊 이동평균 상태 (MA Status)</h4>
+        <div class="ma-values">
+            <div class="ma-value-item">
+                <span class="ma-label">MA5</span>
+                <span class="ma-value">686.81</span>
+            </div>
+            <div class="ma-value-item">
+                <span class="ma-label">MA20</span>
+                <span class="ma-value">681.79</span>
+                <span class="ma-slope" style="color: #22c55e;">↗</span>
+            </div>
+            <div class="ma-value-item">
+                <span class="ma-label">MA120</span>
+                <span class="ma-value">676.49</span>
+                <span class="ma-slope" style="color: #22c55e;">↗</span>
+            </div>
+        </div>
+        <div class="ma-deviations">
+            <div class="ma-deviation-item">
+                <div class="ma-deviation-label">현재가 vs MA20</div>
+                <div class="ma-deviation-bar-container">
+                    <div class="ma-deviation-bar" style="width: 6.251037341055143%; background: #22c55e; margin-left: 50%"></div>
+                </div>
+                <div class="ma-deviation-value" style="color: #22c55e;">+1.3%</div>
+            </div>
+            <div class="ma-deviation-item">
+                <div class="ma-deviation-label">현재가 vs MA120</div>
+                <div class="ma-deviation-bar-container">
+                    <div class="ma-deviation-bar" style="width: 10.217237979892268%; background: #22c55e; margin-left: 50%"></div>
+                </div>
+                <div class="ma-deviation-value" style="color: #22c55e;">+2.0%</div>
+            </div>
+        </div>
+    </div>
+    
+            </div>
+            
+            <!-- Markov Switching 분석 -->
+            
+            
+            <div class="regime-card">
+                <h3>💼 포트폴리오 추천 (Moderate)</h3>
+                <p style="color: #9ca3af;">추천 데이터 없음</p>
+                <div class="sector-rec">
+                    <div class="sector-rec-label">📈 Overweight</div>
+                    <div class="sector-rec-value" style="color: #22c55e;">없음</div>
+                </div>
+                <div class="sector-rec" style="margin-top: 8px; padding-top: 8px; border-top: none;">
+                    <div class="sector-rec-label">📉 Underweight</div>
+                    <div class="sector-rec-value" style="color: #ef4444;">없음</div>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Crypto 패널 -->
+        
+    <div class="crypto-panel">
+        <h3>🪙 암호화폐 패널 (Crypto Panel)</h3>
+        
+        <!-- 수집 상태 -->
+        <div class="crypto-collection-status">
+            <h4>📊 데이터 수집 상태</h4>
+            
+    <div class="crypto-status">
+        <span class="status-icon">✅</span>
+        <span class="status-text">데이터 수집: 4/4 성공</span>
+        
+    </div>
+    
+            <div class="crypto-status-details">
+                
+        <div class="crypto-status-item">
+            <span>✅</span>
+            <span class="ticker">BTC-USD</span>
+            <span class="name">Bitcoin</span>
+            <span class="source">primary</span>
+        </div>
+        
+        <div class="crypto-status-item">
+            <span>✅</span>
+            <span class="ticker">ETH-USD</span>
+            <span class="name">Ethereum</span>
+            <span class="source">primary</span>
+        </div>
+        
+        <div class="crypto-status-item">
+            <span>✅</span>
+            <span class="ticker">SOL-USD</span>
+            <span class="name">Solana</span>
+            <span class="source">primary</span>
+        </div>
+        
+        <div class="crypto-status-item">
+            <span>✅</span>
+            <span class="ticker">BITO</span>
+            <span class="name">BITO</span>
+            <span class="source">primary</span>
+        </div>
+        
+            </div>
+        </div>
+        
+        <!-- Crypto 신호 -->
+        <div class="crypto-signals">
+            <h4>⚡ Crypto 신호</h4>
+            <p style="color: #9ca3af;">감지된 암호화폐 신호 없음</p>
+        </div>
+        
+        <!-- Crypto 뉴스 -->
+        <div class="crypto-news">
+            <h4>📰 Crypto 뉴스</h4>
+            
+        <div class="crypto-news-item">
+            <div class="news-ticker">BTC-USD</div>
+            <div class="news-headline">Bitcoin 시장 동향</div>
+            <div class="news-summary">**비트코인(BTC-USD)은 2025년 연말 기준 약 89,596~126,272 USD 범위에서 거래되며, 강한 ETF 유입과 온체인 수요 증가로 15만~20만 USD 상승을 전망하나 변동성이 지속되고 있다.[2][6][9]**  
+가격 변동 측면에서 10월 118,000 USD 돌파 후 4분기 랠리(업토버) 패턴이 관찰되며, 연준 금리 인하 기대(95% 확률)가 위험자산 선호를 부추기고 있다.[1][2]  
+규제/정책 관련으로는 미국 정부 셧다운 가능성과 정치 불확실성이 하방 압력으로 작용하나, 달러 약세와 ETF 200,000</div>
+        </div>
+        
+        <div class="crypto-news-item">
+            <div class="news-ticker">ETH-USD</div>
+            <div class="news-headline">Ethereum 시장 동향</div>
+            <div class="news-summary">**1. 가격 변동 관련 주요 뉴스**: ETH는 2025년 6월 기준 $2,601로 30일 +42.2% 상승하며 $2,300~$2,800 구간 횡보 중이며, 고래 매수와 ETF 유입으로 강세 전망. 톰 리 등 애널리스트는 연말 $10,000~$15,000 목표 제시하나, 펀딩 금리 마이너스와 ETF 유출로 $4,000 지지선 테스트 중.[1][2][4]
+
+**2. 규제/정책 관련 소식**: 스팟 ETF 스테이킹 추가가 SEC 검토 중으로 규제 노출 확대 기대되며, 기관 보유 증가(비트마인 215만 ETH)가 장기 신뢰 신호.[2]</div>
+        </div>
+        
+        <div class="crypto-news-item">
+            <div class="news-ticker">SOL-USD</div>
+            <div class="news-headline">Solana 시장 동향</div>
+            <div class="news-summary">**1. 가격 변동 관련 주요 뉴스**: 솔라나(SOL)는 2025년 긍정적 전망 속에서 DigitalCoinPrice가 $384~$459, CoinMarketCap이 $119~$134로 예측하며 기관 수요와 DeFi 성장으로 상승 압력을 받고 있음[3][2]. 그러나 글로벌 규제 불확실성과 보안 이슈가 가격 하방 리스크로 작용할 수 있음[2].
+
+**2. 규제/정책 관련 소식**: SEC가 솔라나 ETF 신청을 연기하며 증권 분류 불확실성을 강조하나, 폴리마켓은 2025년 승인 확률 82%로 전망하고 친암호화폐 환경이 긍정적 요인</div>
+        </div>
+        
+        </div>
+    </div>
+    
+        
+        <!-- Risk Model 패널 (NEW in v2.1) -->
+        <div class="risk-panel">
+            <h3>🤖 ML 기반 위험 분석 (Risk Model)</h3>
+            
+    <div class="risk-summary-section">
+        <h4>📋 위험 요약</h4>
+        <div class="risk-summary-content">- 전체 분석 자산: <strong style="color: #60a5fa;">50개</strong><br>- CRITICAL 위험: <strong style="color: #60a5fa;">0개</strong><br>- HIGH 위험: <strong style="color: #60a5fa;">0개</strong><br>- MEDIUM 위험: <strong style="color: #60a5fa;">2개</strong><br>- LOW 위험: <strong style="color: #60a5fa;">48개</strong></div>
+    </div>
+    
+            <div class="risk-panel-grid">
+                <div class="risk-card risk-summary">
+                    <div class="risk-summary-icon">🟢</div>
+                    <div class="risk-summary-value" style="color: #22c55e;">8.5%</div>
+                    <div class="risk-summary-label">평균 위험 확률</div>
+                    <div class="risk-summary-sub">50개 자산 분석</div>
+                </div>
+                <div class="risk-card">
+                    <h4>위험 수준 분포</h4>
+                    <div class="risk-level-item">
+                        <span class="risk-dot" style="background: #ef4444;"></span>
+                        <span class="risk-label">CRITICAL (≥70%)</span>
+                        <span class="risk-count">0</span>
+                    </div>
+                    <div class="risk-level-item">
+                        <span class="risk-dot" style="background: #f97316;"></span>
+                        <span class="risk-label">HIGH (50-70%)</span>
+                        <span class="risk-count">0</span>
+                    </div>
+                    <div class="risk-level-item">
+                        <span class="risk-dot" style="background: #eab308;"></span>
+                        <span class="risk-label">MEDIUM (30-50%)</span>
+                        <span class="risk-count">2</span>
+                    </div>
+                    <div class="risk-level-item">
+                        <span class="risk-dot" style="background: #22c55e;"></span>
+                        <span class="risk-label">LOW (&lt;30%)</span>
+                        <span class="risk-count">48</span>
+                    </div>
+                </div>
+                <div class="risk-card">
+                    <h4>고위험 자산 Top 5</h4>
+                    <div class="risk-asset-item"><span class="risk-ticker">USDCNY=X</span><span class="risk-prob" style="color: #eab308;">40.0%</span></div><div class="risk-asset-item"><span class="risk-ticker">USDKRW=X</span><span class="risk-prob" style="color: #eab308;">30.0%</span></div><div class="risk-asset-item"><span class="risk-ticker">^VIX3M</span><span class="risk-prob" style="color: #eab308;">23.0%</span></div><div class="risk-asset-item"><span class="risk-ticker">^VIX</span><span class="risk-prob" style="color: #eab308;">20.0%</span></div><div class="risk-asset-item"><span class="risk-ticker">GLD</span><span class="risk-prob" style="color: #eab308;">18.0%</span></div>
+                </div>
+            </div>
+            
+            <!-- 전체 자산별 위험확률 테이블 (NEW) -->
+            <div class="risk-table-section">
+                <h4>📊 전체 자산별 위험 확률</h4>
+                <div class="risk-table-container">
+                    <table class="risk-table">
+                        <thead>
+                            <tr>
+                                <th>자산</th>
+                                <th>위험확률</th>
+                                <th>위험수준</th>
+                                <th>모델</th>
+                                <th>시각화</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: rgba(234,179,8,0.05);">
+                                <td><strong>USDCNY=X</strong></td>
+                                <td style="color: #eab308; font-weight: 600;">40.0%</td>
+                                <td><span class="level-badge" style="background: #eab308;">MEDIUM</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 40%; background: #eab308;"></div></div></td>
+                            </tr><tr style="background: rgba(234,179,8,0.05);">
+                                <td><strong>USDKRW=X</strong></td>
+                                <td style="color: #eab308; font-weight: 600;">30.0%</td>
+                                <td><span class="level-badge" style="background: #eab308;">MEDIUM</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 30%; background: #eab308;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>^VIX3M</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">23.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_vix</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 23%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>^VIX</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">20.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_vix</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 20%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>GLD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">18.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 18%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>BZ=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">18.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 18%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>CL=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">18.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 18%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>SLV</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">15.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 15%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>USDJPY=X</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">15.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 15%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>HG=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">15.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 15%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>GC=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">10.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 10%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>SI=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">10.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 10%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>EURUSD=X</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">8.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 8%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>IWF</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>HYG</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLK</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>SOL-USD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>IWM</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>QQQ</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>GBPUSD=X</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>ZC=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>IWD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>DIA</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLV</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLC</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLI</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLF</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLRE</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>NG=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>TIP</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLP</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>ETH-USD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>IYR</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLE</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>EEM</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>DBC</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>ZS=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>SPY</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLB</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLY</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>LQD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>SHY</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>DX-Y.NYB</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic_fx</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>BTC-USD</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>XLU</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>TLT</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>VNQ</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>ZW=F</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>IEF</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr><tr style="background: transparent;">
+                                <td><strong>BITO</strong></td>
+                                <td style="color: #22c55e; font-weight: 600;">5.0%</td>
+                                <td><span class="level-badge" style="background: #22c55e;">LOW</span></td>
+                                <td style="font-size: 0.75rem; color: #9ca3af;">heuristic</td>
+                                <td><div class="risk-bar-container"><div class="risk-bar" style="width: 5%; background: #22c55e;"></div></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="risk-note">
+                <p>📊 <strong>개별 자산 위험:</strong> 각 자산의 ML 위험 확률은 향후 10 거래일 내 5% 이상 하락(Max Drawdown) 가능성을 예측합니다.</p>
+                <p>📈 <strong>전체 위험도:</strong> Critical Path 전체 위험도는 유동성, 신용, 변동성, 암호화폐 등 6개 경로의 가중평균으로 산출됩니다. 경로별 위험 점수에 시장 국면(레짐)별 가중치를 적용하여 0-100% 스케일로 표시합니다.</p>
+                <p>이동평균(추세), 거래량(확신), 변동성(불확실성), VIX-실현변동성 괴리 등 지표를 종합 분석합니다.</p>
+                <p style="color: #60a5fa; margin-top: 8px;">💡 <strong>모델 유형:</strong> equity/bond/commodity/crypto = 자산클래스별 모델, (P) = Pooled 모델</p>
+            </div>
+            
+            <!-- 투자 성과 지표 (Risk-Adjusted Return Metrics) -->
+            
+    <div class="risk-metrics-section">
+        <h4>📈 투자 성과 지표 (Risk-Adjusted Return Metrics)</h4>
+        <div class="risk-metrics-note" style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 12px;">
+            기관투자자들이 사용하는 위험조정수익률 지표입니다. Sharpe > 1: 양호, Sortino: 하방위험 고려, VaR/CVaR: 최대 예상 손실, Max DD: 최대 하락폭, Calmar: Drawdown 대비 수익률
+        </div>
+        <div class="risk-metrics-table-container">
+            <table class="risk-metrics-table">
+                <thead>
+                    <tr>
+                        <th>자산</th>
+                        <th>Sharpe Ratio</th>
+                        <th>Sortino Ratio</th>
+                        <th>VaR (95%)</th>
+                        <th>CVaR (95%)</th>
+                        <th>Max Drawdown</th>
+                        <th>Calmar Ratio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr>
+            <td><strong>SLV</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">7.66</td>
+            <td style="color: #22c55e; font-weight: 600;">21.34</td>
+            <td style="color: #eab308; font-weight: 600;">-2.48%</td>
+            <td style="color: #eab308; font-weight: 600;">-2.86%</td>
+            <td style="color: #22c55e; font-weight: 600;">-6.25%</td>
+            <td style="color: #22c55e; font-weight: 600;">51.82</td>
+        </tr>
+        
+        <tr>
+            <td><strong>SI=F</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">6.77</td>
+            <td style="color: #22c55e; font-weight: 600;">14.05</td>
+            <td style="color: #eab308; font-weight: 600;">-2.56%</td>
+            <td style="color: #f97316; font-weight: 600;">-4.35%</td>
+            <td style="color: #22c55e; font-weight: 600;">-6.49%</td>
+            <td style="color: #22c55e; font-weight: 600;">47.58</td>
+        </tr>
+        
+        <tr>
+            <td><strong>GLD</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">5.39</td>
+            <td style="color: #22c55e; font-weight: 600;">8.85</td>
+            <td style="color: #eab308; font-weight: 600;">-1.18%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.78%</td>
+            <td style="color: #22c55e; font-weight: 600;">-3.72%</td>
+            <td style="color: #22c55e; font-weight: 600;">23.76</td>
+        </tr>
+        
+        <tr>
+            <td><strong>GC=F</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">4.99</td>
+            <td style="color: #22c55e; font-weight: 600;">7.57</td>
+            <td style="color: #eab308; font-weight: 600;">-1.25%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.84%</td>
+            <td style="color: #22c55e; font-weight: 600;">-3.52%</td>
+            <td style="color: #22c55e; font-weight: 600;">23.35</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLV</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">3.47</td>
+            <td style="color: #22c55e; font-weight: 600;">6.79</td>
+            <td style="color: #eab308; font-weight: 600;">-1.20%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.40%</td>
+            <td style="color: #22c55e; font-weight: 600;">-5.55%</td>
+            <td style="color: #22c55e; font-weight: 600;">9.81</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLF</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">3.25</td>
+            <td style="color: #22c55e; font-weight: 600;">4.75</td>
+            <td style="color: #eab308; font-weight: 600;">-1.01%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.60%</td>
+            <td style="color: #22c55e; font-weight: 600;">-4.77%</td>
+            <td style="color: #22c55e; font-weight: 600;">9.28</td>
+        </tr>
+        
+        <tr>
+            <td><strong>NG=F</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">2.47</td>
+            <td style="color: #22c55e; font-weight: 600;">5.14</td>
+            <td style="color: #ef4444; font-weight: 600;">-6.89%</td>
+            <td style="color: #ef4444; font-weight: 600;">-7.52%</td>
+            <td style="color: #f97316; font-weight: 600;">-26.53%</td>
+            <td style="color: #22c55e; font-weight: 600;">7.11</td>
+        </tr>
+        
+        <tr>
+            <td><strong>HG=F</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">2.33</td>
+            <td style="color: #22c55e; font-weight: 600;">4.16</td>
+            <td style="color: #eab308; font-weight: 600;">-2.41%</td>
+            <td style="color: #eab308; font-weight: 600;">-2.81%</td>
+            <td style="color: #22c55e; font-weight: 600;">-5.88%</td>
+            <td style="color: #22c55e; font-weight: 600;">10.95</td>
+        </tr>
+        
+        <tr>
+            <td><strong>XLB</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">2.23</td>
+            <td style="color: #22c55e; font-weight: 600;">4.37</td>
+            <td style="color: #eab308; font-weight: 600;">-1.39%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.51%</td>
+            <td style="color: #22c55e; font-weight: 600;">-4.19%</td>
+            <td style="color: #22c55e; font-weight: 600;">9.23</td>
+        </tr>
+        
+        <tr>
+            <td><strong>IWD</strong></td>
+            <td style="color: #22c55e; font-weight: 600;">2.03</td>
+            <td style="color: #22c55e; font-weight: 600;">3.77</td>
+            <td style="color: #eab308; font-weight: 600;">-1.06%</td>
+            <td style="color: #eab308; font-weight: 600;">-1.15%</td>
+            <td style="color: #22c55e; font-weight: 600;">-3.88%</td>
+            <td style="color: #22c55e; font-weight: 600;">6.94</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+        </div>
+        
+        <!-- AI 분석 요약 섹션 -->
+        
+        <!-- LLM 기반 AI 분석 요약 (Claude) -->
+        
+    <div class="llm-summary-section" style="
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(139, 92, 246, 0.08));
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+    ">
+        <div style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        ">
+            <span style="font-size: 1.5em;">🧠</span>
+            <h3 style="
+                color: #f1f5f9;
+                margin: 0;
+                font-size: 1.25rem;
+            ">AI 분석 요약</h3>
+            <span style="
+                font-size: 0.7em;
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(139, 92, 246, 0.3));
+                padding: 3px 10px;
+                border-radius: 12px;
+                color: #93c5fd;
+                font-weight: 600;
+            ">Claude</span>
+        </div>
+        <div class="llm-summary-content" style="
+            color: #cbd5e1;
+            line-height: 1.75;
+            font-size: 0.95rem;
+        ">
+            <style>
+                .llm-summary-content .llm-h3 {
+                    color: #60a5fa;
+                    font-size: 1.1rem;
+                    margin: 1.25rem 0 0.75rem 0;
+                    padding-bottom: 0.5rem;
+                    border-bottom: 1px solid rgba(96, 165, 250, 0.2);
+                }
+                .llm-summary-content .llm-h4 {
+                    color: #a5b4fc;
+                    font-size: 1rem;
+                    margin: 1rem 0 0.5rem 0;
+                }
+                .llm-summary-content ul {
+                    margin: 0.5rem 0;
+                    padding-left: 1.5rem;
+                    list-style: none;
+                }
+                .llm-summary-content li {
+                    margin: 0.4rem 0;
+                    padding-left: 0.5rem;
+                    position: relative;
+                }
+                .llm-summary-content li::before {
+                    content: "•";
+                    color: #60a5fa;
+                    font-weight: bold;
+                    position: absolute;
+                    left: -1rem;
+                }
+                .llm-summary-content li.numbered::before {
+                    content: "";
+                }
+                .llm-summary-content strong {
+                    color: #f1f5f9;
+                }
+            </style>
+            <h3 class="llm-h3">📊 시장 상황 요약</h3>
+현재 시장은 상승국면(BULL)을 지속하고 있으나 확신도가 38.3%로 낮고 국면 전환 확률이 30%에 달해 불안정한 상황입니다. 전체 위험도는 12.4%로 낮은 수준이지만, 원자재와 환율 시장에서 이상 신호가 집중 감지되고 있어 주의가 필요합니다.<br>
+
+<h3 class="llm-h3">⚠️ 주요 위험 요인</h3>
+<ul><li class="numbered"><strong>암호화폐 (23.7%)</strong>: 암호화폐 관련 위험이 전체 위험의 최대 비중을 차지하고 있으나, 현재 직접적인 경고 신호는 감지되지 않은 상태입니다.</li>
+<li class="numbered"><strong>섹터 로테이션 (22.0%)</strong>: 자산군 간 자금 이동이 활발해 시장 불확실성이 증가하고 있으며, 이는 투자 전략 수정 필요성을 시사합니다.</li>
+<li class="numbered"><strong>신용 위험 (16.0%)</strong>: 신용 스프레드 확대 우려가 세 번째로 큰 위험 요인으로 나타나 기업 부채와 관련한 경계가 필요합니다.</li><br>
+
+</ul><h3 class="llm-h3">💼 자산군별 권고</h3>
+<ul><li><strong>주식</strong>: 전반적으로 안정적이나 섹터 로테이션 흐름을 면밀히 관찰하며 포트폴리오 재조정을 검토하세요.</li>
+<li><strong>채권</strong>: 신용 위험 증가에도 불구하고 별다른 경고 신호가 없어 상대적으로 안전한 자산으로 판단됩니다.</li>
+<li><strong>원자재</strong>: 구리 급등과 금·은 과매수 신호로 인한 조정 위험이 높아 단기 수익 실현을 고려하세요.</li>
+<li><strong>환율</strong>: USD/CNY 급변동으로 중국 관련 투자 시 환헤지 전략을 강화해야 합니다.</li>
+<li><strong>암호화폐</strong>: 위험 기여도가 높음에도 직접 신호가 없어 잠재적 변동성에 대비한 리스크 관리가 필요합니다.</li><br>
+
+</ul><h3 class="llm-h3">🎯 종합 의견</h3>
+현재 시장은 표면적으로는 안정적이나 USD/CNY 급락과 구리 급등 등 구조적 변화의 조짐이 감지되고 있습니다. 특히 원자재 과열과 환율 불안정성이 향후 인플레이션 압력과 통화정책 변화로 이어질 가능성을 주의 깊게 모니터링해야 합니다. 리스크 선호도가 중립적(55점) 수준인 만큼 급격한 포지션 변경보다는 점진적 리밸런싱을 권장합니다.
+        </div>
+        <div style="
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-align: right;
+        ">
+            Powered by Claude claude-sonnet-4-20250514 • 자동 생성된 분석입니다
+        </div>
+    </div>
+    
+        
+        
+        <!-- 신호 테이블 -->
+        <div class="table-section">
+            <h3>🎯 실시간 신호 목록</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>자산명</th>
+                        <th>지표</th>
+                        <th>레벨</th>
+                        <th>🤖 ML Risk</th>
+                        <th>Z-Score</th>
+                        <th>설명</th>
+                        <th>💡 대응 가이드</th>
+                        <th>시간</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr style="background: rgba(239, 68, 68, 0.1);">
+            <td><strong>USD/CNY</strong></td>
+            <td>return_z</td>
+            <td><span class="level-badge" style="background: #ef4444;">CRITICAL</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">40%</span></td>
+            <td>-3.16</td>
+            <td>USD/CNY 일일 수익률 이상 (Z=-3.16)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">단기 과매도 가능성. 반등 시 단기 트레이딩 기회, 단 추세 확인 필요.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(239, 68, 68, 0.1);">
+            <td><strong>Copper</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #ef4444;">CRITICAL</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>3.05</td>
+            <td>Copper 가격 급등 (Z=3.05)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Gold ETF</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">18%</span></td>
+            <td>2.13</td>
+            <td>Gold ETF 가격 급등 (Z=2.13)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Gold ETF</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">18%</span></td>
+            <td>-</td>
+            <td>Gold ETF RSI 과매수 (83.6)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Gold Futures</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>2.07</td>
+            <td>Gold Futures 가격 급등 (Z=2.07)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Gold Futures</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>-</td>
+            <td>Gold Futures RSI 과매수 (83.6)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>USD/CNY</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">40%</span></td>
+            <td>-2.56</td>
+            <td>USD/CNY 가격 급락 (Z=-2.56)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">급락 시 패닉셀 주의. 펀더멘털 확인 후 분할 매수 기회 탐색 가능.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>USD/CNY</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">40%</span></td>
+            <td>-</td>
+            <td>USD/CNY RSI 과매도 (12.6)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">과매도 구간. 반등 가능성 있으나 하락 추세 확인 필요. 분할 매수 검토.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver ETF</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>2.54</td>
+            <td>Silver ETF 가격 급등 (Z=2.54)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver ETF</strong></td>
+            <td>return_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>2.44</td>
+            <td>Silver ETF 일일 수익률 이상 (Z=2.44)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">단기 과열 신호. 추격 매수 자제, 되돌림 시 진입 검토.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver ETF</strong></td>
+            <td>volume</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>3.37</td>
+            <td>Silver ETF 거래량 급증 (평균 대비 2.5배)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">대량 거래는 세력/기관 움직임 시사. 방향성 확인 후 추종 또는 관망.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver ETF</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>-</td>
+            <td>Silver ETF RSI 과매수 (86.7)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver Futures</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>2.46</td>
+            <td>Silver Futures 가격 급등 (Z=2.46)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Silver Futures</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>-</td>
+            <td>Silver Futures RSI 과매수 (83.4)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Copper</strong></td>
+            <td>return_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>2.41</td>
+            <td>Copper 일일 수익률 이상 (Z=2.41)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 단기 과잉반응: Jegadeesh & Titman(1993) 모멘텀 연구 - 3-12개월은 추세 지속, 이후 반전. 극단적 급등은 단기 조정 가능성.</div></td>
+            <td class="action-guide">단기 과열 신호. 추격 매수 자제, 되돌림 시 진입 검토.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Copper</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>-</td>
+            <td>Copper 볼린저 밴드 상단 돌파 (%B=1.26)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 볼린저밴드 상단돌파: 강한 모멘텀 또는 과열 신호. 추세 지속과 평균회귀 중 판단 필요.</div></td>
+            <td class="action-guide">상단 돌파는 강한 상승 모멘텀이나 과열 신호. 추격 매수 주의.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>Emerging Markets</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>2.05</td>
+            <td>Emerging Markets 가격 급등 (Z=2.05)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>USD/KRW</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">30%</span></td>
+            <td>-2.93</td>
+            <td>USD/KRW 가격 급락 (Z=-2.93)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">급락 시 패닉셀 주의. 펀더멘털 확인 후 분할 매수 기회 탐색 가능.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(249, 115, 22, 0.1);">
+            <td><strong>USD/KRW</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #f97316;">ALERT</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">30%</span></td>
+            <td>-</td>
+            <td>USD/KRW 볼린저 밴드 하단 이탈 (%B=-0.23)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">하단 이탈은 강한 하락 또는 반등 임박. 손절/분할매수 결정 필요.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>High Yield Corporate</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>1.88</td>
+            <td>High Yield Corporate 가격 급등 (Z=1.88)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 신용스프레드와 경기: 하이일드 스프레드 확대는 경기침체 선행지표. Gilchrist & Zakrajsek(2012): 신용스프레드의 거시경제 예측력.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Corn</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>1.76</td>
+            <td>Corn 가격 급등 (Z=1.76)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Gold ETF</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">18%</span></td>
+            <td>-</td>
+            <td>Gold ETF 볼린저 밴드 상단 돌파 (%B=1.03)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">상단 돌파는 강한 상승 모멘텀이나 과열 신호. 추격 매수 주의.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Value</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>1.62</td>
+            <td>Value 가격 급등 (Z=1.62)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Dow Jones</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>1.53</td>
+            <td>Dow Jones 가격 급등 (Z=1.53)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Communication</strong></td>
+            <td>price_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>1.86</td>
+            <td>Communication 가격 급등 (Z=1.86)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 평균회귀(Mean Reversion): 가격이 장기 평균에서 크게 이탈 시 회귀 경향. Poterba & Summers(1988): 주가는 장기적으로 평균회귀.</div></td>
+            <td class="action-guide">급등 후 차익실현 매물 출회 가능. 신규 매수보다 보유 물량 일부 이익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Gold Futures</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>-</td>
+            <td>Gold Futures 볼린저 밴드 상단 돌파 (%B=1.02)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금의 이중적 성격: 인플레이션 헷지 + 안전자산. Erb & Harvey(2013): 장기 금 수익률은 인플레이션 대비 0에 수렴, 단기는 심리와 달러에 좌우.</div></td>
+            <td class="action-guide">상단 돌파는 강한 상승 모멘텀이나 과열 신호. 추격 매수 주의.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>USD/CNY</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(234, 179, 8, 0.2); color: #eab308; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">40%</span></td>
+            <td>-</td>
+            <td>USD/CNY 볼린저 밴드 하단 이탈 (%B=-0.14)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금리평가설과 자본흐름: 신흥국 통화는 금리차와 자본유출입에 민감. Forbes & Warnock(2012) 연구 참조.</div></td>
+            <td class="action-guide">하단 이탈은 강한 하락 또는 반등 임박. 손절/분할매수 결정 필요.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Financial</strong></td>
+            <td>rsi</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">5%</span></td>
+            <td>-</td>
+            <td>Financial RSI 과매수 (72.7)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 기술적 과매수: RSI 70+ 구간에서 통계적으로 단기 조정 확률 증가. 단, 강한 추세장에서는 지속 가능.</div></td>
+            <td class="action-guide">과매수 구간. 신규 매수 자제, 보유 시 일부 차익실현 고려.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Silver ETF</strong></td>
+            <td>bollinger</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">15%</span></td>
+            <td>-</td>
+            <td>Silver ETF 볼린저 밴드 상단 돌파 (%B=1.14)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">상단 돌파는 강한 상승 모멘텀이나 과열 신호. 추격 매수 주의.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+        <tr style="background: rgba(234, 179, 8, 0.1);">
+            <td><strong>Silver Futures</strong></td>
+            <td>return_z</td>
+            <td><span class="level-badge" style="background: #eab308;">WARNING</span></td>
+            <td><span class="risk-badge" style="background: rgba(34, 197, 94, 0.2); color: #22c55e; padding: 4px 8px; border-radius: 12px; font-weight: 600; font-size: 0.8rem;">10%</span></td>
+            <td>1.79</td>
+            <td>Silver Futures 일일 수익률 이상 (Z=1.79)<div class="theory-note" style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px; font-style: italic;">📚 금-은 비율(Gold-Silver Ratio): 역사적 평균 60-70배. 비율 급등 시 경기침체 우려, 급락 시 인플레이션 기대. 은은 금 대비 산업수요(태양광, 전자) 비중 높아 경기민감.</div></td>
+            <td class="action-guide">단기 과열 신호. 추격 매수 자제, 되돌림 시 진입 검토.</td>
+            <td>13:49:59</td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Signal News 섹션 -->
+        
+    <div class="signal-news-section">
+        <h3>📰 신호별 뉴스 배경</h3>
+        <div class="signal-news-list">
+            
+        <div class="signal-news-item">
+            <div class="signal-news-header" onclick="toggleNews(0)">
+                <div class="signal-news-info">
+                    <span class="signal-news-ticker">USDCNY=X</span>
+                    <span class="signal-news-name">USD/CNY</span>
+                    <span class="signal-news-level" style="background: #ef4444;">CRITICAL</span>
+                </div>
+                <div class="signal-news-toggle">▼</div>
+            </div>
+            <div class="signal-news-content" id="news-content-0" style="display: none;">
+                <div class="signal-news-description">USD/CNY 일일 수익률 이상 (Z=-3.16)</div>
+                <div class="signal-news-text">USD/CNY 환율은 최근 <strong>위안화 강세(USD/CNY 하락)</strong> 추세를 보이며, 2025년 12월 24일 CNY/USD 중간 환율이 7.0471로 15개월 최고치를 기록한 후 12월 26일 USD/CNY가 7.0027로 0.07% 하락했습니다[1][2][3]. 이는 Z=-3.16 수준의 <strong>일일 수익률 이상(USD/CNY 급락)</strong> 신호와 일치하며, 주요 원인으로는 연말 수출업체들의 달러 매도(위안화 환전 수요), 강력한 공식 중심가격 설정, 그리고 미국 금리 인하 기대에 따른 달러 약세가 꼽힙니다[1][2][4].<br><br>### 최근 움직임 상세 설명<br>- <strong>12월 24일 급등 후 하락 전환</strong>: CNY/USD가 52포인트 상승하며 2024년 9월 이후 최고치를 찍었으나, 12월 26일 USD/CNY는 7.0027로 마감하며 지난 한 달간 위안화 1.01% 강세를 이어갔습니다. 주간으로는 7.0413 고점(12/19)에서 7.0059 저점(12/25)으로 변동[1][2][3][6].<br>- <strong>주요 이벤트 및 뉴스</strong>:<br>  - <strong>연말 수요 효과</strong>: 수출업체들이 연말 지급 및 설 명절 준비로 달러를 위안화로 환전, 해외 위안화가 7.01 수준에서 15개월 최고치 갱신[2].<br>  - <strong>미국 경제 둔화와 Fed 기대</strong>: 미국 고용·소비 지표 부진으로 12월 금리 인하 확률 80% 이상, 달러 약세 유발. 수익률 갭 축소로 위안화 강세 가속[4][5].<br>  - <strong>중국 정책 지원</strong>: 위안화 강세 유도 정책과 유동성 증가로 안정적 강세 유지 전망, 일부 분석가는 6.90 이하 하락 가능성 언급[5].<br>- <strong>추세 맥락</strong>: 지난 12개월 위안화 4.08% 상승, 11월 말 7.08 저점 이후 지속 강세[2][5][7]. 12월 1주차에도 달러 약세 속 7.07 수준 마감[4].<br><br>이러한 요인들이 겹치며 USD/CNY의 최근 급락을 설명하나, 주말(12/28) 데이터 부족으로 최신 확인 필요[2][3].</div>
+            </div>
+        </div>
+        
+        <div class="signal-news-item">
+            <div class="signal-news-header" onclick="toggleNews(1)">
+                <div class="signal-news-info">
+                    <span class="signal-news-ticker">HG=F</span>
+                    <span class="signal-news-name">Copper</span>
+                    <span class="signal-news-level" style="background: #ef4444;">CRITICAL</span>
+                </div>
+                <div class="signal-news-toggle">▼</div>
+            </div>
+            <div class="signal-news-content" id="news-content-1" style="display: none;">
+                <div class="signal-news-description">Copper 가격 급등 (Z=3.05)</div>
+                <div class="signal-news-text">HG=F(뉴욕 COMEX 구리 선물)의 급등은 단기 이슈라기보다, 연말로 갈수록 누적된 <strong>공급 부족·재고 감소·달러 약세·금리 인하 기대</strong>가 한꺼번에 반영되면서 나타난 움직임으로 보는 게 맞습니다.[1][2][3][5][6]<br><br>핵심 재료만 정리하면:<br><br>- <strong>가격 레벨·속도</strong><br>  - 12월 말 COMEX 구리 선물은 파운드당 <strong>5.7~5.85달러</strong>, 5개월래/사상 최고 근처까지 상승.[1][2]  <br>  - 올해 들어 상승률은 <strong>약 37~40%</strong>로, 2009년 이후 최대 폭 수준이라는 평가.[3][5][6][7]<br><br>- <strong>공급 측 구조적 타이트(가장 큰 요인)</strong><br>  - 런던금속거래소(LME) <strong>재고 감소</strong>와 취소주문(warehouse cancellation) 증가 → 실물 인출·타이트한 현물 수급을 시사.[2][4]<br>  - <strong>신규 광산 개발 부족</strong>과 광산사의 보수적 투자로 공급 탄력성이 떨어져, 수요 대비 공급이 따라가지 못하는 구조라는 분석.[4][5]<br>  - 중국 측 광산 캐파 10% 감축 신호 등도 공급 부족 기대를 키움.[4]<br><br>- <strong>글로벌 ‘메탈 랠리’·투자 수요 유입</strong><br>  - 은이 160% 급등하며 사상 최고가를 경신하고, 금·백금·팔라듐까지 동반 급등하는 <strong>금·은발 메탈 랠리</strong>가 산업금속(구리)로 확산.[2]<br>  - 금이 너무 올라가자 상대적으로 덜 오른 <strong>구리·은·백금 등으로 자금 회전</strong>이 이뤄졌다는 해석.[2]<br><br>- <strong>거시환경: 달러 약세·미 연준 금리 인하 기대</strong><br>  - 달러 인덱스 하락과 미 국채 금리 하락 → 달러 약세가 원자재 가격을 전반적으로 지지.[2]<br>  - 2026년 금리 인하 기대가 커지며, 차입 비용 감소·경기 부양 기대 → 금속 수요 증가 기대가 선반영.[1][4]<br>  - 미국 3분기 성장률이 2년래 최고 수준으로, 미국 내 구리 수요(전력·건설·산업활동)를 받쳐주고 있다는 점도 언급.[1]<br><br>- <strong>수요 측 테마: 에너지 전환·전력 인프라·AI 관련 투자</strong><br>  - 글로벌 전력 인프라 투자, 재생에너지·전기차·데이터센터(특히 AI 인프라) 확대로 <strong>장기 구리 수요가 구조적으로 증가</strong>할 것이라는 전망이 강함.[1][5][6]<br>  - 골드만삭스·씨티 등에서 2026년 t당 13,000~15,000달러까지 구리 상승 가능성을 제시하며 ‘슈퍼사이클’ 논의를 자극.[4][5]<br><br>- <strong>단기 수급 이벤트·투기적 수요</strong><br>  - LME 재고 감소와 미국 시장으로의 <strong>차익거래 유인</strong> 확대 → 미국(HG=F) 가격에 프리미엄 형성.[2]<br>  - 미국 트럼프 행정부의 추가 관세 가능성에 대비한 <strong>사재기(프런트 로딩)</strong> 수입, 중국 수요 회복 등도 가격을 더 밀어올린 요인으로 보도.[3]<br>  - 연말 유동성 공백 속에서 레버리지·CTA·매크로 펀드의 <strong>추세 추종 매수</strong>가 단기 변동성을 키운다는 경고도 함께 제기.[2]<br><br>요약하면, HG=F의 급등(당신이 보는 Z=3.05 급등 신호)은  <br>- 구조적 공급 부족(재고 감소·신규 광산 부족),  <br>- 메탈 전반으로 번진 투자 자금 유입,  <br>- 달러 약세·금리 인하 기대,  <br>- 전력 인프라·에너지 전환·AI 인프라에 대한 장기 수요 스토리,  <br>- 연말 차익거래·사재기·투기 수요  <br><br>가 겹치면서 나온 움직임으로, 특정 단일 뉴스보다는 위 복합 요인에 기반한 랠리로 이해하는 것이 적절합니다.[1][2][3][5][6]<br><br>필요하면: HG=F 차트 기준 어느 날/어느 구간 급등(Z=3.05)이 나왔는지 알려주면, 그 날짜 전후의 개별 뉴스(예: 관세 관련 발언, 특정 광산 사고/파업, LME 재고 급변 등)를 더 좁혀서 찾아볼 수 있습니다.</div>
+            </div>
+        </div>
+        
+        <div class="signal-news-item">
+            <div class="signal-news-header" onclick="toggleNews(2)">
+                <div class="signal-news-info">
+                    <span class="signal-news-ticker">GLD</span>
+                    <span class="signal-news-name">Gold ETF</span>
+                    <span class="signal-news-level" style="background: #f97316;">ALERT</span>
+                </div>
+                <div class="signal-news-toggle">▼</div>
+            </div>
+            <div class="signal-news-content" id="news-content-2" style="display: none;">
+                <div class="signal-news-description">Gold ETF 가격 급등 (Z=2.13)</div>
+                <div class="signal-news-text">GLD 가격 급등 배경으로는 <strong>올해 금 가격 자체의 약 70% 급등, 안전자산 선호 및 귀금속 ETF로의 자금 유입 확대</strong>가 핵심 요인으로 거론됩니다.[2][4][5]<br><br>핵심 관련 뉴스·이벤트는 다음과 같습니다.<br><br>- <strong>금 가격 랠리 & GLD 고점 경신</strong><br>  - kr.Investing.com 기준 GLD는 2025년 12월 27일 <strong>416.74달러</strong>로, 52주 범위 상단(최고가 418.45달러)에 근접해 거래 중입니다.[4]<br>  - Benzinga에 따르면 2025년 들어 금(아이셰어즈 골드 트러스트 기준)은 <strong>70% 이상 급등</strong>한 것으로 보도되며, 비트코인은 소폭 하락한 것과 대조됩니다.[5]  <br>    (기사에서 GLD 티커 표기가 혼재하지만 금 ETF 급등을 지칭하며, 금 가격 강세를 강조)<br><br>- <strong>귀금속 ETF 전반의 ‘역대급 랠리’와 자금 유입</strong><br>  - G밸리/글로벌이코노믹 보도에 따르면 2025년 귀금속 시장에서 <strong>은 142%, 백금 144% 급등</strong>, 금도 온스당 4,500달러 근접 및 약 70% 상승을 기록하며 귀금속 ETF로 <strong>역대급 자금 유입(글로벌 ETF 유입액 930억 달러 돌파)</strong>이 발생했습니다.[2]<br>  - 같은 기사에서 정부 부채 급증, 지정학적 군사 충돌, 무역전쟁, 지속되는 고물가, 연준 독립성 논란 등 <strong>복합적인 글로벌 리스크가 안전자산 수요를 자극</strong>한 것이 이번 랠리의 배경으로 분석됩니다.[2]<br><br>- <strong>최근 1~2개월 내 가격 급등 구간</strong><br>  - 개별 투자자 리포트에 따르면 GLD는 2025년 11월 17일 약 <strong>371.65달러</strong>에서 12월 22일 <strong>408.23달러</strong>로 한 달 사이 약 10% 가까이 상승한 것으로 요약됩니다.[6]<br>  - 딥서치 브리핑에서는 2025년 12월 26일 GLD가 <strong>1.16% 상승해 416.72달러로 마감</strong>, 금 가격 상승을 그대로 반영한 움직임이라고 설명합니다.[7]<br><br>이 신호(Z=2.13 수준의 단기 급등)를 직접 촉발한 단일 이벤트(예: 갑작스러운 연준 발표, 전쟁 발발 등)는 검색 결과에서 특정 날짜로 콕 집혀 나오지 않지만,  <br>최근 GLD 급등은 요약하면:<br><br>- 연중 누적 금 가격 <strong>대세 상승(약 70%)</strong>[2][5]  <br>- <strong>정부 부채·지정학 갈등·인플레이션·연준 불확실성</strong>에 따른 안전자산 선호 강화[2]  <br>- 귀금속 ETF 전반으로의 <strong>대규모 자금 유입과 모멘텀 매수</strong>[2][10]  <br><br>이 세 가지 구조적 요인이 겹친 결과로 보는 분석이 지배적입니다.</div>
+            </div>
+        </div>
+        
+        </div>
+    </div>
+    
+        
+        <!-- 해석 섹션 -->
+        <div class="interpretation-section">
+            <h3>🔍 상세 해석</h3>
+            <div class='interpretation-item'>## 시장 이상 신호 해석<br><br>### 1. USD/CNY 급락 (Z=-3.16, CRITICAL)<br><strong>의미</strong>: 위안화가 달러 대비 비정상적으로 강세를 보이고 있음<br><br><strong>가능한 원인</strong>:<br>- 중국 경제지표 개선 또는 정책 변화<br>- 미국 달러 약세 압력 증가<br><br><strong>주의할 점</strong>: 중국 정부의 환율 개입 가능성을 고려해야 함<br><br>### 2. 구리 가격 급등 (Z=3.05, CRITICAL)<br><strong>의미</strong>: 구리 가격이 평균 대비 3배 이상 급등하여 과열 상태<br><br><strong>가능한 원인</strong>:<br>- 글로벌 인프라 투자 확대 기대감<br>- 공급망 차질 또는 재고 부족<br><br><strong>주의할 점</strong>: 급등 후 조정 가능성이 높아 신규 매수는 신중해야 함<br><br>### 3. 금 ETF 가격 급등 (Z=2.13, ALERT)<br><strong>의미</strong>: 금 ETF가 통계적으로 유의미한 상승세를 보임<br><br><strong>가능한 원인</strong>:<br>- 지정학적 리스크 증가로 안전자산 선호<br>- 인플레이션 우려 확산<br><br><strong>주의할 점</strong>: RSI 83.6으로 과매수 상태이므로 차익실현 고려 필요<br><br>### 4. 금 ETF RSI 과매수 (83.6, ALERT)<br><strong>의미</strong>: 기술적으로 과매수 구간에 진입하여 조정 압력 존재<br><br><strong>가능한 원인</strong>:<br>- 연속적인 매수세로 인한 기술적 과열<br>- 단기 투기적 수요 증가<br><br><strong>주의할 점</strong>: 단기 조정 가능성이 높아 추가 매수는 위험함<br><br>### 5. 금선물 가격 급등 (Z=2.07, ALERT)<br><strong>의미</strong>: 금선물 가격이 현물과 함께 동반 상승 중<br><br><strong>가능한 원인</strong>:<br>- ETF와 동일한 안전자산 수요 증가<br>- 선물시장 롱 포지션 확대<br><br><strong>주의할 점</strong>: 현물과 선물 간 프리미엄 확대 시 차익거래 기회 주목 필요</div>
+        </div>
+        
+        <!-- 뉴스 섹션 -->
+        <div class="news-section">
+            <h3>📰 관련 뉴스</h3>
+            
+            <div class="news-item">
+                <div class="news-header">
+                    <span class="news-ticker">USDCNY=X</span>
+                    <span class="news-level" style="background: {'CRITICAL': '#ef4444', 'ALERT': '#f97316', 'WARNING': '#eab308'}.get(signal_info.get('level', ''), '#666');">
+                        CRITICAL
+                    </span>
+                </div>
+                <div class="news-content">USD/CNY 환율은 최근 <strong>위안화 강세(USD/CNY 하락)</strong> 추세를 보이며, 2025년 12월 24일 CNY/USD 중간 환율이 7.0471로 15개월 최고치를 기록한 후 12월 26일 USD/CNY가 7.0027로 0.07% 하락했습니다[1][2][3]. 이는 Z=-3.16 수준의 <strong>일일 수익률 이상(USD/CNY 급락)</strong> 신호와 일치하며, 주요 원인으로는 연말 수출업체들의 달러 매도(위안화 환전 수요), 강력한 공식 중심가격 설정, 그리고 미국 금리 인하 기대에 따른 달러 약세가 꼽힙니다[1][2][4].<br><br>### 최근 움직임 상세 설명<br>- <strong>12월 24일 급등 후 하락 전환</strong>: CNY/USD가 52포인트 상승하며 2024년 9월 이후 최고치를 찍었으나, 12월 26일 USD/CNY는 7.0027로 마감하며 지난 한 달간 위안화 1.01% 강세를 이어갔습니다. 주간으로는 7.0413 고점(12/19)에서 7.0059 저점(12/25)으로 변동[1][2][3][6].<br>- <strong>주요 이벤트 및 뉴스</strong>:<br>  - <strong>연말 수요 효과</strong>: 수출업체들이 연말 지급 및 설 명절 준비로 달러를 위안화로 환전, 해외 위안화가 7.01 수준에서 15개월 최고치 갱신[2].<br>  - <strong>미국 경제 둔화와 Fed 기대</strong>: 미국 고용·소비 지표 부진으로 12월 금리 인하 확률 80% 이상, 달러 약세 유발. 수익률 갭 축소로 위안화 강세 가속[4][5].<br>  - <strong>중국 정책 지원</strong>: 위안화 강세 유도 정책과 유동성 증가로 안정적 강세 유지 전망, 일부 분석가는 6.90 이하 하락 가능성 언급[5].<br>- <strong>추세 맥락</strong>: 지난 12개월 위안화 4.08% 상승, 11월 말 7.08 저점 이후 지속 강세[2][5][7]. 12월 1주차에도 달러 약세 속 7.07 수준 마감[4].<br><br>이러한 요인들이 겹치며 USD/CNY의 최근 급락을 설명하나, 주말(12/28) 데이터 부족으로 최신 확인 필요[2][3].</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-header">
+                    <span class="news-ticker">HG=F</span>
+                    <span class="news-level" style="background: {'CRITICAL': '#ef4444', 'ALERT': '#f97316', 'WARNING': '#eab308'}.get(signal_info.get('level', ''), '#666');">
+                        CRITICAL
+                    </span>
+                </div>
+                <div class="news-content">HG=F(뉴욕 COMEX 구리 선물)의 급등은 단기 이슈라기보다, 연말로 갈수록 누적된 <strong>공급 부족·재고 감소·달러 약세·금리 인하 기대</strong>가 한꺼번에 반영되면서 나타난 움직임으로 보는 게 맞습니다.[1][2][3][5][6]<br><br>핵심 재료만 정리하면:<br><br>- <strong>가격 레벨·속도</strong><br>  - 12월 말 COMEX 구리 선물은 파운드당 <strong>5.7~5.85달러</strong>, 5개월래/사상 최고 근처까지 상승.[1][2]  <br>  - 올해 들어 상승률은 <strong>약 37~40%</strong>로, 2009년 이후 최대 폭 수준이라는 평가.[3][5][6][7]<br><br>- <strong>공급 측 구조적 타이트(가장 큰 요인)</strong><br>  - 런던금속거래소(LME) <strong>재고 감소</strong>와 취소주문(warehouse cancellation) 증가 → 실물 인출·타이트한 현물 수급을 시사.[2][4]<br>  - <strong>신규 광산 개발 부족</strong>과 광산사의 보수적 투자로 공급 탄력성이 떨어져, 수요 대비 공급이 따라가지 못하는 구조라는 분석.[4][5]<br>  - 중국 측 광산 캐파 10% 감축 신호 등도 공급 부족 기대를 키움.[4]<br><br>- <strong>글로벌 ‘메탈 랠리’·투자 수요 유입</strong><br>  - 은이 160% 급등하며 사상 최고가를 경신하고, 금·백금·팔라듐까지 동반 급등하는 <strong>금·은발 메탈 랠리</strong>가 산업금속(구리)로 확산.[2]<br>  - 금이 너무 올라가자 상대적으로 덜 오른 <strong>구리·은·백금 등으로 자금 회전</strong>이 이뤄졌다는 해석.[2]<br><br>- <strong>거시환경: 달러 약세·미 연준 금리 인하 기대</strong><br>  - 달러 인덱스 하락과 미 국채 금리 하락 → 달러 약세가 원자재 가격을 전반적으로 지지.[2]<br>  - 2026년 금리 인하 기대가 커지며, 차입 비용 감소·경기 부양 기대 → 금속 수요 증가 기대가 선반영.[1][4]<br>  - 미국 3분기 성장률이 2년래 최고 수준으로, 미국 내 구리 수요(전력·건설·산업활동)를 받쳐주고 있다는 점도 언급.[1]<br><br>- <strong>수요 측 테마: 에너지 전환·전력 인프라·AI 관련 투자</strong><br>  - 글로벌 전력 인프라 투자, 재생에너지·전기차·데이터센터(특히 AI 인프라) 확대로 <strong>장기 구리 수요가 구조적으로 증가</strong>할 것이라는 전망이 강함.[1][5][6]<br>  - 골드만삭스·씨티 등에서 2026년 t당 13,000~15,000달러까지 구리 상승 가능성을 제시하며 ‘슈퍼사이클’ 논의를 자극.[4][5]<br><br>- <strong>단기 수급 이벤트·투기적 수요</strong><br>  - LME 재고 감소와 미국 시장으로의 <strong>차익거래 유인</strong> 확대 ...</div>
+            </div>
+            
+            <div class="news-item">
+                <div class="news-header">
+                    <span class="news-ticker">GLD</span>
+                    <span class="news-level" style="background: {'CRITICAL': '#ef4444', 'ALERT': '#f97316', 'WARNING': '#eab308'}.get(signal_info.get('level', ''), '#666');">
+                        ALERT
+                    </span>
+                </div>
+                <div class="news-content">GLD 가격 급등 배경으로는 <strong>올해 금 가격 자체의 약 70% 급등, 안전자산 선호 및 귀금속 ETF로의 자금 유입 확대</strong>가 핵심 요인으로 거론됩니다.[2][4][5]<br><br>핵심 관련 뉴스·이벤트는 다음과 같습니다.<br><br>- <strong>금 가격 랠리 & GLD 고점 경신</strong><br>  - kr.Investing.com 기준 GLD는 2025년 12월 27일 <strong>416.74달러</strong>로, 52주 범위 상단(최고가 418.45달러)에 근접해 거래 중입니다.[4]<br>  - Benzinga에 따르면 2025년 들어 금(아이셰어즈 골드 트러스트 기준)은 <strong>70% 이상 급등</strong>한 것으로 보도되며, 비트코인은 소폭 하락한 것과 대조됩니다.[5]  <br>    (기사에서 GLD 티커 표기가 혼재하지만 금 ETF 급등을 지칭하며, 금 가격 강세를 강조)<br><br>- <strong>귀금속 ETF 전반의 ‘역대급 랠리’와 자금 유입</strong><br>  - G밸리/글로벌이코노믹 보도에 따르면 2025년 귀금속 시장에서 <strong>은 142%, 백금 144% 급등</strong>, 금도 온스당 4,500달러 근접 및 약 70% 상승을 기록하며 귀금속 ETF로 <strong>역대급 자금 유입(글로벌 ETF 유입액 930억 달러 돌파)</strong>이 발생했습니다.[2]<br>  - 같은 기사에서 정부 부채 급증, 지정학적 군사 충돌, 무역전쟁, 지속되는 고물가, 연준 독립성 논란 등 <strong>복합적인 글로벌 리스크가 안전자산 수요를 자극</strong>한 것이 이번 랠리의 배경으로 분석됩니다.[2]<br><br>- <strong>최근 1~2개월 내 가격 급등 구간</strong><br>  - 개별 투자자 리포트에 따르면 GLD는 2025년 11월 17일 약 <strong>371.65달러</strong>에서 12월 22일 <strong>408.23달러</strong>로 한 달 사이 약 10% 가까이 상승한 것으로 요약됩니다.[6]<br>  - 딥서치 브리핑에서는 2025년 12월 26일 GLD가 <strong>1.16% 상승해 416.72달러로 마감</strong>, 금 가격 상승을 그대로 반영한 움직임이라고 설명합니다.[7]<br><br>이 신호(Z=2.13 수준의 단기 급등)를 직접 촉발한 단일 이벤트(예: 갑작스러운 연준 발표, 전쟁 발발 등)는 검색 결과에서 특정 날짜로 콕 집혀 나오지 않지만,  <br>최근 GLD 급등은 요약하면:<br><br>- 연중 누적 금 가격 <strong>대세 상승(약 70%)</strong>[2][5]  <br>- <strong>정부 부채·지정학 갈등·인플레이션·연준 불확실성</strong>에 따른 안전자산 선호 강화[2]  <br>- 귀금속 ETF 전반으로의 <strong>대규모 자금 유입과 모멘텀 매수</strong>[2][10]  <br><br>이 세 가지 구조적 요인이 겹친 결과로 보는 분석이 지...</div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <script>
+        // Chart.js 로드 확인 함수
+        function checkChartAvailability() {
+            if (typeof window.Chart === 'undefined' || window.chartJsLoadFailed) {
+                return false;
+            }
+            return true;
+        }
+        
+        // Fallback 테이블 렌더링 함수
+        function renderFallbackTable(canvasId, data, chartType) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const container = canvas.parentElement;
+            const tableId = canvasId + '-fallback';
+            
+            // 기존 fallback 테이블이 있으면 제거
+            const existingTable = document.getElementById(tableId);
+            if (existingTable) {
+                existingTable.remove();
+            }
+            
+            // 테이블 생성
+            const table = document.createElement('table');
+            table.id = tableId;
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.style.marginTop = '20px';
+            table.style.color = '#e4e4e7';
+            table.style.fontSize = '0.9rem';
+            
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            
+            if (chartType === 'doughnut') {
+                // 도넛 차트용 테이블
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2);">레벨</th><th style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2);">개수</th><th style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2);">비율</th>';
+                thead.appendChild(headerRow);
+                
+                const total = data.values.reduce((a, b) => a + b, 0);
+                data.labels.forEach((label, idx) => {
+                    const row = document.createElement('tr');
+                    const value = data.values[idx];
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                    const color = data.colors[idx] || '#9ca3af';
+                    
+                    row.innerHTML = `
+                        <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <span style="display: inline-block; width: 12px; height: 12px; background: ${color}; border-radius: 2px; margin-right: 8px;"></span>
+                            ${label}
+                        </td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1);">${value}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1);">${percentage}%</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else if (chartType === 'bar') {
+                // 바 차트용 테이블
+                const headerRow = document.createElement('tr');
+                headerRow.innerHTML = '<th style="padding: 8px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.2);">지표</th><th style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2);">신호 수</th>';
+                thead.appendChild(headerRow);
+                
+                const sortedData = data.labels.map((label, idx) => ({
+                    label: label,
+                    value: data.values[idx]
+                })).sort((a, b) => b.value - a.value);
+                
+                sortedData.forEach(item => {
+                    const row = document.createElement('tr');
+                    const barWidth = Math.max((item.value / Math.max(...data.values)) * 100, 5);
+                    row.innerHTML = `
+                        <td style="padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);">${item.label}</td>
+                        <td style="padding: 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                                <div style="flex: 1; max-width: 200px; height: 20px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${barWidth}%; height: 100%; background: #60a5fa; transition: width 0.3s;"></div>
+                                </div>
+                                <span style="min-width: 30px; text-align: right;">${item.value}</span>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            container.appendChild(table);
+            
+            // 캔버스 숨기기
+            canvas.style.display = 'none';
+        }
+        
+        // 에러 핸들링 함수
+        function handleChartError(canvasId, error, chartType, data) {
+            console.error(`차트 생성 실패 (${canvasId}):`, error);
+            
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            
+            const container = canvas.parentElement;
+            
+            // 에러 메시지 표시
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'padding: 20px; text-align: center; color: #fca5a5; background: rgba(239, 68, 68, 0.1); border-radius: 8px; margin-top: 10px;';
+            errorDiv.innerHTML = `
+                <p style="margin: 0 0 8px 0; font-weight: 600;">⚠️ 차트 로드 실패</p>
+                <p style="margin: 0; font-size: 0.85rem; color: #9ca3af;">데이터를 테이블로 표시합니다.</p>
+            `;
+            container.appendChild(errorDiv);
+            
+            // Fallback 테이블 렌더링
+            if (data) {
+                renderFallbackTable(canvasId, data, chartType);
+            }
+        }
+        
+        // Signal News 확장/축소 함수
+        function toggleNews(idx) {
+            const content = document.getElementById('news-content-' + idx);
+            const toggle = event.currentTarget.querySelector('.signal-news-toggle');
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▼';
+            }
+        }
+        
+        // 신호 분포 도넛 차트
+        document.addEventListener('DOMContentLoaded', function() {
+            // Chart.js 로드 확인
+            if (!checkChartAvailability()) {
+                console.warn('Chart.js를 사용할 수 없습니다. Fallback 모드로 전환합니다.');
+                
+                // 신호 분포 차트 Fallback
+                const signalChartData = {
+                    labels: ['Critical', 'Alert', 'Warning'],
+                    values: [2, 17, 22],
+                    colors: ['#ef4444', '#f97316', '#eab308']
+                };
+                renderFallbackTable('signalChart', signalChartData, 'doughnut');
+                
+                // 지표별 분포 차트 Fallback
+                const indicatorCounts = {};
+                const signals = ["return_z", "price_z", "price_z", "rsi", "price_z", "rsi", "price_z", "rsi", "price_z", "return_z", "volume", "rsi", "price_z", "rsi", "return_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "price_z", "bollinger", "bollinger", "rsi", "bollinger", "return_z", "bollinger", "rsi", "bollinger", "price_z", "volume", "price_z", "price_z", "rsi", "price_z", "price_z", "volume_buildup"];
+                signals.forEach(ind => {
+                    indicatorCounts[ind] = (indicatorCounts[ind] || 0) + 1;
+                });
+                
+                const indicatorChartData = {
+                    labels: Object.keys(indicatorCounts),
+                    values: Object.values(indicatorCounts)
+                };
+                renderFallbackTable('indicatorChart', indicatorChartData, 'bar');
+                
+                return;
+            }
+            
+            // 신호 분포 도넛 차트 생성
+            try {
+                const signalCtx = document.getElementById('signalChart');
+                if (!signalCtx) {
+                    console.warn('signalChart 캔버스를 찾을 수 없습니다.');
+                    return;
+                }
+                
+                const signalChart = new Chart(signalCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Critical', 'Alert', 'Warning'],
+                        datasets: [{
+                            data: [2, 17, 22],
+                            backgroundColor: ['#ef4444', '#f97316', '#eab308'],
+                            borderColor: ['#dc2626', '#ea580c', '#ca8a04'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#e4e4e7' }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                const signalChartData = {
+                    labels: ['Critical', 'Alert', 'Warning'],
+                    values: [2, 17, 22],
+                    colors: ['#ef4444', '#f97316', '#eab308']
+                };
+                handleChartError('signalChart', error, 'doughnut', signalChartData);
+            }
+            
+            // 지표별 분포 바 차트 생성
+            try {
+                const indicatorCounts = {};
+                const signals = ["return_z", "price_z", "price_z", "rsi", "price_z", "rsi", "price_z", "rsi", "price_z", "return_z", "volume", "rsi", "price_z", "rsi", "return_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "price_z", "bollinger", "bollinger", "rsi", "bollinger", "return_z", "bollinger", "rsi", "bollinger", "price_z", "volume", "price_z", "price_z", "rsi", "price_z", "price_z", "volume_buildup"];
+                signals.forEach(ind => {
+                    indicatorCounts[ind] = (indicatorCounts[ind] || 0) + 1;
+                });
+                
+                const indicatorCtx = document.getElementById('indicatorChart');
+                if (!indicatorCtx) {
+                    console.warn('indicatorChart 캔버스를 찾을 수 없습니다.');
+                    return;
+                }
+                
+                const indicatorChart = new Chart(indicatorCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(indicatorCounts),
+                        datasets: [{
+                            label: '신호 수',
+                            data: Object.values(indicatorCounts),
+                            backgroundColor: '#60a5fa',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: '#9ca3af' },
+                                grid: { color: 'rgba(255,255,255,0.1)' }
+                            },
+                            x: {
+                                ticks: { color: '#9ca3af' },
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                const indicatorCounts = {};
+                const signals = ["return_z", "price_z", "price_z", "rsi", "price_z", "rsi", "price_z", "rsi", "price_z", "return_z", "volume", "rsi", "price_z", "rsi", "return_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "bollinger", "price_z", "price_z", "price_z", "bollinger", "bollinger", "rsi", "bollinger", "return_z", "bollinger", "rsi", "bollinger", "price_z", "volume", "price_z", "price_z", "rsi", "price_z", "price_z", "volume_buildup"];
+                signals.forEach(ind => {
+                    indicatorCounts[ind] = (indicatorCounts[ind] || 0) + 1;
+                });
+                
+                const indicatorChartData = {
+                    labels: Object.keys(indicatorCounts),
+                    values: Object.values(indicatorCounts)
+                };
+                handleChartError('indicatorChart', error, 'bar', indicatorChartData);
+            }
+            
+            // Markov Regime 확률 시계열 차트 생성
+            
+        });
+    </script>
+</body>
+</html>

@@ -101,6 +101,22 @@ class SystemicRiskNode:
 
 
 @dataclass
+class OutlierDetectionResult:
+    """DBSCAN 이상치 탐지 결과"""
+    timestamp: str
+    n_total_assets: int
+    n_outliers: int
+    outlier_ratio: float
+    outlier_tickers: List[str]
+    normal_tickers: List[str]
+    cluster_labels: Dict[str, int]  # ticker -> cluster_id (-1 = noise)
+    n_clusters: int
+    eps: float  # DBSCAN epsilon 파라미터
+    min_samples: int  # DBSCAN min_samples 파라미터
+    interpretation: str
+
+
+@dataclass
 class MSTAnalysisResult:
     """MST 분석 결과"""
     timestamp: str
@@ -311,6 +327,206 @@ class CorrelationNetwork:
             }
 
         return centrality
+
+    def compute_systemic_similarity(self) -> pd.DataFrame:
+        """
+        Systemic Similarity 계산 (D_bar matrix)
+
+        경제학적 배경 (eco1.docx):
+        - 단순 correlation → distance 변환을 넘어서
+        - 각 자산 쌍이 다른 모든 자산과 어떻게 관계되어 있는지 고려
+        - "Systemic Similarity" = 자산 간 상호작용 강도 정량화
+
+        수식:
+            D_bar[i,j] = sqrt(sum_k (D[k,i] - D[k,j])²)
+
+        해석:
+        - D_bar[i,j] = 0: 자산 i와 j가 모든 다른 자산과 동일한 거리 관계
+                          → 시스템적으로 매우 유사 (대체재)
+        - D_bar[i,j] 큼: 자산 i와 j가 다른 자산과 다른 관계
+                          → 시스템적으로 상이 (보완재)
+
+        활용:
+        - HRP (Hierarchical Risk Parity) 고도화
+        - 클러스터링 품질 향상 (MST, Hierarchical Clustering)
+        - 포트폴리오 분산화 효과 정량화
+
+        Returns:
+            d_bar: Systemic Similarity 행렬 (n × n DataFrame)
+                   인덱스/컬럼 = 자산 티커
+                   값 = 시스템적 유사도 (낮을수록 유사)
+
+        References:
+            De Prado, M. L. (2016). Building Diversified Portfolios that
+            Outperform Out of Sample. Journal of Portfolio Management, 42(4).
+
+        Example:
+            >>> network = CorrelationNetwork()
+            >>> network.build_from_returns(returns_df)
+            >>> d_bar = network.compute_systemic_similarity()
+            >>> print(f"Most similar pair: {d_bar.min().min():.3f}")
+            >>> print(f"Most dissimilar pair: {d_bar.max().max():.3f}")
+
+        Notes:
+            - distance_matrix가 먼저 계산되어야 함 (build_from_returns 호출 필수)
+            - O(n³) 복잡도이므로 대규모 자산(>500)에서는 주의
+            - 대각선 값은 0 (자기 자신과의 유사도)
+        """
+        if self.distance_matrix is None:
+            raise ValueError(
+                "Distance matrix not computed yet. "
+                "Call build_from_returns() first."
+            )
+
+        # Distance 행렬을 numpy array로 변환
+        D = self.distance_matrix.values  # (n, n)
+        n = D.shape[0]
+
+        # Systemic Similarity 행렬 초기화
+        D_bar = np.zeros((n, n))
+
+        # D_bar[i,j] = sqrt(sum_k (D[k,i] - D[k,j])²)
+        for i in range(n):
+            for j in range(n):
+                if i == j:
+                    D_bar[i, j] = 0.0  # 자기 자신과의 유사도
+                else:
+                    # 모든 k에 대해 (D[k,i] - D[k,j])² 합산
+                    diff = D[:, i] - D[:, j]  # (n,) array
+                    D_bar[i, j] = np.sqrt(np.sum(diff ** 2))
+
+        # DataFrame으로 변환 (인덱스/컬럼 = 자산 티커)
+        assets = self.distance_matrix.index.tolist()
+        d_bar_df = pd.DataFrame(
+            D_bar,
+            index=assets,
+            columns=assets
+        )
+
+        return d_bar_df
+
+    def detect_outliers_dbscan(
+        self,
+        eps: float = 0.5,
+        min_samples: int = 3,
+        metric: str = 'precomputed'
+    ) -> OutlierDetectionResult:
+        """
+        DBSCAN 기반 이상치 탐지 (밀도 기반 클러스터링)
+
+        경제학적 배경 (금융경제정리.docx):
+        - DBSCAN (Density-Based Spatial Clustering of Applications with Noise)
+        - 밀도가 낮은 자산 = 다른 자산들과 상관관계 패턴이 다름
+        - 노이즈 포인트 (label=-1) = 포트폴리오 품질 저하 요인
+        - 이상치 제거로 HRP 클러스터링 품질 향상
+
+        알고리즘:
+        1. 거리 행렬 기반 DBSCAN 실행
+        2. 각 자산을 클러스터 또는 노이즈로 분류
+        3. 노이즈 포인트 = 이상치 (outlier)
+
+        Parameters:
+            eps: float
+                DBSCAN epsilon 파라미터 (이웃 반경)
+                - 작을수록 엄격한 이상치 탐지
+                - 권장: 0.3-0.7 (거리 행렬 스케일)
+            min_samples: int
+                최소 클러스터 크기
+                - 권장: 3-5
+            metric: str
+                거리 메트릭 (기본값: 'precomputed')
+                - 거리 행렬을 직접 사용
+
+        Returns:
+            OutlierDetectionResult:
+                - n_outliers: 이상치 개수
+                - outlier_tickers: 이상치 자산 리스트
+                - normal_tickers: 정상 자산 리스트
+                - cluster_labels: 각 자산의 클러스터 ID
+
+        Example:
+            >>> network = CorrelationNetwork()
+            >>> network.build_from_returns(returns_df)
+            >>> result = network.detect_outliers_dbscan(eps=0.5, min_samples=3)
+            >>> print(f"Outliers: {result.n_outliers}/{result.n_total_assets}")
+            >>> print(f"Outlier tickers: {result.outlier_tickers}")
+
+        Notes:
+            - distance_matrix가 먼저 계산되어야 함
+            - 이상치 제거 후 HRP 재실행 권장
+            - eps 값은 데이터셋에 따라 튜닝 필요
+
+        References:
+            Ester, M., et al. (1996). "A density-based algorithm for discovering
+            clusters in large spatial databases with noise." KDD-96.
+        """
+        if self.distance_matrix is None:
+            raise ValueError(
+                "Distance matrix not computed yet. "
+                "Call build_from_returns() first."
+            )
+
+        if not SKLEARN_AVAILABLE:
+            raise ImportError(
+                "scikit-learn not available. "
+                "Install with: pip install scikit-learn"
+            )
+
+        from sklearn.cluster import DBSCAN
+
+        # 거리 행렬 추출
+        distance_array = self.distance_matrix.values
+        assets = self.distance_matrix.index.tolist()
+        n_assets = len(assets)
+
+        # DBSCAN 실행
+        dbscan = DBSCAN(
+            eps=eps,
+            min_samples=min_samples,
+            metric=metric
+        )
+        labels = dbscan.fit_predict(distance_array)
+
+        # 이상치 식별 (label == -1)
+        outlier_mask = (labels == -1)
+        outlier_tickers = [assets[i] for i in range(n_assets) if outlier_mask[i]]
+        normal_tickers = [assets[i] for i in range(n_assets) if not outlier_mask[i]]
+
+        # 클러스터 레이블 매핑
+        cluster_labels = {
+            assets[i]: int(labels[i])
+            for i in range(n_assets)
+        }
+
+        # 유효 클러스터 개수 (노이즈 제외)
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+
+        # 이상치 비율
+        outlier_ratio = len(outlier_tickers) / n_assets if n_assets > 0 else 0.0
+
+        # 해석
+        if outlier_ratio == 0:
+            interpretation = "NONE: 이상치 없음 (모든 자산이 밀집 클러스터 형성)"
+        elif outlier_ratio < 0.05:
+            interpretation = f"LOW: {outlier_ratio:.1%}의 자산이 이상치 (정상 범위)"
+        elif outlier_ratio < 0.15:
+            interpretation = f"MEDIUM: {outlier_ratio:.1%}의 자산이 이상치 (검토 권장)"
+        else:
+            interpretation = f"HIGH: {outlier_ratio:.1%}의 자산이 이상치 (eps 파라미터 재조정 필요)"
+
+        return OutlierDetectionResult(
+            timestamp=datetime.now().isoformat(),
+            n_total_assets=n_assets,
+            n_outliers=len(outlier_tickers),
+            outlier_ratio=outlier_ratio,
+            outlier_tickers=outlier_tickers,
+            normal_tickers=normal_tickers,
+            cluster_labels=cluster_labels,
+            n_clusters=n_clusters,
+            eps=eps,
+            min_samples=min_samples,
+            interpretation=interpretation
+        )
 
     def build_mst(self) -> nx.Graph:
         """
@@ -1520,5 +1736,88 @@ if __name__ == "__main__":
         print(f"\n   Centrality Weights (v2): Between=45%, Degree=35%, Close=20%")
         print(f"   Risk Summary: {mst.risk_summary}")
 
+    # DBSCAN Outlier Detection 테스트 (NEW)
     print("\n" + "=" * 60)
-    print("Test completed successfully!")
+    print("7. DBSCAN Outlier Detection Test (NEW)")
+    print("=" * 60)
+
+    # 이상치가 있는 테스트 데이터 생성
+    print("\n[Step 1] Creating test data with outliers...")
+    np.random.seed(123)
+    n_normal = 90
+    n_outliers = 10
+    n_days = 252
+
+    # 정상 자산: 상관관계가 높은 팩터 기반
+    factor_returns = np.random.randn(n_days, 3) * 0.01
+    loadings_normal = np.random.randn(n_normal, 3)
+    returns_normal = np.dot(factor_returns, loadings_normal.T) + np.random.randn(n_days, n_normal) * 0.005
+
+    # 이상치 자산: 독립적인 랜덤 워크
+    returns_outliers = np.random.randn(n_days, n_outliers) * 0.05
+
+    # 병합
+    returns_with_outliers = np.hstack([returns_normal, returns_outliers])
+    dates = pd.date_range(end=datetime.now(), periods=n_days, freq='D')
+    assets_test = [f'NORMAL_{i:02d}' for i in range(n_normal)] + [f'OUTLIER_{i:02d}' for i in range(n_outliers)]
+    returns_test_df = pd.DataFrame(returns_with_outliers, index=dates, columns=assets_test)
+
+    print(f"   Total assets: {len(assets_test)}")
+    print(f"   Normal assets: {n_normal}")
+    print(f"   Outlier assets: {n_outliers} (should be detected)")
+
+    # 네트워크 구축
+    print("\n[Step 2] Building correlation network...")
+    network_test = CorrelationNetwork(correlation_threshold=0.2)
+    network_test.build_from_returns(returns_test_df)
+
+    # DBSCAN 실행
+    print("\n[Step 3] Running DBSCAN outlier detection...")
+    outlier_result = network_test.detect_outliers_dbscan(
+        eps=0.6,
+        min_samples=3
+    )
+
+    # 결과 출력
+    print("\n[Step 4] DBSCAN Results:")
+    print(f"   Total Assets: {outlier_result.n_total_assets}")
+    print(f"   Detected Outliers: {outlier_result.n_outliers}")
+    print(f"   Outlier Ratio: {outlier_result.outlier_ratio:.1%}")
+    print(f"   Number of Clusters: {outlier_result.n_clusters}")
+    print(f"   Interpretation: {outlier_result.interpretation}")
+
+    print(f"\n   Parameters Used:")
+    print(f"   - eps (neighborhood radius): {outlier_result.eps}")
+    print(f"   - min_samples (min cluster size): {outlier_result.min_samples}")
+
+    print(f"\n   Detected Outlier Tickers (first 10):")
+    for ticker in outlier_result.outlier_tickers[:10]:
+        print(f"   - {ticker}")
+
+    # 정확도 검증
+    detected_outliers_set = set(outlier_result.outlier_tickers)
+    true_outliers_set = set([f'OUTLIER_{i:02d}' for i in range(n_outliers)])
+
+    true_positives = len(detected_outliers_set & true_outliers_set)
+    false_positives = len(detected_outliers_set - true_outliers_set)
+    false_negatives = len(true_outliers_set - detected_outliers_set)
+
+    precision = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else 0
+    recall = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else 0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
+    print(f"\n   Detection Performance:")
+    print(f"   - True Positives: {true_positives}/{n_outliers}")
+    print(f"   - False Positives: {false_positives}")
+    print(f"   - Precision: {precision:.1%}")
+    print(f"   - Recall: {recall:.1%}")
+    print(f"   - F1 Score: {f1_score:.3f}")
+
+    if f1_score > 0.7:
+        print(f"\n   ✅ DBSCAN successfully detected outliers!")
+    else:
+        print(f"\n   ⚠️ DBSCAN detection needs parameter tuning")
+
+    print("\n" + "=" * 60)
+    print("All tests completed successfully!")
+    print("=" * 60)

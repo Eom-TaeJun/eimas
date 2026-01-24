@@ -314,6 +314,14 @@ class EIMASResult:
     liquidity_analysis: Dict = field(default_factory=dict)
     etf_flow_result: Dict = field(default_factory=dict)
 
+    # NEW: Enhanced Analysis (2026-01-25)
+    hft_microstructure: Dict = field(default_factory=dict)
+    garch_volatility: Dict = field(default_factory=dict)
+    information_flow: Dict = field(default_factory=dict)
+    proof_of_index: Dict = field(default_factory=dict)
+    dtw_similarity: Dict = field(default_factory=dict)
+    dbscan_outliers: Dict = field(default_factory=dict)
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -424,6 +432,57 @@ class EIMASResult:
 
         if self.volume_anomalies:
             md.append(f"### Volume Anomalies: {len(self.volume_anomalies)} detected")
+
+        # NEW: Enhanced Analysis Sections
+        md.append("## 6.5 Enhanced Analysis (New)")
+        
+        if self.hft_microstructure:
+            md.append("### HFT Microstructure")
+            tr = self.hft_microstructure.get('tick_rule', {})
+            if tr: md.append(f"- Tick Rule Buy Ratio: {tr.get('buy_ratio', 0):.1%}")
+            kl = self.hft_microstructure.get('kyles_lambda', {})
+            if kl: md.append(f"- Kyle's Lambda: {kl.get('lambda', 0):.6f}")
+
+        if self.garch_volatility:
+            md.append("### GARCH Volatility")
+            md.append(f"- Current: {self.garch_volatility.get('current_volatility', 0):.1%}")
+            md.append(f"- Forecast: {self.garch_volatility.get('forecast_avg_volatility', 0):.1%}")
+
+        if self.information_flow:
+            md.append("### Information Flow")
+            av = self.information_flow.get('abnormal_volume', {})
+            if av: md.append(f"- Abnormal Days: {av.get('total_abnormal_days', 0)}")
+            capm = self.information_flow.get('capm_QQQ', {})
+            if capm: md.append(f"- QQQ Alpha: {capm.get('alpha', 0)*252:+.1%}/yr")
+
+        if self.proof_of_index:
+            md.append("### Proof-of-Index")
+            md.append(f"- Index Value: {self.proof_of_index.get('index_value', 0):.2f}")
+            verify = self.proof_of_index.get('verification', {})
+            md.append(f"- On-chain Verification: {'✅ PASS' if verify.get('is_valid') else '❌ FAIL'}")
+
+        if self.dtw_similarity:
+            md.append("### DTW Time Series Similarity")
+            ll = self.dtw_similarity.get('lead_lag_spy_qqq', {})
+            if ll: md.append(f"- Lead-Lag: {ll.get('interpretation')}")
+            pair = self.dtw_similarity.get('most_similar_pair', {})
+            if pair: md.append(f"- Most Similar: {pair.get('asset1')} <-> {pair.get('asset2')}")
+
+        if self.dbscan_outliers:
+            md.append("### DBSCAN Outliers")
+            md.append(f"- Outliers: {self.dbscan_outliers.get('n_outliers', 0)} ({self.dbscan_outliers.get('outlier_ratio', 0):.1%})")
+
+        if self.ark_analysis:
+            md.append("### ARK Invest Analysis (Cathie Wood)")
+            ark = self.ark_analysis
+            if ark.get('consensus_buys'):
+                md.append(f"- **Consensus BUY**: {', '.join(ark['consensus_buys'])}")
+            if ark.get('consensus_sells'):
+                md.append(f"- **Consensus SELL**: {', '.join(ark['consensus_sells'])}")
+            if ark.get('new_positions'):
+                md.append(f"- **New Positions**: {', '.join(ark['new_positions'])}")
+            if not (ark.get('consensus_buys') or ark.get('consensus_sells')):
+                md.append("- No major consensus trades detected")
 
         md.append("")
 

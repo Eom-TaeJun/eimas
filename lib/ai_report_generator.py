@@ -1028,11 +1028,104 @@ class AIReportGenerator:
             
         return "\n".join(lines)
 
+    def _format_new_metrics(self, result: Dict) -> str:
+        """새로운 분석 지표(PoI, DTW, HFT) 요약"""
+        analyses = result.get('analyses', {})
+        lines = []
+
+        # 1. Proof-of-Index
+        poi = analyses.get('proof_of_index', {})
+        if poi.get('completed'):
+            summary = poi.get('summary', {})
+            # summary가 문자열이면 eval 시도, 아니면 딕셔너리로 간주
+            if isinstance(summary, str):
+                try:
+                    # 안전하지 않을 수 있으나 내부 데이터라 가정
+                    pass 
+                except:
+                    pass
+            # 실제 데이터 구조에 따라 파싱 (여기서는 run_full_analysis.py의 출력을 가정)
+            # JSON 로드 시 딕셔너리로 들어옴
+            
+            # PoI 상세 데이터가 analyses['proof_of_index'] 자체에 있을 수도 있음 (구조 확인 필요)
+            # run_full_analysis.py는 'summary' 키에 문자열 요약을 넣거나, 전체 데이터를 넣음.
+            # 여기서는 전체 데이터를 가정하고 접근
+            pass 
+
+        # run_full_analysis.py의 결과 구조:
+        # results['analyses']['proof_of_index'] = {...}
+        
+        # 1. HFT Microstructure
+        hft = analyses.get('hft_microstructure', {})
+        if hft:
+            lines.append("**HFT 미세구조:**")
+            if 'tick_rule' in hft:
+                buy_ratio = hft['tick_rule'].get('buy_ratio', 0.5)
+                lines.append(f"- 매수 압력: {buy_ratio:.1%} ({'매수 우위' if buy_ratio > 0.55 else '매도 우위' if buy_ratio < 0.45 else '중립'})")
+            if 'kyles_lambda' in hft:
+                k_lambda = hft['kyles_lambda'].get('lambda', 0)
+                lines.append(f"- 시장 충격(Kyle's λ): {k_lambda:.6f}")
+
+        # 2. Information Flow
+        info = analyses.get('information_flow', {})
+        if info:
+            lines.append("\n**정보 플로우:**")
+            if 'abnormal_volume' in info:
+                ab_vol = info['abnormal_volume']
+                lines.append(f"- 이상 거래일: {ab_vol.get('total_abnormal_days', 0)}일 ({ab_vol.get('interpretation', '')})")
+            
+            # CAPM Alpha (QQQ 예시)
+            capm = info.get('capm_QQQ', {})
+            if capm:
+                alpha = capm.get('alpha', 0) * 252
+                lines.append(f"- QQQ Alpha: {alpha:+.1%}/yr (정보 우위 추정)")
+
+        # 3. Proof-of-Index
+        poi = analyses.get('proof_of_index', {})
+        if poi:
+            lines.append("\n**Proof-of-Index (투명성):**")
+            snapshot = poi.get('index_snapshot', {})
+            if snapshot:
+                lines.append(f"- 인덱스 가치: {snapshot.get('index_value', 0):.2f}")
+            verify = poi.get('verification', {})
+            if verify:
+                lines.append(f"- 블록체인 검증: {'✅ PASS' if verify.get('is_valid') else '❌ FAIL'}")
+            signal = poi.get('mean_reversion_signal', {})
+            if signal:
+                lines.append(f"- 전략 신호: {signal.get('signal', 'N/A')} (Z={signal.get('z_score', 0):.2f})")
+
+        # 4. DTW Similarity
+        dtw = analyses.get('dtw_similarity', {})
+        if dtw:
+            lines.append("\n**시계열 유사도 (DTW):**")
+            lead_lag = dtw.get('lead_lag_spy_qqq', {})
+            if lead_lag:
+                lines.append(f"- 리드-래그: {lead_lag.get('interpretation', 'N/A')}")
+            sim_pair = dtw.get('most_similar_pair', {})
+            if sim_pair:
+                lines.append(f"- 최다 유사 쌍: {sim_pair.get('asset1')} ↔ {sim_pair.get('asset2')}")
+
+        # 5. ARK Invest
+        ark = result.get('ark_analysis', {})
+        if ark:
+            lines.append("\n**ARK Invest (Smart Money Flow):**")
+            if ark.get('consensus_buys'):
+                lines.append(f"- Consensus BUY: {', '.join(ark['consensus_buys'])} (다수 ETF 매수)")
+            if ark.get('consensus_sells'):
+                lines.append(f"- Consensus SELL: {', '.join(ark['consensus_sells'])} (다수 ETF 매도)")
+            if ark.get('new_positions'):
+                lines.append(f"- 신규 편입: {', '.join(ark['new_positions'])}")
+
+        return "\n".join(lines)
+
     def _build_ib_prompt(self, result: Dict, shap_text: str, drivers: List) -> str:
         """IB 스타일 프롬프트 구성"""
         regime = result.get('regime', {})
         risk_score = result.get('risk_score', 50)
         fred = result.get('fred_summary', {})
+        
+        # 새로운 지표 포맷팅
+        new_metrics_text = self._format_new_metrics(result)
         
         prompt = f"""
 당신은 골드만삭스나 모건스탠리의 수석 전략가입니다.
@@ -1046,27 +1139,31 @@ class AIReportGenerator:
 - 금리: Fed Funds {fred.get('fed_funds', 0):.2f}%, 10Y {fred.get('treasury_10y', 0):.2f}%
 - 유동성: Net Liquidity ${fred.get('net_liquidity', 0):.0f}B ({fred.get('liquidity_regime', 'Unknown')})
 
-## 2. AI 인과관계 분석 (Why-Based)
+## 2. 심층 정량 분석 (New Metrics)
+{new_metrics_text}
+
+## 3. AI 인과관계 분석 (Why-Based)
 {shap_text}
 
-## 3. 작성 지침
+## 4. 작성 지침
 보고서는 다음 목차를 엄격히 준수하여 작성하십시오:
 
 # EIMAS Daily Investment Memorandum
 
 ## 1. Investment Highlights (The "Alpha")
 - 단순히 시장 방향을 나열하지 말고, **"Why"**에 집중하십시오.
-- 위 "AI 인과관계 분석" 데이터를 인용하여, 어떤 변수가 시장을 움직이고 있는지 서술하십시오.
-- 예: "VIX의 하락 기조(-0.5% 기여)가 시장 상승의 주요 동력으로 작용..."
+- "심층 정량 분석" 섹션의 **DTW 리드-래그**, **HFT 매수 압력**, **PoI 신호**를 반드시 인용하여 분석 깊이를 더하십시오.
+- 예: "SPY가 QQQ를 1일 선행한다는 DTW 분석 결과는 현재 기술주 주도의 장세가..."
+- 예: "HFT 매수 압력이 57%로 우위를 점하며 단기 수급이 견조함을 시사..."
 
 ## 2. Key Risk Factors (Quantitative)
 - 리스크 점수와 레짐 신뢰도를 언급하십시오.
-- (데이터가 있다면) VPIN(독성 주문 흐름)이나 OFI(주문 불균형) 개념을 사용하여 시장 미세구조 리스크를 평가하십시오.
-- 데이터가 없다면 일반적인 변동성(VIX) 및 금리 리스크를 서술하십시오.
+- **정보 플로우(Information Flow)** 분석의 이상 거래일 여부를 언급하여 내부자 거래/정보 비대칭 리스크를 평가하십시오.
+- Kyle's Lambda 값을 인용하여 시장 충격 비용(유동성 리스크)을 언급하십시오.
 
 ## 3. Valuation & Liquidity Logic
-- Net Liquidity 및 Digital M2(암호화폐 유동성) 관점에서 자산 가격의 정당성을 평가하십시오.
-- 현재 유동성 환경이 Risk-On에 유리한지 불리한지 논리적으로 서술하십시오.
+- **Proof-of-Index**의 밸류에이션(Mean Reversion Z-score)을 기반으로 현재 가격의 적정성을 논하십시오.
+- Net Liquidity 및 Digital M2 관점과 결합하십시오.
 
 ## 4. Strategic Recommendation
 - 기관 투자자를 위한 구체적인 액션 플랜(Overweight/Underweight)을 제시하십시오.

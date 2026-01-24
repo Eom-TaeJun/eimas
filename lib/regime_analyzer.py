@@ -501,6 +501,209 @@ def get_gmm_regime_summary(market_data: Dict[str, pd.DataFrame]) -> Dict[str, An
 
 
 # =============================================================================
+# GARCH Model (Generalized Autoregressive Conditional Heteroskedasticity)
+# =============================================================================
+
+class GARCHModel:
+    """
+    GARCH (Generalized Autoregressive Conditional Heteroskedasticity)
+    시변 변동성 모델링
+
+    경제학적 배경 (금융경제정리.docx):
+    - Engle (1982) ARCH → Bollerslev (1986) GARCH 확장
+    - 시간에 따라 변하는 조건부 분산 모델링
+    - 금융 시계열의 변동성 군집(volatility clustering) 포착
+
+    모델:
+        r[t] = μ + ε[t]
+        ε[t] = σ[t] * z[t],  z[t] ~ N(0,1)
+        σ[t]² = ω + α·ε²[t-1] + β·σ²[t-1]
+
+    해석:
+        - ω (omega): 장기 평균 분산
+        - α (alpha): ARCH 항 (과거 충격의 영향)
+        - β (beta): GARCH 항 (과거 분산의 지속성)
+        - α + β ≈ 1: 높은 지속성 (변동성이 오래 지속)
+
+    활용:
+        - 리스크 관리: VaR (Value at Risk) 계산
+        - 옵션 가격 결정: 변동성 예측
+        - 포트폴리오 최적화: 시변 공분산 행렬
+
+    References:
+        Engle, R. F. (1982). Autoregressive Conditional Heteroscedasticity
+        with Estimates of the Variance of United Kingdom Inflation.
+        Econometrica, 50(4), 987-1007.
+
+        Bollerslev, T. (1986). Generalized Autoregressive Conditional
+        Heteroskedasticity. Journal of Econometrics, 31(3), 307-327.
+    """
+
+    def __init__(self, p: int = 1, q: int = 1):
+        """
+        Args:
+            p: ARCH 항 차수 (과거 충격 개수)
+            q: GARCH 항 차수 (과거 분산 개수)
+
+        일반적으로 GARCH(1,1)이 가장 많이 사용됨
+        """
+        self.p = p
+        self.q = q
+        self.model = None
+        self.fitted_model = None
+        self.params = None
+
+    def fit(self, returns: pd.Series) -> Dict[str, float]:
+        """
+        GARCH 모델 피팅
+
+        Args:
+            returns: 수익률 시계열 (일반적으로 일별 수익률)
+
+        Returns:
+            params: 추정된 파라미터
+                - omega: 장기 분산 기준
+                - alpha: ARCH 계수
+                - beta: GARCH 계수
+                - persistence: α + β (지속성)
+                - half_life: 충격 감쇠 반감기 (일)
+
+        Example:
+            >>> garch = GARCHModel(p=1, q=1)
+            >>> params = garch.fit(spy_returns)
+            >>> print(f"Persistence: {params['persistence']:.3f}")
+        """
+        try:
+            from arch import arch_model
+        except ImportError:
+            raise ImportError(
+                "arch package required for GARCH. "
+                "Install with: pip install arch"
+            )
+
+        # GARCH(p,q) 모델
+        self.model = arch_model(
+            returns,
+            vol='Garch',
+            p=self.p,
+            q=self.q,
+            rescale=False  # 스케일링 안 함 (원본 수익률 사용)
+        )
+
+        # 모델 피팅 (경고 억제)
+        self.fitted_model = self.model.fit(disp='off', show_warning=False)
+
+        # 파라미터 추출
+        params_raw = self.fitted_model.params
+
+        omega = params_raw['omega']
+        alpha = params_raw[f'alpha[{self.p}]'] if self.p > 0 else 0
+        beta = params_raw[f'beta[{self.q}]'] if self.q > 0 else 0
+
+        # 지속성 (α + β)
+        persistence = alpha + beta
+
+        # Half-life of shocks (충격 감쇠 반감기)
+        # half_life ≈ -log(2) / log(α + β)
+        if persistence > 0 and persistence < 1:
+            half_life = -np.log(2) / np.log(persistence)
+        else:
+            half_life = np.inf  # 지속성이 1 이상이면 비정상적
+
+        self.params = {
+            'omega': float(omega),
+            'alpha': float(alpha),
+            'beta': float(beta),
+            'persistence': float(persistence),
+            'half_life': float(half_life),
+            'n_observations': len(returns),
+            'log_likelihood': float(self.fitted_model.loglikelihood),
+            'aic': float(self.fitted_model.aic),
+            'bic': float(self.fitted_model.bic)
+        }
+
+        return self.params
+
+    def forecast(self, horizon: int = 20) -> pd.Series:
+        """
+        다중 기간 변동성 예측
+
+        Args:
+            horizon: 예측 기간 (일)
+
+        Returns:
+            volatility_forecast: 예측된 조건부 표준편차 (σ[t])
+                                 인덱스 = 1, 2, ..., horizon
+
+        Example:
+            >>> garch = GARCHModel()
+            >>> garch.fit(spy_returns)
+            >>> vol_forecast = garch.forecast(horizon=20)
+            >>> print(f"Tomorrow volatility: {vol_forecast.iloc[0]:.2%}")
+            >>> print(f"20-day avg volatility: {vol_forecast.mean():.2%}")
+        """
+        if self.fitted_model is None:
+            raise ValueError("Model not fitted yet. Call fit() first.")
+
+        # 변동성 예측
+        forecast = self.fitted_model.forecast(horizon=horizon, reindex=False)
+        variance = forecast.variance.values[-1, :]  # 마지막 시점 기준 예측
+
+        # 분산 → 표준편차 (변동성)
+        volatility = np.sqrt(variance)
+
+        return pd.Series(volatility, index=range(1, horizon + 1), name='volatility')
+
+    def get_conditional_volatility(self) -> pd.Series:
+        """
+        학습 기간 동안의 조건부 변동성 반환
+
+        Returns:
+            conditional_vol: 시계열 조건부 표준편차
+        """
+        if self.fitted_model is None:
+            raise ValueError("Model not fitted yet. Call fit() first.")
+
+        # 조건부 분산
+        cond_variance = self.fitted_model.conditional_volatility ** 2
+
+        return np.sqrt(cond_variance)
+
+    def summary(self) -> str:
+        """
+        모델 요약 문자열 반환
+
+        Returns:
+            summary: 파라미터 요약
+        """
+        if self.params is None:
+            return "GARCH model not fitted yet."
+
+        p = self.params
+        summary = f"""
+GARCH({self.p},{self.q}) Model Summary
+{'=' * 50}
+Parameters:
+  ω (omega):      {p['omega']:.6f}
+  α (alpha):      {p['alpha']:.6f}
+  β (beta):       {p['beta']:.6f}
+  Persistence:    {p['persistence']:.6f}
+  Half-life:      {p['half_life']:.1f} days
+
+Model Fit:
+  Observations:   {p['n_observations']}
+  Log-Likelihood: {p['log_likelihood']:.2f}
+  AIC:            {p['aic']:.2f}
+  BIC:            {p['bic']:.2f}
+
+Interpretation:
+  Persistence = {p['persistence']:.3f} ({'High' if p['persistence'] > 0.9 else 'Medium' if p['persistence'] > 0.7 else 'Low'})
+  Half-life = {p['half_life']:.1f} days (충격이 절반으로 감소하는 기간)
+"""
+        return summary
+
+
+# =============================================================================
 # Test
 # =============================================================================
 
