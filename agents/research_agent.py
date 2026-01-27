@@ -15,6 +15,7 @@ from enum import Enum
 from typing import Dict, List, Optional, Any
 
 from agents.base_agent import BaseAgent, AgentConfig
+from core.schemas import AgentRequest, AgentResponse, AgentRole
 
 
 # ============================================================================
@@ -157,14 +158,16 @@ class ResearchAgent(BaseAgent):
         if config is None:
             config = AgentConfig(
                 name="ResearchAgent",
-                description="실시간 웹 검색 기반 연구 자료 수집",
+                role=AgentRole.RESEARCH,
                 model="perplexity-online"
             )
         super().__init__(config)
 
         self.api_key = perplexity_api_key or os.getenv("PERPLEXITY_API_KEY")
+        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         self.model_name = self.PERPLEXITY_MODELS.get(model, self.PERPLEXITY_MODELS["online"])
         self._client = None
+        self._claude_client = None
 
     @property
     def client(self):
@@ -177,32 +180,28 @@ class ResearchAgent(BaseAgent):
             )
         return self._client
 
-    async def _execute(self, request: Any) -> ResearchReport:
+    @property
+    def claude_client(self):
+        """Lazy initialization of Claude client"""
+        if self._claude_client is None:
+            from anthropic import Anthropic
+            self._claude_client = Anthropic(api_key=self.anthropic_api_key)
+        return self._claude_client
+
+    async def _execute(self, request: AgentRequest) -> Any:
         """
         연구 자료 수집 실행
 
-        Parameters:
-        -----------
-        request : Any
-            query (str) 또는 Dict with:
-            - query: str
-            - categories: List[ResearchCategory]
-            - context: Optional[str]
+        Args:
+            request: AgentRequest containing 'query' in instruction or context
 
         Returns:
-        --------
-        ResearchReport
-            수집된 연구 자료 보고서
+            AgentResponse containing ResearchReport
         """
         # 요청 파싱
-        if isinstance(request, str):
-            query = request
-            categories = list(ResearchCategory)
-            context = ""
-        else:
-            query = request.get("query", "")
-            categories = request.get("categories", list(ResearchCategory))
-            context = request.get("context", "")
+        query = request.instruction
+        context = request.context.get("context", "")
+        categories = request.context.get("categories", list(ResearchCategory))
 
         # 병렬로 각 카테고리 검색
         search_tasks = []
@@ -222,15 +221,61 @@ class ResearchAgent(BaseAgent):
         all_items.sort(key=lambda x: x.relevance_score, reverse=True)
 
         # 보고서 생성
+        # Claude로 경제학적 맥락 해석 (NEW)
+        try:
+            summary = await self._interpret_with_claude(query, all_items)
+        except Exception as e:
+            self.logger.warning(f"Claude interpretation failed: {e}, falling back to Perplexity")
+            summary = await self._generate_summary(query, all_items)
+
+        key_insights = await self._extract_insights(all_items)
+        
         report = ResearchReport(
             query=query,
             timestamp=datetime.now(),
             items=all_items,
-            summary=await self._generate_summary(query, all_items),
-            key_insights=await self._extract_insights(all_items)
+            summary=summary,
+            key_insights=key_insights
         )
 
-        return report
+        return {
+            "content": report,
+            "sources": [item.source for item in all_items],
+            "confidence": self._calculate_confidence(report)
+        }
+
+    async def _interpret_with_claude(self, query: str, items: List[ResearchItem]) -> str:
+        """Claude를 사용하여 연구 결과의 경제학적 맥락 해석"""
+        if not items:
+            return "검색 결과 없음"
+
+        # 상위 항목들을 요약
+        top_items = items[:15]
+        content_summary = '\n'.join([
+            f"- {item.title}: {item.summary[:200]}"
+            for item in top_items
+        ])
+
+        prompt = f"""
+        You are an expert economic analyst. Analyze these research findings about "{query}":
+
+        {content_summary}
+
+        Provide a sophisticated economic interpretation highlighting:
+        1. **Core Economic Narrative**: What is the dominant story?
+        2. **Divergent Signals**: Are there conflicting data points?
+        3. **Implications**: What does this mean for market regime and risk?
+
+        Focus on causality and interconnections between variables.
+        """
+
+        response = await asyncio.to_thread(
+            self.claude_client.messages.create,
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return response.content[0].text
 
     async def _search_category(
         self,
@@ -416,7 +461,7 @@ class ResearchAgent(BaseAgent):
 
         return insights[:5]  # 최대 5개
 
-    async def form_opinion(self, topic: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    async def form_opinion(self, topic: str, context: Dict[str, Any]) -> "AgentOpinion":
         """
         특정 주제에 대한 의견 형성 (BaseAgent 인터페이스)
 
@@ -429,29 +474,131 @@ class ResearchAgent(BaseAgent):
 
         Returns:
         --------
-        Dict
-            AgentOpinion 형식
+        AgentOpinion
+            표준화된 의견 객체
         """
-        # 연구 수행
-        report = await self._execute({
-            "query": topic,
-            "context": str(context)
-        })
+        from core.schemas import AgentOpinion, OpinionStrength
+
+        # Mock 연구 수행 (Perplexity API 없이도 작동)
+        try:
+            report = await self._mock_research(topic, context)
+        except Exception as e:
+            self.logger.warning(f"Research failed: {e}, using fallback")
+            report = ResearchReport(
+                query=topic,
+                timestamp=datetime.now(),
+                summary="Research unavailable - using context-based analysis",
+                items=[]
+            )
 
         # 의견 형성
-        stance = self._determine_stance(report)
+        stance = self._determine_stance_from_context(topic, context)
+        confidence = self._calculate_confidence_from_context(context)
 
-        return {
-            "topic": topic,
-            "stance": stance,
-            "confidence": self._calculate_confidence(report),
-            "reasoning": report.summary,
-            "evidence": [item.title for item in report.items[:5]],
-            "metadata": {
-                "source_count": report.item_count,
-                "categories_covered": list(set(item.category.value for item in report.items))
-            }
-        }
+        # OpinionStrength 결정
+        if confidence > 0.7:
+            strength = OpinionStrength.STRONG_AGREE if stance == "BULLISH" else OpinionStrength.STRONG_DISAGREE if stance == "BEARISH" else OpinionStrength.NEUTRAL
+        elif confidence > 0.5:
+            strength = OpinionStrength.AGREE if stance == "BULLISH" else OpinionStrength.DISAGREE if stance == "BEARISH" else OpinionStrength.NEUTRAL
+        else:
+            strength = OpinionStrength.NEUTRAL
+
+        return AgentOpinion(
+            agent_role=self.config.role,
+            topic=topic,
+            position=self._generate_position(stance, topic, context),
+            strength=strength,
+            confidence=confidence,
+            evidence=self._extract_evidence(context),
+            caveats=["Based on available context data", "Real-time research not performed"],
+            key_metrics=self._extract_key_metrics(context)
+        )
+
+    async def _mock_research(self, topic: str, context: Dict[str, Any]) -> ResearchReport:
+        """Mock 연구 수행 (API 없이 컨텍스트 기반)"""
+        return ResearchReport(
+            query=topic,
+            timestamp=datetime.now(),
+            summary=f"Context-based analysis for {topic}",
+            items=[],
+            key_insights=self._generate_insights_from_context(context)
+        )
+
+    def _determine_stance_from_context(self, topic: str, context: Dict[str, Any]) -> str:
+        """컨텍스트 기반 stance 결정"""
+        risk_score = context.get('total_risk_score', 50)
+        regime = context.get('current_regime', 'UNKNOWN').upper()
+
+        if topic == "market_outlook":
+            if risk_score < 40 and regime in ['BULL', 'EXPANSION']:
+                return "BULLISH"
+            elif risk_score > 60 or regime in ['BEAR', 'CONTRACTION']:
+                return "BEARISH"
+            return "NEUTRAL"
+        elif topic == "primary_risk":
+            if risk_score > 60:
+                return "HIGH_RISK"
+            elif risk_score < 40:
+                return "LOW_RISK"
+            return "MODERATE_RISK"
+        return "NEUTRAL"
+
+    def _calculate_confidence_from_context(self, context: Dict[str, Any]) -> float:
+        """컨텍스트 기반 신뢰도 계산"""
+        # 데이터 완전성 기반 신뢰도
+        data_fields = ['total_risk_score', 'current_regime', 'regime_confidence', 'transition_probability']
+        available = sum(1 for f in data_fields if f in context)
+        return min(0.3 + (available / len(data_fields)) * 0.5, 0.8)
+
+    def _generate_position(self, stance: str, topic: str, context: Dict[str, Any]) -> str:
+        """입장 문장 생성"""
+        risk_score = context.get('total_risk_score', 50)
+        regime = context.get('current_regime', 'UNKNOWN')
+
+        if topic == "market_outlook":
+            return f"Market outlook is {stance} based on {regime} regime and risk score {risk_score:.1f}"
+        elif topic == "primary_risk":
+            return f"Primary risk assessment: {stance} (score: {risk_score:.1f}/100)"
+        return f"Research assessment for {topic}: {stance}"
+
+    def _extract_evidence(self, context: Dict[str, Any]) -> List[str]:
+        """컨텍스트에서 증거 추출"""
+        evidence = []
+        if 'total_risk_score' in context:
+            evidence.append(f"Risk Score: {context['total_risk_score']:.1f}/100")
+        if 'current_regime' in context:
+            evidence.append(f"Current Regime: {context['current_regime']}")
+        if 'transition_probability' in context:
+            prob = context['transition_probability']
+            if prob > 1:
+                prob /= 100
+            evidence.append(f"Regime Transition Probability: {prob:.1%}")
+        if 'active_warnings' in context:
+            warnings = context['active_warnings'][:2]
+            evidence.extend(warnings)
+        return evidence if evidence else ["Context data limited"]
+
+    def _extract_key_metrics(self, context: Dict[str, Any]) -> Dict[str, float]:
+        """주요 메트릭 추출"""
+        metrics = {}
+        if 'total_risk_score' in context:
+            metrics['risk_score'] = context['total_risk_score']
+        if 'regime_confidence' in context:
+            metrics['regime_confidence'] = context['regime_confidence']
+        if 'transition_probability' in context:
+            prob = context['transition_probability']
+            metrics['transition_prob'] = prob / 100 if prob > 1 else prob
+        return metrics
+
+    def _generate_insights_from_context(self, context: Dict[str, Any]) -> List[str]:
+        """컨텍스트에서 인사이트 생성"""
+        insights = []
+        risk = context.get('total_risk_score', 50)
+        if risk > 60:
+            insights.append("Elevated risk conditions warrant caution")
+        elif risk < 40:
+            insights.append("Low risk environment supports growth positioning")
+        return insights
 
     def _determine_stance(self, report: ResearchReport) -> str:
         """연구 결과 기반 stance 결정"""

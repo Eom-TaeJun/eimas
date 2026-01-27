@@ -32,6 +32,9 @@ from core.schemas import (
 from core.debate import DebateProtocol
 from agents.analysis_agent import AnalysisAgent
 from agents.forecast_agent import ForecastAgent
+from agents.research_agent import ResearchAgent
+from agents.strategy_agent import StrategyAgent
+from agents.verification_agent import VerificationAgent
 
 
 class MetaOrchestrator:
@@ -65,6 +68,9 @@ class MetaOrchestrator:
         # 에이전트 초기화
         self.analysis_agent = AnalysisAgent()
         self.forecast_agent = ForecastAgent()
+        self.research_agent = ResearchAgent()
+        self.strategy_agent = StrategyAgent()
+        self.verification_agent = VerificationAgent()
 
         # 기본 토론 주제
         self.default_debate_topics = [
@@ -74,7 +80,7 @@ class MetaOrchestrator:
             "rate_direction"
         ]
 
-        self.logger.info("MetaOrchestrator initialized (Analysis, Forecast)")
+        self.logger.info("MetaOrchestrator initialized (Analysis, Forecast, Research, Strategy, Verification)")
 
     def _setup_logger(self) -> logging.Logger:
         """로거 설정"""
@@ -222,6 +228,48 @@ class MetaOrchestrator:
             opinions_by_topic=opinions_by_topic
         )
 
+        # ============================================================
+        # Step 6: Verification (Optional)
+        # ============================================================
+        self.logger.info("Step 6: Running verification...")
+
+        try:
+            verification_request = AgentRequest(
+                task_id=str(uuid.uuid4()),
+                role=AgentRole.VERIFICATION,
+                instruction="Verify debate results for hallucination and consistency",
+                context={
+                    'debate_results': final_report.get('debate', {}),
+                    'opinions': final_report.get('debate', {}).get('opinions', []),
+                    'market_data': market_data,
+                    'consensus': final_report.get('debate', {}).get('consensus', {})
+                },
+                priority=TaskPriority.MEDIUM
+            )
+
+            verification_response = await self.verification_agent.execute(verification_request)
+
+            if verification_response.is_success():
+                verification_result = verification_response.result
+                final_report['verification'] = {
+                    'overall_score': verification_result.get('verification_result', {}).get('overall_score', 0),
+                    'hallucination_risk': verification_result.get('hallucination_check', {}).get('confidence', 0),
+                    'sycophancy_risk': verification_result.get('sycophancy_check', {}).get('agreement_rate', 0),
+                    'passed': verification_result.get('verification_result', {}).get('passed', True),
+                    'warnings': verification_result.get('verification_result', {}).get('warnings', [])
+                }
+                self.logger.info(
+                    f"Verification complete: Score={final_report['verification']['overall_score']:.1f}, "
+                    f"Passed={final_report['verification']['passed']}"
+                )
+            else:
+                self.logger.warning(f"Verification failed: {verification_response.error}")
+                final_report['verification'] = {'status': 'failed', 'error': str(verification_response.error)}
+
+        except Exception as e:
+            self.logger.warning(f"Verification step error: {e}")
+            final_report['verification'] = {'status': 'error', 'error': str(e)}
+
         workflow_duration = (datetime.now() - workflow_start).total_seconds()
         final_report['workflow_duration_seconds'] = workflow_duration
 
@@ -337,6 +385,28 @@ class MetaOrchestrator:
                     )
                 except Exception as e:
                     self.logger.warning(f"Failed to get opinion from ForecastAgent on '{topic}': {e}")
+
+            # Research Agent의 의견 수집
+            try:
+                opinion = await self.research_agent.form_opinion(topic, context)
+                opinions.append(opinion)
+                self.logger.debug(
+                    f"Collected opinion from ResearchAgent on '{topic}': "
+                    f"{opinion.position} (confidence={opinion.confidence:.2f})"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to get opinion from ResearchAgent on '{topic}': {e}")
+
+            # Strategy Agent의 의견 수집
+            try:
+                opinion = await self.strategy_agent.form_opinion(topic, context)
+                opinions.append(opinion)
+                self.logger.debug(
+                    f"Collected opinion from StrategyAgent on '{topic}': "
+                    f"{opinion.position} (confidence={opinion.confidence:.2f})"
+                )
+            except Exception as e:
+                self.logger.warning(f"Failed to get opinion from StrategyAgent on '{topic}': {e}")
 
             if opinions:
                 opinions_by_topic[topic] = opinions
@@ -481,7 +551,7 @@ class MetaOrchestrator:
             'recommendations': self._generate_recommendations(analysis_result, consensus_results),
             'warnings': self._generate_warnings(analysis_result, consensus_results),
             'metadata': {
-                'num_agents': 2, # Analysis, Forecast
+                'num_agents': 5,  # Analysis, Forecast, Research, Strategy, Verification
                 'total_opinions': len(all_opinions),
                 'total_debates': len([c for c in consensus_results.values() if c.debate_rounds > 0]),
                 'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1)

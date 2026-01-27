@@ -9,12 +9,15 @@ Author: EIMAS Team
 
 import asyncio
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Any, Tuple
+import pandas as pd
 
 from agents.base_agent import BaseAgent, AgentConfig
+from core.schemas import AgentRequest, AgentResponse, AgentRole
+from lib.portfolio_optimizer import HRPOptimizer
 
 
 # ============================================================================
@@ -185,7 +188,7 @@ class StrategyAgent(BaseAgent):
         if config is None:
             config = AgentConfig(
                 name="StrategyAgent",
-                description="Critical Path 기반 매매 전략 제안",
+                role=AgentRole.STRATEGY,
                 model="claude-sonnet"
             )
         super().__init__(config)
@@ -200,34 +203,42 @@ class StrategyAgent(BaseAgent):
             self._client = Anthropic(api_key=self.api_key)
         return self._client
 
-    async def _execute(self, request: Any) -> PortfolioStrategy:
+    async def _execute(self, request: AgentRequest) -> Any:
         """
         전략 수립 실행
 
-        Parameters:
-        -----------
-        request : Dict
-            - market_state: MarketState
-            - critical_path: CriticalPathState
-            - portfolio: Optional[Dict] (현재 포트폴리오)
-            - risk_tolerance: str (conservative, moderate, aggressive)
+        Args:
+            request: AgentRequest containing:
+                - market_state: MarketState (in context)
+                - critical_path: CriticalPathState (in context)
+                - portfolio: Optional[Dict] (current portfolio in context)
+                - market_data: Optional[pd.DataFrame] for HRP (in context)
 
         Returns:
-        --------
-        PortfolioStrategy
+            AgentResponse containing PortfolioStrategy
         """
-        market_state = request.get('market_state')
-        critical_path = request.get('critical_path')
-        current_portfolio = request.get('portfolio', {})
-        risk_tolerance = request.get('risk_tolerance', 'moderate')
+        market_state = request.context.get('market_state')
+        critical_path = request.context.get('critical_path')
+        current_portfolio = request.context.get('portfolio', {})
+        risk_tolerance = request.context.get('risk_tolerance', 'moderate')
+        market_data = request.context.get('market_data')
 
-        # 1. 시장 상태 기반 기본 전략 결정
+        # 1. GC-HRP로 최적 가중치 계산 (Quantitative)
+        hrp_weights = {}
+        if market_data is not None and not market_data.empty:
+            try:
+                optimizer = HRPOptimizer()
+                hrp_weights = optimizer.optimize(market_data.pct_change().dropna())
+            except Exception as e:
+                self.logger.warning(f"HRP Optimization failed: {e}")
+
+        # 2. 시장 상태 기반 기본 전략 결정
         base_strategy = self._determine_base_strategy(market_state)
 
-        # 2. Critical Path 신호 해석
+        # 3. Critical Path 신호 해석
         path_signals = self._interpret_critical_path(critical_path)
 
-        # 3. 자산별 추천 생성
+        # 4. 자산별 추천 생성
         recommendations = await self._generate_recommendations(
             market_state,
             critical_path,
@@ -236,18 +247,18 @@ class StrategyAgent(BaseAgent):
             risk_tolerance
         )
 
-        # 4. 리스크 경고 생성
+        # 5. 리스크 경고 생성
         risk_warnings = self._generate_risk_warnings(market_state, critical_path)
 
-        # 5. 주요 관찰 이벤트
+        # 6. 주요 관찰 이벤트
         events_to_watch = self._identify_key_events(critical_path)
 
-        # 6. 종합 요약
+        # 7. 종합 요약
         summary = await self._generate_strategy_summary(
             market_state, recommendations, risk_warnings
         )
 
-        return PortfolioStrategy(
+        strategy = PortfolioStrategy(
             timestamp=datetime.now(),
             market_state=market_state,
             critical_path=critical_path,
@@ -259,6 +270,16 @@ class StrategyAgent(BaseAgent):
             key_events_to_watch=events_to_watch,
             summary=summary
         )
+
+        # Return dict matching AgentResponse content expectation or the object itself
+        # Wrapper logic in orchestrator handles AgentResponse creation usually, 
+        # but BaseAgent._execute typically returns the content dict.
+        return {
+            "content": strategy,
+            "hrp_weights": hrp_weights,
+            "reasoning": summary,
+            "recommendations": [asdict(r) for r in recommendations] if hasattr(recommendations[0], 'asdict') else str(recommendations)
+        }
 
     def _determine_base_strategy(self, market_state: MarketState) -> Dict:
         """시장 상태 기반 기본 전략 결정"""
@@ -659,38 +680,180 @@ class StrategyAgent(BaseAgent):
 
         return ' | '.join(summary_parts)
 
-    async def form_opinion(self, topic: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """특정 주제에 대한 의견 형성"""
-        # 간단한 의견 생성
-        market_state = context.get('market_state')
+    async def form_opinion(self, topic: str, context: Dict[str, Any]) -> "AgentOpinion":
+        """
+        특정 주제에 대한 의견 형성
 
-        if market_state:
-            strategy = await self._execute({
-                'market_state': market_state,
-                'critical_path': context.get('critical_path'),
-                'risk_tolerance': 'moderate'
-            })
+        Returns:
+            AgentOpinion 표준화된 의견 객체
+        """
+        from core.schemas import AgentOpinion, OpinionStrength
 
-            return {
-                "topic": topic,
-                "stance": strategy.overall_stance,
-                "confidence": 0.7,
-                "reasoning": strategy.summary,
-                "evidence": [w for w in strategy.risk_warnings[:3]],
-                "metadata": {
-                    "recommendations_count": len(strategy.recommendations),
-                    "cash_allocation": strategy.cash_allocation
-                }
+        # 컨텍스트에서 시장 상태 추출
+        risk_score = context.get('total_risk_score', 50.0)
+        regime = context.get('current_regime', 'NEUTRAL')
+        risk_level = context.get('risk_level', 'MEDIUM')
+
+        # 전략적 스탠스 결정
+        stance, position = self._determine_strategic_stance(topic, risk_score, regime, risk_level)
+        confidence = self._calculate_strategic_confidence(context)
+
+        # OpinionStrength 결정
+        if stance in ['aggressive', 'BULLISH']:
+            if confidence > 0.7:
+                strength = OpinionStrength.STRONG_AGREE
+            else:
+                strength = OpinionStrength.AGREE
+        elif stance in ['defensive', 'BEARISH']:
+            if confidence > 0.7:
+                strength = OpinionStrength.STRONG_DISAGREE
+            else:
+                strength = OpinionStrength.DISAGREE
+        else:
+            strength = OpinionStrength.NEUTRAL
+
+        # 증거 수집
+        evidence = self._gather_strategic_evidence(context)
+
+        return AgentOpinion(
+            agent_role=self.config.role,
+            topic=topic,
+            position=position,
+            strength=strength,
+            confidence=confidence,
+            evidence=evidence,
+            caveats=self._generate_caveats(context),
+            key_metrics={
+                'risk_score': risk_score,
+                'suggested_equity_weight': self._suggest_equity_weight(risk_score, regime),
+                'suggested_cash_weight': self._suggest_cash_weight(risk_score)
             }
+        )
 
-        return {
-            "topic": topic,
-            "stance": "neutral",
-            "confidence": 0.5,
-            "reasoning": "시장 상태 정보 부족",
-            "evidence": [],
-            "metadata": {}
-        }
+    def _determine_strategic_stance(
+        self,
+        topic: str,
+        risk_score: float,
+        regime: str,
+        risk_level: str
+    ) -> Tuple[str, str]:
+        """전략적 스탠스와 포지션 문장 결정"""
+        regime_upper = regime.upper() if isinstance(regime, str) else 'NEUTRAL'
+
+        if topic == "market_outlook":
+            if risk_score < 40 and regime_upper in ['BULL', 'EXPANSION', 'EXPANSION_EARLY']:
+                return "aggressive", f"Bullish outlook: Low risk ({risk_score:.1f}) in {regime} regime supports equity overweight"
+            elif risk_score > 60 or regime_upper in ['BEAR', 'CONTRACTION']:
+                return "defensive", f"Bearish outlook: Elevated risk ({risk_score:.1f}) warrants defensive positioning"
+            else:
+                return "neutral", f"Neutral outlook: Balanced risk ({risk_score:.1f}) in {regime} regime"
+
+        elif topic == "primary_risk":
+            if risk_score > 70:
+                return "defensive", f"High risk environment ({risk_score:.1f}/100): Prioritize capital preservation"
+            elif risk_score < 30:
+                return "aggressive", f"Low risk environment ({risk_score:.1f}/100): Opportunities for alpha generation"
+            else:
+                return "neutral", f"Moderate risk ({risk_score:.1f}/100): Balanced approach recommended"
+
+        elif topic == "regime_stability":
+            trans_prob = context.get('transition_probability', 0) if 'context' in dir() else 0
+            if trans_prob > 0.5:
+                return "defensive", f"High regime transition risk ({trans_prob:.1%}): Position for volatility"
+            else:
+                return "neutral", f"Stable regime expected: Current positioning appropriate"
+
+        return "neutral", f"Strategy assessment for {topic}: Balanced approach"
+
+    def _calculate_strategic_confidence(self, context: Dict[str, Any]) -> float:
+        """전략 신뢰도 계산"""
+        base_confidence = 0.5
+
+        # 레짐 신뢰도 반영
+        regime_conf = context.get('regime_confidence', 50)
+        if regime_conf > 1:  # 0-100 스케일인 경우
+            regime_conf /= 100
+        base_confidence += regime_conf * 0.2
+
+        # 전이 확률이 낮으면 신뢰도 증가
+        trans_prob = context.get('transition_probability', 0.5)
+        if trans_prob > 1:
+            trans_prob /= 100
+        base_confidence += (1 - trans_prob) * 0.1
+
+        return min(max(base_confidence, 0.3), 0.85)
+
+    def _gather_strategic_evidence(self, context: Dict[str, Any]) -> List[str]:
+        """전략적 증거 수집"""
+        evidence = []
+
+        risk_score = context.get('total_risk_score')
+        if risk_score is not None:
+            evidence.append(f"Risk Score: {risk_score:.1f}/100")
+
+        regime = context.get('current_regime')
+        if regime:
+            evidence.append(f"Market Regime: {regime}")
+
+        path_contributions = context.get('path_contributions', {})
+        if path_contributions:
+            top_path = max(path_contributions.items(), key=lambda x: x[1], default=(None, 0))
+            if top_path[0]:
+                evidence.append(f"Primary Risk Path: {top_path[0]} ({top_path[1]:.1f}%)")
+
+        warnings = context.get('active_warnings', [])
+        if warnings:
+            evidence.append(f"Active Warnings: {len(warnings)} detected")
+
+        return evidence if evidence else ["Insufficient data for detailed evidence"]
+
+    def _generate_caveats(self, context: Dict[str, Any]) -> List[str]:
+        """주의사항 생성"""
+        caveats = []
+
+        trans_prob = context.get('transition_probability', 0)
+        if trans_prob > 1:
+            trans_prob /= 100
+        if trans_prob > 0.3:
+            caveats.append(f"Regime transition risk elevated ({trans_prob:.1%})")
+
+        warnings = context.get('active_warnings', [])
+        if len(warnings) > 3:
+            caveats.append(f"Multiple risk signals active ({len(warnings)})")
+
+        if not caveats:
+            caveats.append("Standard market conditions apply")
+
+        return caveats
+
+    def _suggest_equity_weight(self, risk_score: float, regime: str) -> float:
+        """권장 주식 비중"""
+        regime_upper = regime.upper() if isinstance(regime, str) else 'NEUTRAL'
+
+        base_weight = 0.6  # 기본 60%
+
+        # 리스크 기반 조정
+        if risk_score > 60:
+            base_weight -= 0.15
+        elif risk_score < 40:
+            base_weight += 0.1
+
+        # 레짐 기반 조정
+        if regime_upper in ['BULL', 'EXPANSION', 'EXPANSION_EARLY']:
+            base_weight += 0.1
+        elif regime_upper in ['BEAR', 'CONTRACTION']:
+            base_weight -= 0.15
+
+        return min(max(base_weight, 0.3), 0.8)
+
+    def _suggest_cash_weight(self, risk_score: float) -> float:
+        """권장 현금 비중"""
+        if risk_score > 70:
+            return 0.25
+        elif risk_score > 50:
+            return 0.15
+        else:
+            return 0.1
 
 
 # ============================================================================
