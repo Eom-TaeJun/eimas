@@ -518,8 +518,19 @@ class MetaOrchestrator:
                     'key_metrics': opinion.key_metrics
                 })
 
+        # Agent Outputs collection
+        agent_outputs_dict = {
+            'analysis': analysis_result,
+            'forecast': forecast_result,
+            # We don't have direct access to Research/Strategy raw outputs here easily 
+            # unless we stored them in Step 3.
+            # They are in opinions_by_topic but mixed.
+            # For traceability, we should store them when collecting.
+        }
+
         report = {
             'timestamp': datetime.now().isoformat(),
+            'agent_outputs': agent_outputs_dict, # Added this
             'query': query,
             'analysis': {
                 'total_risk_score': analysis_result.get('total_risk_score', 0.0),

@@ -1,5 +1,16 @@
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
+import json
+
+# Import new schemas from core
+try:
+    from core.schemas import AgentOutputs, DebateResults, VerificationResults
+except ImportError:
+    # Fallback if core path not set
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from core.schemas import AgentOutputs, DebateResults, VerificationResults
 
 @dataclass
 class FREDSummary:
@@ -325,6 +336,12 @@ class EIMASResult:
     # Extended Data Sources (PCR, Valuation, Crypto)
     extended_data: Dict = field(default_factory=dict)
 
+    # Phase 3.Enhanced: New Agent Outputs
+    agent_outputs: Optional[AgentOutputs] = None
+    debate_results: Optional[DebateResults] = None
+    verification: Optional[VerificationResults] = None
+    reasoning_chain: List[Dict] = field(default_factory=list)
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -407,6 +424,46 @@ class EIMASResult:
             md.append("### Devil's Advocate")
             for arg in self.devils_advocate_arguments:
                 md.append(f"- {arg}")
+        md.append("")
+
+        # 5.1 Enhanced Debate (New)
+        if self.debate_results:
+            md.append("### Enhanced Debate (Multi-LLM)")
+            md.append(f"- **Consensus**: {self.debate_results.consensus_position}")
+            md.append(f"- **Confidence**: {self.debate_results.consensus_confidence}")
+            if self.debate_results.consensus_points:
+                md.append("#### Consensus Points")
+                for p in self.debate_results.consensus_points:
+                    md.append(f"- {p}")
+            if self.debate_results.dissent_points:
+                md.append("#### Dissent Points")
+                for d in self.debate_results.dissent_points:
+                    md.append(f"- {d}")
+        
+        # 5.2 Agent Outputs
+        if self.agent_outputs:
+            md.append("### Agent Contributions")
+            if self.agent_outputs.research:
+                md.append(f"- **Research**: {str(self.agent_outputs.research.get('summary', 'N/A'))[:100]}...")
+            if self.agent_outputs.strategy:
+                md.append(f"- **Strategy**: {str(self.agent_outputs.strategy.get('reasoning', 'N/A'))[:100]}...")
+        
+        # 5.3 Verification
+        if self.verification:
+            md.append("### Verification Report")
+            md.append(f"- **Reliability**: {self.verification.overall_reliability:.1f}/100")
+            md.append(f"- **Consistency**: {self.verification.consistency_score:.1f}%")
+            if self.verification.warnings:
+                md.append("#### Warnings")
+                for w in self.verification.warnings:
+                    md.append(f"- ⚠️ {w}")
+        
+        # 5.4 Reasoning Chain
+        if self.reasoning_chain:
+            md.append("### Reasoning Chain")
+            for step in self.reasoning_chain:
+                md.append(f"- **{step.get('agent', 'Unknown')}**: {step.get('output', '')[:100]}...")
+        
         md.append("")
 
         # 6. Advanced

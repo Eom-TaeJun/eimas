@@ -506,6 +506,69 @@ class StrategyRecommendation:
         return asdict(self)
 
 
+@dataclass
+class AgentOutputs:
+    """각 에이전트의 출력 기록"""
+    analysis: Dict          # AnalysisAgent 출력
+    forecast: Dict          # ForecastAgent 출력
+    research: Dict          # ResearchAgent 출력 (NEW)
+    strategy: Dict          # StrategyAgent 출력 (NEW)
+    interpretation: Dict    # InterpretationDebateAgent 출력 (NEW)
+    methodology: Dict       # MethodologyDebateAgent 출력 (NEW)
+
+
+@dataclass
+class DebateResults:
+    """Multi-LLM 토론 결과"""
+    transcript: List[Dict]              # 전체 대화 기록
+    consensus_position: str             # 합의 입장
+    consensus_confidence: Tuple[float, float]  # 신뢰도 범위
+    dissent_points: List[Dict]          # 불일치 포인트
+    model_contributions: Dict[str, str] # 각 모델 기여
+    consensus_points: List[str] = field(default_factory=list)
+
+
+@dataclass
+class VerificationResults:
+    """검증 결과"""
+    overall_reliability: float          # 0-100
+    consistency_score: float            # 내부 일관성
+    data_alignment_score: float         # 데이터 정합성
+    bias_detected: List[str]            # 탐지된 편향
+    warnings: List[str]                 # 경고 사항
+
+
+@dataclass
+class EIMASResult:
+    timestamp: str
+
+    # ===== Phase 1: Data =====
+    fred_summary: Dict
+    market_data_count: int
+    crypto_data_count: int
+
+    # ===== Phase 2: Analysis =====
+    regime: Dict
+    risk_score: float
+    events_detected: List[Dict]
+
+    # ===== Phase 3: Agent Outputs (NEW) =====
+    agent_outputs: AgentOutputs  # 새 데이터클래스
+
+    # ===== Phase 4: Debate (NEW) =====
+    debate_results: DebateResults  # 새 데이터클래스
+
+    # ===== Phase 5: Verification (NEW) =====
+    verification: VerificationResults  # 새 데이터클래스
+
+    # ===== Final =====
+    final_recommendation: str
+    confidence: float
+    confidence_range: Tuple[float, float]  # NEW: 범위로 표현
+    reasoning_chain: List[Dict]  # NEW: 추론 과정 추적
+    risk_level: str = "Unknown"
+
+
 if __name__ == "__main__":
     # 테스트
     print("=== Schema Test ===")
