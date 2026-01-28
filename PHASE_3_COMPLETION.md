@@ -249,5 +249,69 @@ Output
 
 ---
 
+## 9. Dead Code 통합 (2026-01-28)
+
+### 문제점
+Phase 2-3에서 구현한 기능들이 orchestrator에서 호출되지 않는 "dead code" 상태였음:
+- `MultiLLMDebate` (core/multi_llm_debate.py) - 미사용
+- `ReasoningChain` (core/reasoning_chain.py) - 미사용
+- `InterpretationDebateAgent` (agents/interpretation_debate.py) - 미호출
+- `MethodologyDebateAgent` (agents/methodology_debate.py) - 미호출
+
+### 해결책
+`agents/orchestrator.py`에 다음 통합 작업 수행:
+
+1. **Import 추가**:
+```python
+from core.reasoning_chain import ReasoningChain
+from agents.interpretation_debate import InterpretationDebateAgent, AnalysisResult
+from agents.methodology_debate import MethodologyDebateAgent, ResearchGoal
+```
+
+2. **에이전트 초기화**:
+```python
+self.interpretation_agent = InterpretationDebateAgent()
+self.methodology_agent = MethodologyDebateAgent()
+self.reasoning_chain = ReasoningChain()
+```
+
+3. **Step 4.5 추가**: Enhanced Multi-LLM Debate
+```python
+# Step 4.5: Enhanced Multi-LLM Debate
+interpretation_result = await self._run_interpretation_debate(context)
+methodology_result = await self._run_methodology_debate(query, context)
+```
+
+4. **ReasoningChain 추적**: 각 단계별 추론 과정 기록
+```python
+self.reasoning_chain.add_step(
+    agent='AnalysisAgent',
+    input_summary='Market data + CriticalPath analysis',
+    output_summary=f"Risk={risk}, Regime={regime}",
+    confidence=regime_confidence,
+    key_factors=active_warnings[:3]
+)
+```
+
+5. **결과 포함**: synthesize_report에 enhanced_debate_results, reasoning_chain 추가
+
+### 검증 결과
+```
+$ python -c "from agents.orchestrator import MetaOrchestrator; ..."
+MetaOrchestrator imports OK
+- analysis_agent: AnalysisAgent
+- forecast_agent: ForecastAgent
+- research_agent: ResearchAgent
+- strategy_agent: StrategyAgent
+- verification_agent: VerificationAgent
+- interpretation_agent: InterpretationDebateAgent
+- methodology_agent: MethodologyDebateAgent
+- reasoning_chain: ReasoningChain
+
+All 7 agents + ReasoningChain initialized successfully!
+```
+
+---
+
 *Last Updated: 2026-01-28*
-*Status: Phase 3 Complete - All Phases Done*
+*Status: Phase 3 Complete + Dead Code Integration Done*

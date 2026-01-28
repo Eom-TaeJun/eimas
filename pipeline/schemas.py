@@ -157,6 +157,12 @@ class DebateResult:
     risk_level: str
     dissent_records: List[Dict]
     warnings: List[str]
+    # Phase 2-3 Enhanced Fields (NEW)
+    enhanced_debate: Dict = field(default_factory=dict)  # interpretation + methodology
+    reasoning_chain: List[Dict] = field(default_factory=list)  # 추론 과정 추적
+    agent_outputs: Dict = field(default_factory=dict)  # 에이전트별 출력
+    verification: Dict = field(default_factory=dict)  # 검증 결과
+    metadata: Dict = field(default_factory=dict)  # 통계 정보
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -426,43 +432,91 @@ class EIMASResult:
                 md.append(f"- {arg}")
         md.append("")
 
-        # 5.1 Enhanced Debate (New)
-        if self.debate_results:
+        # 5.1 Enhanced Debate (Multi-LLM) - from debate_consensus['enhanced'] or debate_results
+        enhanced = self.debate_consensus.get('enhanced', {}) if self.debate_consensus else {}
+        if enhanced or self.debate_results:
             md.append("### Enhanced Debate (Multi-LLM)")
-            md.append(f"- **Consensus**: {self.debate_results.consensus_position}")
-            md.append(f"- **Confidence**: {self.debate_results.consensus_confidence}")
-            if self.debate_results.consensus_points:
-                md.append("#### Consensus Points")
-                for p in self.debate_results.consensus_points:
-                    md.append(f"- {p}")
-            if self.debate_results.dissent_points:
-                md.append("#### Dissent Points")
-                for d in self.debate_results.dissent_points:
-                    md.append(f"- {d}")
-        
-        # 5.2 Agent Outputs
-        if self.agent_outputs:
+
+            # Interpretation results (경제학파 토론)
+            interp = enhanced.get('interpretation', {})
+            if interp:
+                md.append(f"- **Interpretation**: {interp.get('recommended_action', 'N/A')}")
+                md.append(f"  - Schools: Monetarist / Keynesian / Austrian")
+                if interp.get('consensus_points'):
+                    md.append("  - Consensus: " + "; ".join(interp['consensus_points'][:2]))
+
+            # Methodology results (방법론 토론)
+            method = enhanced.get('methodology', {})
+            if method:
+                md.append(f"- **Methodology**: {method.get('selected_methodology', 'N/A')}")
+                if method.get('rationale'):
+                    md.append(f"  - Rationale: {method['rationale'][:100]}...")
+
+            # Fallback to debate_results dataclass
+            if self.debate_results and not enhanced:
+                md.append(f"- **Consensus**: {get_val(self.debate_results, 'consensus_position', 'N/A')}")
+                consensus_conf = get_val(self.debate_results, 'consensus_confidence', (0, 0))
+                if isinstance(consensus_conf, tuple):
+                    md.append(f"- **Confidence**: {consensus_conf[0]:.0f}-{consensus_conf[1]:.0f}%")
+                consensus_pts = get_val(self.debate_results, 'consensus_points', [])
+                if consensus_pts:
+                    md.append("#### Consensus Points")
+                    for p in consensus_pts[:3]:
+                        md.append(f"- {p}")
+
+        # 5.2 Agent Contributions
+        agent_out = self.debate_consensus.get('agent_outputs', {}) if self.debate_consensus else {}
+        if agent_out or self.agent_outputs:
             md.append("### Agent Contributions")
-            if self.agent_outputs.research:
-                md.append(f"- **Research**: {str(self.agent_outputs.research.get('summary', 'N/A'))[:100]}...")
-            if self.agent_outputs.strategy:
-                md.append(f"- **Strategy**: {str(self.agent_outputs.strategy.get('reasoning', 'N/A'))[:100]}...")
-        
-        # 5.3 Verification
-        if self.verification:
+            ao = agent_out if agent_out else self.agent_outputs
+            if isinstance(ao, dict):
+                if ao.get('analysis'):
+                    md.append(f"- **Analysis**: Risk={ao['analysis'].get('total_risk_score', 'N/A')}, Regime={ao['analysis'].get('current_regime', 'N/A')}")
+                if ao.get('forecast'):
+                    fc = ao['forecast'].get('forecast_results', [{}])[0] if ao['forecast'].get('forecast_results') else {}
+                    md.append(f"- **Forecast**: Point={fc.get('point_forecast', 'N/A')}")
+            elif ao:
+                research = get_val(ao, 'research', {})
+                strategy = get_val(ao, 'strategy', {})
+                if research:
+                    md.append(f"- **Research**: {str(research.get('summary', 'N/A'))[:100]}...")
+                if strategy:
+                    md.append(f"- **Strategy**: {str(strategy.get('reasoning', 'N/A'))[:100]}...")
+
+        # 5.3 Verification Report
+        verif = self.debate_consensus.get('verification', {}) if self.debate_consensus else {}
+        if verif or self.verification:
             md.append("### Verification Report")
-            md.append(f"- **Reliability**: {self.verification.overall_reliability:.1f}/100")
-            md.append(f"- **Consistency**: {self.verification.consistency_score:.1f}%")
-            if self.verification.warnings:
-                md.append("#### Warnings")
-                for w in self.verification.warnings:
-                    md.append(f"- ⚠️ {w}")
-        
-        # 5.4 Reasoning Chain
+            v = verif if verif else self.verification
+            if isinstance(v, dict):
+                md.append(f"- **Reliability**: {v.get('overall_score', 'N/A')}/100")
+                md.append(f"- **Passed**: {'✅' if v.get('passed') else '❌'}")
+                md.append(f"- **Hallucination Risk**: {v.get('hallucination_risk', 'N/A')}")
+                if v.get('warnings'):
+                    md.append("#### Warnings")
+                    for w in v['warnings'][:3]:
+                        md.append(f"- ⚠️ {w}")
+            else:
+                md.append(f"- **Reliability**: {get_val(v, 'overall_reliability', 0):.1f}/100")
+                md.append(f"- **Consistency**: {get_val(v, 'consistency_score', 0):.1f}%")
+                warnings = get_val(v, 'warnings', [])
+                if warnings:
+                    md.append("#### Warnings")
+                    for w in warnings[:3]:
+                        md.append(f"- ⚠️ {w}")
+
+        # 5.4 Reasoning Chain (Traceability)
         if self.reasoning_chain:
-            md.append("### Reasoning Chain")
+            md.append("### Reasoning Chain (Audit Trail)")
+            md.append(f"*{len(self.reasoning_chain)} steps tracked*")
             for step in self.reasoning_chain:
-                md.append(f"- **{step.get('agent', 'Unknown')}**: {step.get('output', '')[:100]}...")
+                agent = step.get('agent', 'Unknown')
+                output = step.get('output', step.get('output_summary', ''))[:80]
+                conf = step.get('confidence', 0)
+                md.append(f"- **{agent}** ({conf:.0f}%): {output}...")
+                factors = step.get('key_factors', [])
+                if factors:
+                    md.append(f"  - Factors: {', '.join(str(f) for f in factors[:2])}")
         
         md.append("")
 

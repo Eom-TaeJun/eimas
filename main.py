@@ -213,6 +213,28 @@ async def run_integrated_pipeline(
         result.confidence = debate_res.confidence
         result.risk_level = debate_res.risk_level
         result.warnings.extend(debate_res.warnings)
+
+        # Phase 2-3 Enhanced Results (NEW)
+        result.reasoning_chain = debate_res.reasoning_chain
+
+        # Transfer enhanced debate to agent_outputs/debate_results
+        if debate_res.enhanced_debate:
+            # Store interpretation and methodology results
+            result.debate_consensus['enhanced'] = debate_res.enhanced_debate
+            print(f"      ✓ Enhanced Debate transferred: Interpretation={debate_res.enhanced_debate.get('interpretation', {}).get('recommended_action', 'N/A')}")
+
+        if debate_res.verification:
+            # Store verification results
+            result.debate_consensus['verification'] = debate_res.verification
+            print(f"      ✓ Verification transferred: Score={debate_res.verification.get('overall_score', 'N/A')}")
+
+        if debate_res.reasoning_chain:
+            print(f"      ✓ Reasoning Chain transferred: {len(debate_res.reasoning_chain)} steps")
+
+        if debate_res.metadata:
+            result.debate_consensus['metadata'] = debate_res.metadata
+            print(f"      ✓ Metadata: {debate_res.metadata.get('num_agents', 'N/A')} agents")
+
     except Exception as e:
         print(f"⚠️ Debate Error: {e}")
     

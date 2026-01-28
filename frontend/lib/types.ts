@@ -79,6 +79,37 @@ export interface EIMASAnalysis {
   final_recommendation: string
   confidence: number
 
+  // Phase 2-3 Enhanced Results (NEW)
+  reasoning_chain: Array<{
+    agent: string
+    output_summary: string
+    confidence: number
+    key_factors: string[]
+  }>
+  debate_consensus: {
+    enhanced?: {
+      interpretation?: {
+        recommended_action: string
+        consensus_points: string[]
+        divergence_points?: string[]
+      }
+      methodology?: {
+        selected_methodology: string
+        rationale: string
+      }
+    }
+    verification?: {
+      overall_score: number
+      passed: boolean
+      hallucination_risk: number
+      warnings: string[]
+    }
+    metadata?: {
+      num_agents: number
+      total_debates: number
+    }
+  }
+
   // Portfolio and strategy
   portfolio_weights: Record<string, number>
   shock_propagation: any

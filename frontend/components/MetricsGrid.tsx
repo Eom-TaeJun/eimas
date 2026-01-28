@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import useSWR from "swr"
 import { fetchLatestAnalysis } from "@/lib/api"
 import type { EIMASAnalysis } from "@/lib/types"
-import { TrendingUp, TrendingDown, Activity, PieChart as PieChartIcon } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, PieChart as PieChartIcon, Brain, Shield, GitBranch } from "lucide-react"
 import { RiskGauge } from "@/components/charts/RiskGauge"
 import { PortfolioPie } from "@/components/charts/PortfolioPie"
 
@@ -209,6 +209,101 @@ export function MetricsGrid() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Enhanced AI Section (Phase 2-3) */}
+      {(analysis.debate_consensus?.enhanced || analysis.reasoning_chain?.length > 0) && (
+        <div className="grid gap-4 md:grid-cols-3">
+          {/* Enhanced Debate Card */}
+          {analysis.debate_consensus?.enhanced && (
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  <CardTitle className="text-sm font-medium text-gray-400">Enhanced Debate</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {analysis.debate_consensus.enhanced.interpretation && (
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Interpretation</div>
+                      <Badge variant="outline" className={`text-xs ${getRecommendationColor(analysis.debate_consensus.enhanced.interpretation.recommended_action)}`}>
+                        {analysis.debate_consensus.enhanced.interpretation.recommended_action}
+                      </Badge>
+                      <div className="text-xs text-gray-500 mt-1">Schools: Monetarist / Keynesian / Austrian</div>
+                    </div>
+                  )}
+                  {analysis.debate_consensus.enhanced.methodology && (
+                    <div className="pt-2 border-t border-gray-700">
+                      <div className="text-xs text-gray-500 mb-1">Methodology</div>
+                      <div className="text-sm text-white">{analysis.debate_consensus.enhanced.methodology.selected_methodology}</div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Verification Card */}
+          {analysis.debate_consensus?.verification && (
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-green-400" />
+                  <CardTitle className="text-sm font-medium text-gray-400">Verification</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Score</span>
+                    <span className="text-xl font-bold text-white">{analysis.debate_consensus.verification.overall_score?.toFixed(1)}/100</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Status</span>
+                    <Badge variant="outline" className={analysis.debate_consensus.verification.passed ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}>
+                      {analysis.debate_consensus.verification.passed ? "✅ Passed" : "❌ Failed"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-sm">Hallucination Risk</span>
+                    <span className="text-sm text-white">{(analysis.debate_consensus.verification.hallucination_risk * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Reasoning Chain Card */}
+          {analysis.reasoning_chain && analysis.reasoning_chain.length > 0 && (
+            <Card className="bg-[#161b22] border-[#30363d]">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-5 h-5 text-blue-400" />
+                  <CardTitle className="text-sm font-medium text-gray-400">Reasoning Chain</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 mb-2">{analysis.reasoning_chain.length} steps tracked</div>
+                  {analysis.reasoning_chain.slice(0, 3).map((step, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-sm">
+                      <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                      <span className="text-gray-400">{step.agent}</span>
+                      <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/20">
+                        {step.confidence}%
+                      </Badge>
+                    </div>
+                  ))}
+                  {analysis.reasoning_chain.length > 3 && (
+                    <div className="text-xs text-gray-500">+{analysis.reasoning_chain.length - 3} more steps...</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Warnings (if any) */}
       {analysis.warnings && analysis.warnings.length > 0 && (
