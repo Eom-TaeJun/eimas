@@ -70,8 +70,7 @@ def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
     try:
         md_content = result.to_markdown()
         with open(output_file, 'w', encoding='utf-8') as f:
-            with open(output_file, 'w') as f:
-                f.write(md_content)
+            f.write(md_content)
         print(f"      ✓ Saved: {output_file}")
         return str(output_file)
     except Exception as e:
