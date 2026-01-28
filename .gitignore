@@ -77,3 +77,6 @@ htmlcov/
 
 # Windows Zone Identifier files
 *:Zone.Identifier
+
+# Tool specific
+.claude/settings.local.json
