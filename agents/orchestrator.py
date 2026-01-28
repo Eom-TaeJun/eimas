@@ -30,11 +30,14 @@ from core.schemas import (
     TaskPriority,
 )
 from core.debate import DebateProtocol
+from core.reasoning_chain import ReasoningChain
 from agents.analysis_agent import AnalysisAgent
 from agents.forecast_agent import ForecastAgent
 from agents.research_agent import ResearchAgent
 from agents.strategy_agent import StrategyAgent
 from agents.verification_agent import VerificationAgent
+from agents.interpretation_debate import InterpretationDebateAgent, AnalysisResult
+from agents.methodology_debate import MethodologyDebateAgent, ResearchGoal
 
 
 class MetaOrchestrator:
@@ -72,6 +75,13 @@ class MetaOrchestrator:
         self.strategy_agent = StrategyAgent()
         self.verification_agent = VerificationAgent()
 
+        # Phase 2 에이전트 (Multi-LLM Debate)
+        self.interpretation_agent = InterpretationDebateAgent()
+        self.methodology_agent = MethodologyDebateAgent()
+
+        # Phase 3 추론 체인 (Traceability)
+        self.reasoning_chain = ReasoningChain()
+
         # 기본 토론 주제
         self.default_debate_topics = [
             "market_outlook",
@@ -80,7 +90,7 @@ class MetaOrchestrator:
             "rate_direction"
         ]
 
-        self.logger.info("MetaOrchestrator initialized (Analysis, Forecast, Research, Strategy, Verification)")
+        self.logger.info("MetaOrchestrator initialized (7 agents + Multi-LLM Debate + ReasoningChain)")
 
     def _setup_logger(self) -> logging.Logger:
         """로거 설정"""
@@ -133,6 +143,9 @@ class MetaOrchestrator:
 
         workflow_start = datetime.now()
 
+        # Reset reasoning chain for new workflow
+        self.reasoning_chain = ReasoningChain()
+
         # ============================================================
         # Step 1: Run Analysis Agent
         # ============================================================
@@ -159,6 +172,15 @@ class MetaOrchestrator:
             f"Regime={analysis_result.get('current_regime', 'UNKNOWN')}"
         )
 
+        # Track in reasoning chain
+        self.reasoning_chain.add_step(
+            agent='AnalysisAgent',
+            input_summary='Market data + CriticalPath analysis',
+            output_summary=f"Risk={analysis_result.get('total_risk_score', 0):.1f}, Regime={analysis_result.get('current_regime', 'UNKNOWN')}",
+            confidence=analysis_result.get('regime_confidence', 50.0),
+            key_factors=analysis_result.get('active_warnings', [])[:3]
+        )
+
         # ============================================================
         # Step 1.5: Run Forecast Agent
         # ============================================================
@@ -182,6 +204,17 @@ class MetaOrchestrator:
             )
         else:
             self.logger.warning(f"Forecast results empty or failed: {forecast_response.error or 'No results'}")
+
+        # Track in reasoning chain
+        if forecast_result:
+            forecast_summary = forecast_result.get('forecast_results', [{}])[0]
+            self.reasoning_chain.add_step(
+                agent='ForecastAgent',
+                input_summary='Market data + LASSO model',
+                output_summary=f"Point forecast: {forecast_summary.get('point_forecast', 'N/A')}",
+                confidence=forecast_result.get('model_metrics', {}).get('r2_score', 0.5) * 100,
+                key_factors=forecast_result.get('key_drivers', [])[:3]
+            )
 
         # Merge results for topic detection and opinion collection
         combined_context = {**analysis_result, **forecast_result}
@@ -215,6 +248,48 @@ class MetaOrchestrator:
         consensus_results = await self.run_debates(opinions_by_topic)
         self.logger.info(f"Reached consensus on {len(consensus_results)} topics")
 
+        # Track in reasoning chain
+        self.reasoning_chain.add_step(
+            agent='DebateProtocol',
+            input_summary=f'{total_opinions} opinions on {len(opinions_by_topic)} topics',
+            output_summary=f'Consensus on {len(consensus_results)} topics',
+            confidence=sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1) * 100,
+            key_factors=[f"{t}: {c.final_position}" for t, c in list(consensus_results.items())[:3]]
+        )
+
+        # ============================================================
+        # Step 4.5: Enhanced Multi-LLM Debate (Optional)
+        # ============================================================
+        self.logger.info("Step 4.5: Running Enhanced Multi-LLM Debate...")
+
+        enhanced_debate_results = {}
+        try:
+            # Interpretation Debate: 경제학파별 해석
+            interpretation_result = await self._run_interpretation_debate(combined_context)
+            enhanced_debate_results['interpretation'] = interpretation_result
+
+            # Methodology Debate: 방법론 토론
+            methodology_result = await self._run_methodology_debate(query, combined_context)
+            enhanced_debate_results['methodology'] = methodology_result
+
+            self.logger.info(
+                f"Enhanced debate complete: Interpretation={interpretation_result.get('recommended_action', 'N/A')}, "
+                f"Methodology={methodology_result.get('selected_methodology', 'N/A')}"
+            )
+
+            # Track in reasoning chain
+            self.reasoning_chain.add_step(
+                agent='MultiLLMDebate',
+                input_summary='Analysis results + Economic schools',
+                output_summary=f"Interpretation: {interpretation_result.get('recommended_action', 'N/A')}, Methodology: {methodology_result.get('selected_methodology', 'N/A')}",
+                confidence=((interpretation_result.get('confidence', 0.5) + methodology_result.get('confidence', 0.5)) / 2) * 100,
+                key_factors=['Claude (Economist)', 'GPT-4 (Devil\'s Advocate)', 'Gemini (Risk Manager)']
+            )
+
+        except Exception as e:
+            self.logger.warning(f"Enhanced debate failed (non-critical): {e}")
+            enhanced_debate_results = {'error': str(e)}
+
         # ============================================================
         # Step 5: Synthesize Report
         # ============================================================
@@ -225,7 +300,8 @@ class MetaOrchestrator:
             analysis_result=analysis_result,
             forecast_result=forecast_result,
             consensus_results=consensus_results,
-            opinions_by_topic=opinions_by_topic
+            opinions_by_topic=opinions_by_topic,
+            enhanced_debate_results=enhanced_debate_results
         )
 
         # ============================================================
@@ -493,11 +569,13 @@ class MetaOrchestrator:
         analysis_result: Dict[str, Any],
         forecast_result: Dict[str, Any],
         consensus_results: Dict[str, Consensus],
-        opinions_by_topic: Dict[str, List[AgentOpinion]]
+        opinions_by_topic: Dict[str, List[AgentOpinion]],
+        enhanced_debate_results: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         최종 보고서 종합
         """
+        enhanced_debate_results = enhanced_debate_results or {}
         # transition_probability 스케일 보정 (0-100 -> 0-1)
         trans_prob = analysis_result.get('transition_probability', 0.0)
         if trans_prob > 1.0:
@@ -556,20 +634,99 @@ class MetaOrchestrator:
                     }
                     for topic, consensus in consensus_results.items()
                 },
-                'conflicts': []
+                'conflicts': [],
+                # Phase 2: Enhanced Multi-LLM Debate Results
+                'enhanced_debate': {
+                    'interpretation': enhanced_debate_results.get('interpretation', {}),
+                    'methodology': enhanced_debate_results.get('methodology', {})
+                }
             },
+            # Phase 3: Reasoning Chain (Traceability)
+            'reasoning_chain': self.reasoning_chain.to_dict(),
             'debate_topics': list(consensus_results.keys()),
             'recommendations': self._generate_recommendations(analysis_result, consensus_results),
             'warnings': self._generate_warnings(analysis_result, consensus_results),
             'metadata': {
-                'num_agents': 5,  # Analysis, Forecast, Research, Strategy, Verification
+                'num_agents': 7,  # Analysis, Forecast, Research, Strategy, Verification + Interpretation, Methodology
                 'total_opinions': len(all_opinions),
                 'total_debates': len([c for c in consensus_results.values() if c.debate_rounds > 0]),
-                'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1)
+                'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1),
+                'enhanced_debate_enabled': bool(enhanced_debate_results and 'error' not in enhanced_debate_results),
+                'reasoning_chain_steps': len(self.reasoning_chain.to_dict())
             }
         }
 
         return report
+
+    async def _run_interpretation_debate(
+        self,
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        경제학파별 해석 토론 실행 (Monetarist, Keynesian, Austrian)
+        """
+        # Create AnalysisResult for interpretation
+        analysis_result = AnalysisResult(
+            topic=context.get('primary_risk_path', 'market_conditions'),
+            methodology='CriticalPath + LASSO',
+            key_findings=[
+                f"Risk Score: {context.get('total_risk_score', 50):.1f}",
+                f"Regime: {context.get('current_regime', 'NEUTRAL')}",
+                f"Primary Risk: {context.get('primary_risk_path', 'unknown')}"
+            ],
+            statistics={
+                'risk_score': context.get('total_risk_score', 50),
+                'regime_confidence': context.get('regime_confidence', 50)
+            },
+            predictions={
+                'regime_transition': context.get('transition_probability', 0.0)
+            },
+            confidence=context.get('regime_confidence', 50) / 100.0
+        )
+
+        try:
+            consensus = await self.interpretation_agent.interpret_results(
+                analysis_result=analysis_result,
+                additional_context=context
+            )
+            return {
+                'recommended_action': consensus.recommended_action,
+                'consensus_points': consensus.consensus_points,
+                'divergence_points': consensus.divergence_points,
+                'school_interpretations': consensus.school_interpretations,
+                'confidence': consensus.confidence,
+                'summary': consensus.summary
+            }
+        except Exception as e:
+            self.logger.warning(f"Interpretation debate error: {e}")
+            return {'error': str(e), 'recommended_action': 'NEUTRAL', 'confidence': 0.5}
+
+    async def _run_methodology_debate(
+        self,
+        query: str,
+        context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        방법론 토론 실행 (LASSO, VAR, GARCH 등)
+        """
+        try:
+            decision = await self.methodology_agent.debate_methodology(
+                research_question=query,
+                research_goal=ResearchGoal.VARIABLE_SELECTION,
+                data_summary=None,
+                research_context=str(context.get('path_contributions', {}))
+            )
+            return {
+                'selected_methodology': decision.selected_methodology,
+                'components': decision.components,
+                'pipeline': decision.pipeline,
+                'confidence': decision.confidence,
+                'rationale': decision.rationale,
+                'dissenting_views': decision.dissenting_views
+            }
+        except Exception as e:
+            self.logger.warning(f"Methodology debate error: {e}")
+            return {'error': str(e), 'selected_methodology': 'LASSO', 'confidence': 0.5}
 
     def _generate_recommendations(
         self,
