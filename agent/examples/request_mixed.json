@@ -1,0 +1,8 @@
+{
+  "question": "Fed 유동성 정책이 암호화폐 시장과 전통 금융시장에 미치는 복합적 영향은?",
+  "context": {
+    "net_liquidity": 5800000000000,
+    "btc_correlation_spy": 0.65,
+    "stablecoin_tvl": 140000000000
+  }
+}

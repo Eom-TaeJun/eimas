@@ -1,0 +1,9 @@
+{
+  "question": "스테이블코인 공급 증가가 국채 수요에 미치는 영향은?",
+  "frame_hint": "crypto",
+  "context": {
+    "usdc_supply_change": "+5%",
+    "usdt_supply_change": "+3%",
+    "time_period": "2026-01"
+  }
+}

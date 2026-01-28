@@ -1,0 +1,8 @@
+{
+  "question": "현재 섹터 로테이션 상황과 투자 전략은?",
+  "frame_hint": "markets",
+  "context": {
+    "top_sectors": ["Technology", "Healthcare"],
+    "underperforming": ["Energy", "Utilities"]
+  }
+}

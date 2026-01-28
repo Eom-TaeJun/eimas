@@ -1,0 +1,9 @@
+{
+  "question": "Fed 금리 인상이 주식시장과 채권시장에 미치는 영향은?",
+  "frame_hint": "macro",
+  "context": {
+    "fed_funds_current": 5.25,
+    "fed_funds_expected": 5.50,
+    "fomc_date": "2026-01-29"
+  }
+}

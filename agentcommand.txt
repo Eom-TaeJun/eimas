@@ -1,0 +1,65 @@
+You are Claude Code acting as a systems engineer + economist. Design and implement an “Economic Insight Agent” codebase.
+
+Goal
+Build an agent that produces causal, explainable economic/financial analysis under modern “asset infinity” conditions (stocks, bonds, ETFs, crypto, stablecoins, RWA). It must prioritize transmission mechanisms and explicit reasoning artifacts over pure forecasting.
+
+Non-goals
+Do not build a trading bot. Do not optimize for price prediction alone. Avoid long narrative essays without structured artifacts.
+
+Key behaviors (must)
+1) Causality-first analysis
+- Every answer must produce: (a) a shock/phenomenon statement, (b) a causal graph (nodes/edges with signs), (c) a mechanism path (top 1–3 paths), (d) rival hypotheses + what evidence would falsify them, (e) regime-shift / structural-break risk notes, (f) a concise “why” explanation tied to the graph.
+2) Graph/ontology representation
+- Implement an internal graph object: nodes = entities/variables (macro, assets, sectors, protocols), edges = signed causal/flow relations with optional lags and confidence.
+- Provide graph utilities: path sign composition, cycle detection (feedback loops), “critical path” ranking (simple heuristic is fine).
+3) Modern finance modules
+- Stablecoin macro lens: model stablecoin supply changes as impacting reserve demand and short-term Treasury demand; include bank-disintermediation lens as an optional channel.
+- Portfolio risk under asset infinity: implement HRP (Hierarchical Risk Parity) + clustering to avoid covariance inversion issues.
+- Microstructure signals: treat volume/flow spikes as information-arrival proxies; include a detector for abnormal volume/flow vs baseline.
+4) JSON-first interfaces
+- All agent outputs must be valid JSON following schemas you define. No free-form-only outputs.
+- Provide pydantic (or equivalent) schemas for input request, evidence objects, graph, mechanisms, and final report.
+5) Reproducibility and evaluation
+- Provide a small eval harness with 5–10 scenario prompts and expected JSON shape checks.
+- Add unit tests for: schema validity, graph utilities, HRP weights sum to 1, clustering output, and volume spike detector.
+
+Deliverables (repository structure)
+- README.md: what the agent does, how to run, examples (with JSON).
+- /agent
+  - core/: orchestrator, reasoning pipeline, validators
+  - schemas/: JSON/pydantic schemas
+  - graph/: graph model + algorithms
+  - finance/: hrp.py, clustering.py, stablecoin_channels.py, microstructure.py
+  - data/: simple loaders (CSV) + stubs for external APIs (do not require keys to run tests)
+  - evals/: eval runner + scenario set
+  - cli.py: run agent on a JSON request file and print JSON output
+- Use Python. Keep dependencies minimal.
+
+Reasoning pipeline (implement as code, not just text)
+Step 1: Parse request → classify frame (macro / markets / crypto / mixed)
+Step 2: Build initial causal graph template (based on frame)
+Step 3: Map available evidence/features into nodes/edges (with confidence)
+Step 4: Generate top mechanism paths + feedback loops
+Step 5: Generate rival hypotheses + falsification tests (data signals to check)
+Step 6: Produce final JSON report
+
+Output JSON (must include these top-level keys)
+- meta: request_id, timestamp, frame
+- phenomenon: one sentence
+- causal_graph: nodes[], edges[]
+- mechanisms: paths[] (each path lists nodes, edge_signs, narrative)
+- hypotheses: main, rivals[], falsification_tests[]
+- risk: regime_shift_risks[], data_limitations[]
+- suggested_data: prioritized datasets to fetch next (macro, flows, on-chain)
+- next_actions: 3–7 concrete steps
+
+Implementation instructions
+- Start by generating the file tree and schemas first.
+- Then implement graph utilities and tests.
+- Then implement HRP + clustering + tests.
+- Then implement microstructure spike detector + tests.
+- Then implement the orchestrator and a minimal CLI.
+- Ensure “pytest” passes locally.
+- Provide example requests and outputs in /examples.
+
+Before coding, write a short plan (10–20 lines) listing modules, key functions, and tests you will create. Then proceed to implement.

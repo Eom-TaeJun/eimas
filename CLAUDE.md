@@ -236,7 +236,7 @@ Phase 7: WHITENING & FACT CHECK (--report 옵션)
 +-- 출력: whitening_summary, fact_check_grade
 ```
 
-## 신규 모듈 통합 상태 (15개)
+## 신규 모듈 통합 상태 (16개)
 
 | # | 모듈 | 통합 위치 | 상태 | 설명 |
 |---|------|----------|------|------|
@@ -255,6 +255,7 @@ Phase 7: WHITENING & FACT CHECK (--report 옵션)
 | 13 | `validate_methodology.py` | scripts/ | ✅ | API 방법론 검증 (2026-01-09) |
 | 14 | `validate_integration_design.py` | scripts/ | ✅ | 아키텍처 통합 설계 검증 (2026-01-09) |
 | 15 | MarketQualityMetrics | main.py | ✅ | 시장 미세구조 메트릭 (2026-01-09) |
+| 16 | **Economic Insight Agent** | `agent/` | ✅ | **인과적 분석 에이전트 (2026-01-28)** |
 
 ## 핵심 데이터 클래스
 
@@ -346,6 +347,18 @@ eimas/
 |   |-- regime_change.py      # 레짐 변화 감지
 |   |-- methodology_debate.py # 방법론 토론
 |   +-- interpretation_debate.py # 해석 토론
+|-- agent/              # Economic Insight Agent (NEW 2026-01-28)
+|   |-- __init__.py          # Main exports
+|   |-- cli.py               # CLI interface
+|   |-- README.md            # Agent 문서
+|   |-- core/
+|   |   |-- adapters.py      # EIMAS → Schema 변환
+|   |   +-- orchestrator.py  # 6단계 추론 파이프라인
+|   |-- schemas/
+|   |   +-- insight_schema.py  # Pydantic JSON 스키마
+|   |-- examples/            # JSON 요청 예제
+|   |-- evals/               # 10개 시나리오 평가
+|   +-- tests/               # 단위 테스트
 |-- core/                # 핵심 프레임워크
 |   |-- __init__.py
 |   |-- schemas.py       # 데이터 스키마
@@ -793,4 +806,53 @@ pip list | grep -E "fastapi|uvicorn|yfinance|anthropic"
 모든 필수 패키지는 이미 설치됨 (requirements.txt 기반)
 
 ---
-*마지막 업데이트: 2026-01-11 18:00 KST*
+
+### v2.2.0 (2026-01-28) - Economic Insight Agent
+
+**Task: agentcommand.txt 기반 인과적 분석 에이전트 구현**
+
+- **`agent/` 모듈 신규 생성** (~2000 lines)
+  - `agent/schemas/insight_schema.py`: Pydantic JSON 스키마 (424 lines)
+  - `agent/core/adapters.py`: EIMAS 모듈 → Schema 변환 (631 lines)
+  - `agent/core/orchestrator.py`: 6단계 추론 파이프라인 (830 lines)
+  - `agent/cli.py`: CLI 인터페이스
+  - `agent/evals/`: 10개 시나리오 평가 (ALL PASS)
+  - `agent/tests/`: 단위 테스트 (스키마, 그래프 유틸리티, 통합)
+
+- **핵심 기능**
+  - Causality-first Analysis: 인과 그래프 + 메커니즘 경로 + 반증 가설
+  - JSON-first Output: `meta`, `phenomenon`, `causal_graph`, `mechanisms`, `hypotheses`, `risk`, `suggested_data`, `next_actions`
+  - EIMAS 통합: ShockPropagation, CriticalPath, GeniusAct, BubbleDetector 결과 자동 변환
+  - 4개 프레임: MACRO, CRYPTO, MARKETS, MIXED (템플릿 그래프 제공)
+
+- **EIMAS 어댑터 매핑**
+  | EIMAS 모듈 | 변환 메서드 | 출력 |
+  |-----------|------------|------|
+  | ShockPropagationGraph | `adapt_shock_propagation()` | CausalGraph |
+  | CriticalPathAggregator | `adapt_critical_path()` | RegimeShiftRisk[] |
+  | GeniusActMacroStrategy | `adapt_genius_act()` | MechanismPath[] |
+  | BubbleDetector | `adapt_bubble_detector()` | RegimeShiftRisk[] |
+  | GraphClusteredPortfolio | `adapt_portfolio()` | NextAction[] |
+
+- **사용법**
+  ```bash
+  # CLI
+  python -m agent.cli --question "Fed 금리 인상 영향은?"
+  python -m agent.cli --with-eimas --question "현재 시장 분석"
+
+  # Eval
+  python -m agent.evals.runner  # 10/10 시나리오 통과
+  ```
+
+- **Python API**
+  ```python
+  from agent import EconomicInsightOrchestrator, InsightRequest
+
+  orchestrator = EconomicInsightOrchestrator()
+  request = InsightRequest(question="스테이블코인 공급 증가 영향?")
+  report = orchestrator.run(request)
+  print(report.model_dump_json(indent=2))
+  ```
+
+---
+*마지막 업데이트: 2026-01-28 14:40 KST*
