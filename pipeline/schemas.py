@@ -341,12 +341,18 @@ class EIMASResult:
     
     # Extended Data Sources (PCR, Valuation, Crypto)
     extended_data: Dict = field(default_factory=dict)
+    
+    # NEW: Sentiment Analysis (2026-01-29)
+    sentiment_analysis: Dict = field(default_factory=dict)
 
     # Phase 3.Enhanced: New Agent Outputs
     agent_outputs: Optional[AgentOutputs] = None
     debate_results: Optional[DebateResults] = None
     verification: Optional[VerificationResults] = None
     reasoning_chain: List[Dict] = field(default_factory=list)
+    
+    # NEW: AI Report 통합 (2026-01-29)
+    ai_report: Optional[Dict] = None  # FinalReport.to_dict()
 
     def to_dict(self) -> Dict:
         return asdict(self)

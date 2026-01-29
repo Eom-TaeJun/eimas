@@ -4,205 +4,180 @@ EIMAS - Economic Intelligence Multi-Agent System
 =================================================
 통합 실행 파이프라인 (Unified Main Entry)
 
-Modular Pipeline Architecture:
-1. Collectors: 데이터 수집 (FRED, Market, Crypto)
-2. Analyzers: 시장 분석 (Regime, Risk, Liquidity, HFT, PoI, DTW, DBSCAN)
-3. Debate: AI 에이전트 토론 (Dual Mode)
-4. Realtime: 실시간 스트리밍 (선택적)
-5. Storage: 결과 저장 (JSON, DB)
-6. Report: AI 리포트 생성 (IB Style & Standard)
+================================================================================
+WORKFLOW OVERVIEW
+================================================================================
+
+    [CLI] main()
+           │
+           ▼
+    run_integrated_pipeline()
+           │
+           ├─► [Phase 1] _collect_data()        # 데이터 수집 (FRED, Market, Crypto)
+           │
+           ├─► [Phase 2] _analyze_basic()       # 기본 분석 (Regime, Events, Risk)
+           │        └─► _analyze_enhanced()     # 고급 분석 (HFT, GARCH, DTW, etc.)
+           │
+           ├─► [Phase 3] _run_debate()          # AI 에이전트 토론 (Multi-LLM)
+           │
+           ├─► [Phase 4] _run_realtime()        # 실시간 스트리밍 (선택)
+           │
+           ├─► [Phase 5] _save_results()        # 결과 저장 (unified JSON)
+           │
+           ├─► [Phase 6] _generate_report()     # AI 리포트 생성 (선택)
+           │
+           ├─► [Phase 7] _validate_report()     # Whitening & Fact Check
+           │
+           └─► [Phase 8] _run_ai_validation()   # Multi-LLM 검증 (--full only)
+
+================================================================================
 
 Usage:
-    python main.py              # 전체 파이프라인
+    python main.py              # 기본 분석 (버블/센티먼트 포함)
+    python main.py --short      # Quick 분석 (버블 제외)
+    python main.py --full       # 전체 기능 (AI Validation 포함)
     python main.py --realtime   # 실시간 스트리밍 포함
-    python main.py --quick      # 빠른 분석만
-    python main.py --report     # AI 리포트 생성 포함
 """
 
 import asyncio
 import argparse
 from datetime import datetime
-from pathlib import Path
+from typing import Dict, List, Any
 
-# Pipeline Modules
+# ============================================================================
+# Pipeline Imports
+# ============================================================================
 from pipeline import (
     EIMASResult,
-    collect_fred_data, collect_market_data,
-    collect_crypto_data, collect_market_indicators,
-    detect_regime, detect_events, analyze_liquidity,
-    analyze_critical_path, analyze_etf_flow, generate_explanation,
-    analyze_genius_act, analyze_theme_etf, analyze_shock_propagation,
-    optimize_portfolio_mst, analyze_volume_anomalies, track_events_with_news,
-    run_adaptive_portfolio,
-    run_dual_mode_debate, run_realtime_stream,
+    # Phase 1: Collectors
+    collect_fred_data, collect_market_data, collect_crypto_data, collect_market_indicators,
+    # Phase 2: Analyzers
+    detect_regime, detect_events, analyze_liquidity, analyze_critical_path,
+    analyze_etf_flow, generate_explanation, analyze_genius_act, analyze_theme_etf,
+    analyze_shock_propagation, optimize_portfolio_mst, analyze_volume_anomalies,
+    track_events_with_news, run_adaptive_portfolio,
+    analyze_bubble_risk, analyze_sentiment,  # NEW: 2026-01-29
+    # Phase 3: Debate
+    run_dual_mode_debate,
+    # Phase 4: Realtime
+    run_realtime_stream,
+    # Phase 5: Storage
     save_result_json, save_result_md, save_to_trading_db, save_to_event_db,
-    generate_ai_report, run_whitening_check, run_fact_check
+    # Phase 6-7: Report & Validation
+    generate_ai_report, run_whitening_check, run_fact_check,
+    # Phase 8: AI Validation (--full only)
+    run_ai_validation
 )
-
-# New Enhanced Analyzers (Phase 2.Enhanced)
+from pipeline.schemas import BubbleRiskMetrics
 from pipeline.analyzers import (
     analyze_hft_microstructure, analyze_volatility_garch,
     analyze_information_flow, calculate_proof_of_index,
     enhance_portfolio_with_systemic_similarity,
-    detect_outliers_with_dbscan, analyze_dtw_similarity,
-    analyze_ark_trades
+    detect_outliers_with_dbscan, analyze_dtw_similarity, analyze_ark_trades
 )
-
-# Extended Data
 from lib.extended_data_sources import ExtendedDataCollector
 
-async def run_integrated_pipeline(
-    enable_realtime: bool = False,
-    realtime_duration: int = 30,
-    quick_mode: bool = False,
-    generate_report: bool = False
-) -> EIMASResult:
-    """EIMAS 통합 파이프라인 실행"""
-    start_time = datetime.now()
-    result = EIMASResult(timestamp=start_time.isoformat())
 
-    print("=" * 70)
-    print("  EIMAS - Integrated Analysis Pipeline (Unified Main)")
-    print("=" * 70)
+# ============================================================================
+# Phase Helper Functions
+# ============================================================================
 
-    # Phase 1: Data Collection
+async def _collect_data(result: EIMASResult, quick_mode: bool) -> Dict:
+    """[Phase 1] 데이터 수집: FRED, Market, Crypto, Extended"""
     print("\n[Phase 1] Collecting Data...")
+    
     result.fred_summary = collect_fred_data()
     
-    # Extended Data Collection (Async)
     ext_collector = ExtendedDataCollector()
     result.extended_data = await ext_collector.collect_all()
     
     market_data = collect_market_data(lookback_days=90 if quick_mode else 365)
     result.market_data_count = len(market_data)
     
-    # Crypto & Indicators
-    collect_crypto_data() # DataManager 캐시에 저장됨
+    collect_crypto_data()
     if not quick_mode:
         collect_market_indicators()
+    
+    return market_data
 
-    # Phase 2: Analysis
+
+def _analyze_basic(result: EIMASResult, market_data: Dict) -> List:
+    """[Phase 2.1] 기본 분석: Regime Detection, Event Detection, Risk Score"""
     print("\n[Phase 2] Analyzing Market...")
+    
     regime_res = detect_regime()
     result.regime = regime_res.to_dict()
     
     events = detect_events(result.fred_summary, market_data)
     result.events_detected = [e.to_dict() for e in events]
     
-    # Phase 2.Enhanced: New Metrics (HFT, PoI, DTW, etc.)
-    print("\n[Phase 2.Enhanced] Running Advanced Metrics...")
-    
-    try:
-        result.hft_microstructure = analyze_hft_microstructure(market_data)
-    except Exception as e:
-        print(f"⚠️ HFT Analysis Error: {e}")
-
-    try:
-        result.garch_volatility = analyze_volatility_garch(market_data)
-    except Exception as e:
-        print(f"⚠️ GARCH Analysis Error: {e}")
-
-    try:
-        result.information_flow = analyze_information_flow(market_data)
-    except Exception as e:
-        print(f"⚠️ Information Flow Analysis Error: {e}")
-
-    try:
-        result.proof_of_index = calculate_proof_of_index(market_data)
-    except Exception as e:
-        print(f"⚠️ Proof-of-Index Error: {e}")
-        
-    try:
-        result.ark_analysis = analyze_ark_trades()
-    except Exception as e:
-        print(f"⚠️ ARK Analysis Error: {e}")
-    
-    # Systemic Similarity
-    try:
-        sim_res = enhance_portfolio_with_systemic_similarity(market_data)
-        # result 객체에 별도 필드가 없다면 딕셔너리로 저장하거나 무시
-        # 현재는 enhance_portfolio_with_systemic_similarity가 반환하는 값 중 필요한 것만 사용
-        pass 
-    except Exception as e:
-        print(f"⚠️ Systemic Similarity Error: {e}")
-
-    if not quick_mode:
-        try:
-            result.dtw_similarity = analyze_dtw_similarity(market_data)
-        except Exception as e:
-            print(f"⚠️ DTW Analysis Error: {e}")
-
-        try:
-            result.dbscan_outliers = detect_outliers_with_dbscan(market_data)
-        except Exception as e:
-            print(f"⚠️ DBSCAN Analysis Error: {e}")
-        
-        try:
-            liq_res = analyze_liquidity()
-            result.liquidity_signal = liq_res.signal
-            result.liquidity_analysis = liq_res.to_dict()
-        except Exception as e:
-            print(f"⚠️ Liquidity Analysis Error: {e}")
-        
-        try:
-            etf_res = analyze_etf_flow()
-            result.etf_flow_result = etf_res.to_dict()
-        except Exception as e:
-            print(f"⚠️ ETF Flow Analysis Error: {e}")
-        
-        # Advanced Analysis
-        try:
-            ga_res = analyze_genius_act()
-            result.genius_act_signals = ga_res.signals
-            result.genius_act_regime = ga_res.regime
-        except Exception as e:
-            print(f"⚠️ Genius Act Error: {e}")
-        
-        try:
-            theme_res = analyze_theme_etf()
-            result.theme_etf_analysis = theme_res.to_dict()
-        except Exception as e:
-            print(f"⚠️ Theme ETF Error: {e}")
-        
-        try:
-            shock_res = analyze_shock_propagation(market_data)
-            result.shock_propagation = shock_res.to_dict()
-        except Exception as e:
-            print(f"⚠️ Shock Propagation Error: {e}")
-        
-        try:
-            port_res = optimize_portfolio_mst(market_data)
-            result.portfolio_weights = port_res.weights
-        except Exception as e:
-            print(f"⚠️ Portfolio Optimization Error: {e}")
-        
-        # Microstructure & Event Tracking
-        try:
-            vol_anomalies = analyze_volume_anomalies(market_data)
-            result.volume_anomalies = vol_anomalies
-        except Exception as e:
-            print(f"⚠️ Volume Analysis Error: {e}")
-        
-        try:
-            tracked_events = await track_events_with_news(market_data)
-            result.event_tracking = tracked_events
-        except Exception as e:
-            print(f"⚠️ Event Tracking Error: {e}")
-        
-        try:
-            expl_res = generate_explanation(market_data)
-            # result.market_explanation = expl_res 
-        except Exception as e:
-            print(f"⚠️ Explanation Gen Error: {e}")
-
     try:
         cp_res = analyze_critical_path(market_data)
         result.risk_score = cp_res.risk_score
         result.base_risk_score = cp_res.risk_score
     except Exception as e:
         print(f"⚠️ Critical Path Error: {e}")
+    
+    return events, regime_res
 
-    # Phase 3: Debate
+
+def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
+    """[Phase 2.2] 고급 분석: HFT, GARCH, DTW, DBSCAN, Liquidity, etc."""
+    print("\n[Phase 2.Enhanced] Running Advanced Metrics...")
+    
+    # Always run (quick or full)
+    _safe_call(lambda: setattr(result, 'hft_microstructure', analyze_hft_microstructure(market_data)), "HFT")
+    _safe_call(lambda: setattr(result, 'garch_volatility', analyze_volatility_garch(market_data)), "GARCH")
+    _safe_call(lambda: setattr(result, 'information_flow', analyze_information_flow(market_data)), "Info Flow")
+    _safe_call(lambda: setattr(result, 'proof_of_index', calculate_proof_of_index(market_data)), "PoI")
+    _safe_call(lambda: setattr(result, 'ark_analysis', analyze_ark_trades()), "ARK")
+    _safe_call(lambda: enhance_portfolio_with_systemic_similarity(market_data), "Systemic Sim")
+    
+    # Full mode only
+    if not quick_mode:
+        _safe_call(lambda: setattr(result, 'dtw_similarity', analyze_dtw_similarity(market_data)), "DTW")
+        _safe_call(lambda: setattr(result, 'dbscan_outliers', detect_outliers_with_dbscan(market_data)), "DBSCAN")
+        _safe_call(lambda: _set_liquidity(result), "Liquidity")
+        _safe_call(lambda: setattr(result, 'etf_flow_result', analyze_etf_flow().to_dict()), "ETF Flow")
+        _safe_call(lambda: _set_genius_act(result), "Genius Act")
+        _safe_call(lambda: setattr(result, 'theme_etf_analysis', analyze_theme_etf().to_dict()), "Theme ETF")
+        _safe_call(lambda: setattr(result, 'shock_propagation', analyze_shock_propagation(market_data).to_dict()), "Shock")
+        _safe_call(lambda: setattr(result, 'portfolio_weights', optimize_portfolio_mst(market_data).weights), "Portfolio")
+        _safe_call(lambda: setattr(result, 'volume_anomalies', analyze_volume_anomalies(market_data)), "Volume")
+
+
+def _set_liquidity(result):
+    liq_res = analyze_liquidity()
+    result.liquidity_signal = liq_res.signal
+    result.liquidity_analysis = liq_res.to_dict()
+
+
+def _set_genius_act(result):
+    ga_res = analyze_genius_act()
+    result.genius_act_signals = ga_res.signals
+    result.genius_act_regime = ga_res.regime
+
+
+def _analyze_sentiment_bubble(result: EIMASResult, market_data: Dict, quick_mode: bool):
+    """[Phase 2.3] 센티먼트 & 버블 분석"""
+    # Bubble (full mode only)
+    if not quick_mode:
+        try:
+            bubble_res = analyze_bubble_risk(market_data)
+            if bubble_res:
+                result.bubble_risk = BubbleRiskMetrics(**bubble_res)
+        except Exception as e:
+            print(f"⚠️ Bubble Risk Error: {e}")
+    
+    # Sentiment (always)
+    try:
+        result.sentiment_analysis = analyze_sentiment()
+    except Exception as e:
+        print(f"⚠️ Sentiment Error: {e}")
+
+
+async def _run_debate(result: EIMASResult, market_data: Dict):
+    """[Phase 3] AI 에이전트 토론: Dual Mode Debate"""
     print("\n[Phase 3] Running AI Debate...")
     try:
         debate_res = await run_dual_mode_debate(market_data)
@@ -213,115 +188,183 @@ async def run_integrated_pipeline(
         result.confidence = debate_res.confidence
         result.risk_level = debate_res.risk_level
         result.warnings.extend(debate_res.warnings)
-
-        # Phase 2-3 Enhanced Results (NEW)
         result.reasoning_chain = debate_res.reasoning_chain
-
-        # Transfer enhanced debate to agent_outputs/debate_results
+        
         if debate_res.enhanced_debate:
-            # Store interpretation and methodology results
             result.debate_consensus['enhanced'] = debate_res.enhanced_debate
-            print(f"      ✓ Enhanced Debate transferred: Interpretation={debate_res.enhanced_debate.get('interpretation', {}).get('recommended_action', 'N/A')}")
-
         if debate_res.verification:
-            # Store verification results
             result.debate_consensus['verification'] = debate_res.verification
-            print(f"      ✓ Verification transferred: Score={debate_res.verification.get('overall_score', 'N/A')}")
-
-        if debate_res.reasoning_chain:
-            print(f"      ✓ Reasoning Chain transferred: {len(debate_res.reasoning_chain)} steps")
-
         if debate_res.metadata:
             result.debate_consensus['metadata'] = debate_res.metadata
-            print(f"      ✓ Metadata: {debate_res.metadata.get('num_agents', 'N/A')} agents")
-
     except Exception as e:
         print(f"⚠️ Debate Error: {e}")
-    
-    # Adaptive Portfolio
+
+
+def _run_adaptive_portfolio(result: EIMASResult, regime_res, quick_mode: bool):
+    """[Phase 2.4] 적응형 포트폴리오 배분"""
     if not quick_mode:
         try:
-            adaptive_alloc = run_adaptive_portfolio(regime_res)
-            result.adaptive_portfolios = adaptive_alloc
+            result.adaptive_portfolios = run_adaptive_portfolio(regime_res)
         except Exception as e:
             print(f"⚠️ Adaptive Portfolio Error: {e}")
 
-    # Phase 4: Realtime (Optional)
-    if enable_realtime:
-        print("\n[Phase 4] Realtime Streaming...")
-        signals = await run_realtime_stream(duration=realtime_duration)
-        result.realtime_signals = [s.to_dict() for s in signals]
-        save_to_trading_db(signals) 
 
-    # Phase 5: Storage
+async def _run_realtime(result: EIMASResult, enable: bool, duration: int):
+    """[Phase 4] 실시간 스트리밍 (선택)"""
+    if enable:
+        print("\n[Phase 4] Realtime Streaming...")
+        signals = await run_realtime_stream(duration=duration)
+        result.realtime_signals = [s.to_dict() for s in signals]
+        save_to_trading_db(signals)
+
+
+def _save_results(result: EIMASResult, events: List) -> str:
+    """[Phase 5] 결과 저장: unified JSON (eimas_*.json)"""
     print("\n[Phase 5] Saving Results...")
     save_to_event_db(events)
     output_file = save_result_json(result)
     save_result_md(result)
+    return output_file
 
-    # Phase 6: Report (Optional)
-    report_content = ""
-    if generate_report:
-        print("\n[Phase 6] Generating Report...")
-        try:
-            ai_report = await generate_ai_report(result, market_data)
-            report_content = ai_report.content
-        except Exception as e:
-            print(f"⚠️ Report Generation Error: {e}")
 
-    # Phase 7: Validation (Whitening & Fact Check)
-    if generate_report:
-        print("\n" + "=" * 50)
-        print("PHASE 7: VALIDATION")
-        print("=" * 50)
-        
-        try:
-            whitening = run_whitening_check(result)
-            result.whitening_summary = whitening
-            
-            if report_content:
-                fact_grade = await run_fact_check(report_content)
-                result.fact_check_grade = fact_grade
-                
-            # Update JSON with validation results
-            save_result_json(result)
-        except Exception as e:
-            print(f"⚠️ Validation Error: {e}")
+async def _generate_report(result: EIMASResult, market_data: Dict, generate: bool) -> str:
+    """[Phase 6] AI 리포트 생성 (선택)"""
+    if not generate:
+        return ""
+    
+    print("\n[Phase 6] Generating Report...")
+    try:
+        ai_report = await generate_ai_report(result, market_data)
+        result.ai_report = ai_report.to_dict() if hasattr(ai_report, 'to_dict') else ai_report.__dict__
+        save_result_json(result)
+        return ai_report.content
+    except Exception as e:
+        print(f"⚠️ Report Generation Error: {e}")
+        return ""
+
+
+async def _validate_report(result: EIMASResult, report_content: str, generate: bool):
+    """[Phase 7] 리포트 검증: Whitening & Fact Check"""
+    if not generate:
+        return
+    
+    print("\n" + "=" * 50)
+    print("PHASE 7: VALIDATION")
+    print("=" * 50)
+    
+    try:
+        result.whitening_summary = run_whitening_check(result)
+        if report_content:
+            result.fact_check_grade = await run_fact_check(report_content)
+        save_result_json(result)
+    except Exception as e:
+        print(f"⚠️ Validation Error: {e}")
+
+
+def _run_ai_validation_phase(result: EIMASResult, full_mode: bool):
+    """[Phase 8] Multi-LLM 검증 (--full only, API 비용 발생)"""
+    if not full_mode:
+        return
+    
+    print("\n" + "=" * 50)
+    print("PHASE 8: AI VALIDATION (Multi-LLM)")
+    print("=" * 50)
+    
+    try:
+        result.validation_loop_result = run_ai_validation(result.to_dict())
+        save_result_json(result)
+    except Exception as e:
+        print(f"⚠️ AI Validation Error: {e}")
+
+
+def _safe_call(fn, name: str):
+    """안전한 함수 호출 (에러 시 경고만)"""
+    try:
+        fn()
+    except Exception as e:
+        print(f"⚠️ {name} Error: {e}")
+
+
+# ============================================================================
+# Main Pipeline
+# ============================================================================
+
+async def run_integrated_pipeline(
+    enable_realtime: bool = False,
+    realtime_duration: int = 30,
+    quick_mode: bool = False,
+    generate_report: bool = False,
+    full_mode: bool = False
+) -> EIMASResult:
+    """
+    EIMAS 통합 파이프라인 실행
+    
+    Args:
+        enable_realtime: 실시간 스트리밍 활성화
+        realtime_duration: 스트리밍 지속 시간 (초)
+        quick_mode: Quick 분석 모드 (버블/DTW 등 제외)
+        generate_report: AI 리포트 생성 여부
+        full_mode: 전체 기능 (AI Validation 포함)
+    """
+    start_time = datetime.now()
+    result = EIMASResult(timestamp=start_time.isoformat())
+
+    print("=" * 70)
+    print("  EIMAS - Integrated Analysis Pipeline")
+    print("=" * 70)
+
+    # Phase 1-2: Data & Analysis
+    market_data = await _collect_data(result, quick_mode)
+    events, regime_res = _analyze_basic(result, market_data)
+    _analyze_enhanced(result, market_data, quick_mode)
+    _analyze_sentiment_bubble(result, market_data, quick_mode)
+    _run_adaptive_portfolio(result, regime_res, quick_mode)
+    
+    # Phase 3-4: Debate & Realtime
+    await _run_debate(result, market_data)
+    await _run_realtime(result, enable_realtime, realtime_duration)
+    
+    # Phase 5-8: Storage, Report, Validation
+    output_file = _save_results(result, events)
+    report_content = await _generate_report(result, market_data, generate_report)
+    await _validate_report(result, report_content, generate_report)
+    _run_ai_validation_phase(result, full_mode)
 
     # Summary
     elapsed = (datetime.now() - start_time).total_seconds()
     print("\n" + "=" * 70)
     print(f"EIMAS PIPELINE COMPLETE ({elapsed:.1f}s)")
-    print(f"Files: {output_file}")
+    print(f"Output: {output_file}")
     print("=" * 70)
 
     return result
 
-# ============================================================================ 
+
+# ============================================================================
 # CLI Entry Point
-# ============================================================================ 
+# ============================================================================
 
 def main():
+    """CLI 진입점"""
     parser = argparse.ArgumentParser(description='EIMAS Modular Pipeline')
     parser.add_argument('--realtime', '-r', action='store_true', help='Enable realtime stream')
-    parser.add_argument('--duration', '-d', type=int, default=30, help='Stream duration')
-    # --short 옵션: 리포트 생성 안 함, 분석 기간 단축
-    parser.add_argument('--short', '-s', action='store_true', help='Short analysis mode (no report, quick data)')
-    # --quick은 하위 호환성을 위해 유지하되, --short와 동일하게 동작하도록 처리 가능
+    parser.add_argument('--duration', '-d', type=int, default=30, help='Stream duration (seconds)')
+    parser.add_argument('--short', '-s', action='store_true', help='Quick analysis (no bubble/DTW)')
     parser.add_argument('--quick', '-q', action='store_true', help='Alias for --short')
+    parser.add_argument('--full', '-f', action='store_true', help='All features (AI Validation, costs API)')
     
     args = parser.parse_args()
     
-    # short 또는 quick 모드이면 quick_mode=True, report=False
-    is_short_mode = args.short or args.quick
-    generate_report = not is_short_mode  # 기본적으로 리포트 생성 (short 모드가 아닐 때)
+    is_short = args.short or args.quick
     
     asyncio.run(run_integrated_pipeline(
         enable_realtime=args.realtime,
         realtime_duration=args.duration,
-        quick_mode=is_short_mode,
-        generate_report=generate_report
+        quick_mode=is_short,
+        generate_report=not is_short,
+        full_mode=args.full
     ))
+
 
 if __name__ == "__main__":
     main()

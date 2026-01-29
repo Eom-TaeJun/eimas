@@ -180,6 +180,11 @@ python main.py --mode report      # AI 리포트 포함
 python main.py --cron             # 크론/서버용 (최소 출력)
 python main.py --output /path     # 출력 디렉토리 지정
 python main.py --version          # v2.1.0 (Real-World Agent Edition)
+
+# Final Report Agent (2026-01-29 추가)
+python -m lib.final_report_agent                    # 기본 실행
+python -m lib.final_report_agent --user "엄태준"    # 사용자 이름 지정
+python -m lib.final_report_agent --output ./reports # 출력 경로 지정
 ```
 
 ## main.py 파이프라인 구조
@@ -236,7 +241,7 @@ Phase 7: WHITENING & FACT CHECK (--report 옵션)
 +-- 출력: whitening_summary, fact_check_grade
 ```
 
-## 신규 모듈 통합 상태 (16개)
+## 신규 모듈 통합 상태 (17개)
 
 | # | 모듈 | 통합 위치 | 상태 | 설명 |
 |---|------|----------|------|------|
@@ -256,6 +261,7 @@ Phase 7: WHITENING & FACT CHECK (--report 옵션)
 | 14 | `validate_integration_design.py` | scripts/ | ✅ | 아키텍처 통합 설계 검증 (2026-01-09) |
 | 15 | MarketQualityMetrics | main.py | ✅ | 시장 미세구조 메트릭 (2026-01-09) |
 | 16 | **Economic Insight Agent** | `agent/` | ✅ | **인과적 분석 에이전트 (2026-01-28)** |
+| 17 | **FinalReportAgent** | `lib/` | ✅ | **HTML 리포트 생성 에이전트 (2026-01-29)** |
 
 ## 핵심 데이터 클래스
 
@@ -386,6 +392,7 @@ eimas/
 |   |-- whitening_engine.py
 |   |-- autonomous_agent.py
 |   |-- ai_report_generator.py
+|   |-- final_report_agent.py   # HTML 리포트 생성 (NEW 2026-01-29)
 |   |-- binance_stream.py
 |   |-- microstructure.py
 |   |-- realtime_pipeline.py
@@ -501,6 +508,38 @@ python -m cli.eimas analyze --report
 ```
 
 ## 최근 업데이트 (Changelog)
+
+### v2.1.3 (2026-01-29) - Final Report Agent
+
+**Task: HTML 리포트 생성 에이전트** (2026-01-29)
+- `lib/final_report_agent.py` 신규 생성 (~900 lines)
+  - 경제/금융 도메인 최종 리포트 생성 에이전트
+  - outputs/에서 최신 JSON/MD 파일 자동 로드
+  - 16개 섹션 HTML 리포트 생성:
+    1. Header (타임스탬프, 상태 배지)
+    2. Executive Summary (4 메트릭 카드)
+    3. Valuation (Fed Model 바 차트)
+    4. ARK Invest (포지션 테이블)
+    5. Market Structure (DTW, DBSCAN)
+    6. Multi-Agent Debate (합의 결과)
+    7. Portfolio (파이 차트 + 배분 테이블)
+    8. Entry/Exit Strategy (진입/청산 전략)
+    9. Market News (뉴스 카드)
+    10. Scenario Analysis (시나리오 카드)
+    11. Technical Indicators (HFT, GARCH, PoI)
+    12. Detailed Signals (시그널 카드)
+    13. Risk Metrics (자산별 리스크)
+    14. AI Analysis (AI 종합 분석)
+    15. Footer (면책조항)
+  - CSS-only 시각화 (conic-gradient 파이 차트, flexbox 바 차트)
+  - 라이트 테마 디자인 (기존 PDF 레퍼런스 스타일)
+- CLI 인터페이스:
+  ```bash
+  python -m lib.final_report_agent --user "엄태준"
+  ```
+- 출력: `outputs/reports/{user}_report_summary_{date}.html`
+
+---
 
 ### v2.1.1 (2026-01-09) - Risk Analytics Enhancement
 

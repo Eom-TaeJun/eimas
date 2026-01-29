@@ -32,11 +32,11 @@ from lib.event_db import EventDatabase
 from pipeline.schemas import EIMASResult, Event, RealtimeSignal
 
 def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
-    """결과를 JSON 파일로 저장"""
+    """결과를 JSON 파일로 저장 (통합 포맷)"""
     print("\n" + "=" * 50)
     print("PHASE 5: DATABASE STORAGE")
     print("=" * 50)
-    print("\n[5.3] Saving JSON result...")
+    print("\n[5.3] Saving unified JSON result...")
     
     if output_dir is None:
         output_dir = Path(__file__).parent.parent / "outputs"
@@ -44,7 +44,8 @@ def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
     output_dir.mkdir(exist_ok=True, parents=True)
 
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"integrated_{timestamp_str}.json"
+    # NEW: 통합 파일명 (eimas_*)
+    output_file = output_dir / f"eimas_{timestamp_str}.json"
 
     try:
         with open(output_file, 'w') as f:
@@ -56,7 +57,7 @@ def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
         return ""
 
 def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
-    """결과를 Markdown 파일로 저장"""
+    """결과를 Markdown 파일로 저장 (통합 포맷)"""
     print("\n[5.4] Saving Markdown summary...")
     
     if output_dir is None:
@@ -65,7 +66,8 @@ def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
     output_dir.mkdir(exist_ok=True, parents=True)
 
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = output_dir / f"integrated_{timestamp_str}.md"
+    # NEW: 통합 파일명 (eimas_*)
+    output_file = output_dir / f"eimas_{timestamp_str}.md"
 
     try:
         md_content = result.to_markdown()

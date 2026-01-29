@@ -8,7 +8,7 @@ Example: from lib.fred_collector import FREDCollector
 """
 
 # Core exports only - most modules are imported directly in main.py
-__version__ = "2.1.2"
+__version__ = "2.1.3"
 
 # Optional: Add commonly used modules here with try-except for safety
 try:
@@ -26,6 +26,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from .final_report_agent import FinalReportAgent
+except ImportError:
+    pass
+
 __all__ = [
     '__version__',
+    'FinalReportAgent',
 ]

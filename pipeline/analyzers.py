@@ -925,3 +925,235 @@ def analyze_ark_trades() -> Dict[str, Any]:
     except Exception as e:
         log_error(logger, "ARK holdings analysis failed", e)
         return {}
+
+
+# ============================================================================
+# NEW: Bubble, Sentiment, Validation (2026-01-29 통합 작업)
+# ============================================================================
+
+def analyze_bubble_risk(market_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
+    """
+    버블 리스크 분석 (Bubbles for Fama 기반)
+
+    기능:
+    - 주요 자산의 Run-up 체크 (2년 누적 수익률 > 100%)
+    - 변동성 급등 탐지
+    - 주식 발행 증가 분석
+
+    References:
+    - Greenwood, Shleifer & You (2019)
+    """
+    print("\n[2.22] Bubble Risk Analysis (Bubbles for Fama)...")
+    try:
+        from lib.bubble_detector import BubbleDetector
+
+        detector = BubbleDetector()
+        results = {
+            'overall_status': 'NONE',
+            'risk_tickers': [],
+            'highest_risk_ticker': '',
+            'highest_risk_score': 0.0,
+            'methodology_notes': 'Bubbles for Fama (2019)'
+        }
+
+        # 주요 자산 분석
+        tickers_to_check = ['SPY', 'QQQ', 'IWM', 'ARKK']
+        risk_tickers = []
+        highest_score = 0.0
+        highest_ticker = ''
+
+        for ticker in tickers_to_check:
+            if ticker in market_data and not market_data[ticker].empty:
+                df = market_data[ticker]
+                if 'Close' in df.columns:
+                    try:
+                        detection = detector.detect(ticker, price_data=df['Close'])
+                        if detection.bubble_warning_level.value != "NONE":
+                            risk_tickers.append({
+                                'ticker': ticker,
+                                'warning_level': detection.bubble_warning_level.value,
+                                'risk_score': detection.risk_score,
+                                'runup': detection.runup.cumulative_return
+                            })
+                            if detection.risk_score > highest_score:
+                                highest_score = detection.risk_score
+                                highest_ticker = ticker
+                    except Exception as ex:
+                        logger.warning(f"Bubble detection failed for {ticker}: {ex}")
+
+        # 전체 상태 결정
+        if highest_score >= 70:
+            results['overall_status'] = 'DANGER'
+        elif highest_score >= 50:
+            results['overall_status'] = 'WARNING'
+        elif highest_score >= 30:
+            results['overall_status'] = 'WATCH'
+
+        results['risk_tickers'] = risk_tickers
+        results['highest_risk_ticker'] = highest_ticker
+        results['highest_risk_score'] = highest_score
+
+        print(f"      ✓ Bubble Status: {results['overall_status']}")
+        if risk_tickers:
+            print(f"      ⚠ Risk Tickers: {', '.join([t['ticker'] for t in risk_tickers])}")
+
+        return results
+    except Exception as e:
+        log_error(logger, "Bubble risk analysis failed", e)
+        return {}
+
+
+def analyze_sentiment() -> Dict[str, Any]:
+    """
+    센티먼트 분석 (Fear & Greed, VIX 구조, 뉴스)
+
+    기능:
+    - Fear & Greed Index 수집
+    - VIX Term Structure 분석
+    - 뉴스 센티먼트 분석
+
+    References:
+    - CNN Fear & Greed Index
+    """
+    print("\n[2.23] Sentiment Analysis...")
+    try:
+        from lib.sentiment_analyzer import SentimentAnalyzer
+
+        analyzer = SentimentAnalyzer()
+        results = {}
+
+        # Fear & Greed
+        try:
+            fg = analyzer.fetch_fear_greed_index()
+            if fg:
+                results['fear_greed'] = {
+                    'value': fg.value,
+                    'level': fg.level.value,
+                    'previous_close': fg.previous_close,
+                    'week_ago': fg.week_ago
+                }
+                print(f"      ✓ Fear & Greed: {fg.value} ({fg.level.value})")
+        except Exception as ex:
+            logger.warning(f"Fear & Greed fetch failed: {ex}")
+
+        # VIX Term Structure
+        try:
+            vix = analyzer.analyze_vix_term_structure()
+            if vix:
+                results['vix_structure'] = {
+                    'vix_spot': vix.vix_spot,
+                    'structure': vix.structure.value,
+                    'contango_ratio': vix.contango_ratio,
+                    'signal': vix.signal
+                }
+                print(f"      ✓ VIX Structure: {vix.structure.value} (Signal: {vix.signal})")
+        except Exception as ex:
+            logger.warning(f"VIX structure analysis failed: {ex}")
+
+        # News Sentiment
+        try:
+            news = analyzer.fetch_news_sentiment('SPY')
+            if news:
+                avg_score = sum(n.sentiment_score for n in news) / len(news)
+                results['news_sentiment'] = {
+                    'avg_score': avg_score,
+                    'count': len(news),
+                    'overall': 'BULLISH' if avg_score > 0.2 else 'BEARISH' if avg_score < -0.2 else 'NEUTRAL'
+                }
+                print(f"      ✓ News Sentiment: {results['news_sentiment']['overall']} (n={len(news)})")
+        except Exception as ex:
+            logger.warning(f"News sentiment fetch failed: {ex}")
+
+        return results
+    except Exception as e:
+        log_error(logger, "Sentiment analysis failed", e)
+        return {}
+
+
+def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, Any]:
+    """
+    AI 기반 투자 전략 검증 (Multi-LLM)
+
+    기능:
+    - Claude, Gemini, Perplexity, OpenAI 4개 AI의 독립 검증
+    - 합의 도출 및 신뢰도 계산
+    - 24시간 캐싱으로 API 비용 절감
+
+    References:
+    - validation_agents.py
+    """
+    print("\n[2.24] AI Validation (Multi-LLM)...")
+    try:
+        import os
+        import json
+        from datetime import datetime, timedelta
+        from pathlib import Path
+
+        # 캐시 확인
+        cache_path = Path("outputs/.validation_cache.json")
+        if use_cache and cache_path.exists():
+            try:
+                with open(cache_path, 'r') as f:
+                    cache = json.load(f)
+                cache_time = datetime.fromisoformat(cache['timestamp'])
+                if datetime.now() - cache_time < timedelta(hours=24):
+                    print("      ✓ Using cached validation result (< 24h old)")
+                    return cache['result']
+            except Exception:
+                pass
+
+        # API 키 확인
+        has_apis = all([
+            os.getenv('ANTHROPIC_API_KEY'),
+            os.getenv('OPENAI_API_KEY'),
+        ])
+        
+        if not has_apis:
+            print("      ⚠ AI Validation skipped: Missing API keys")
+            return {'status': 'SKIPPED', 'reason': 'Missing API keys'}
+
+        from lib.validation_agents import ValidationAgentManager
+
+        manager = ValidationAgentManager()
+        
+        # 검증 실행
+        agent_decision = {
+            'recommendation': result_data.get('final_recommendation', 'HOLD'),
+            'confidence': result_data.get('confidence', 0.5),
+            'risk_level': result_data.get('risk_level', 'MEDIUM'),
+        }
+        market_condition = {
+            'regime': result_data.get('regime', {}),
+            'risk_score': result_data.get('risk_score', 50),
+        }
+
+        consensus = manager.validate_all(agent_decision, market_condition)
+        
+        validation_result = {
+            'final_result': consensus.final_result.value,
+            'consensus_confidence': consensus.consensus_confidence,
+            'agreement_ratio': consensus.agreement_ratio,
+            'key_concerns': consensus.key_concerns,
+            'action_items': consensus.action_items,
+            'summary': consensus.summary
+        }
+
+        # 캐시 저장
+        if use_cache:
+            try:
+                cache_path.parent.mkdir(exist_ok=True)
+                with open(cache_path, 'w') as f:
+                    json.dump({
+                        'timestamp': datetime.now().isoformat(),
+                        'result': validation_result
+                    }, f)
+            except Exception:
+                pass
+
+        print(f"      ✓ AI Consensus: {consensus.final_result.value}")
+        print(f"      ✓ Agreement: {consensus.agreement_ratio:.0%}")
+
+        return validation_result
+    except Exception as e:
+        log_error(logger, "AI validation failed", e)
+        return {'status': 'ERROR', 'error': str(e)}

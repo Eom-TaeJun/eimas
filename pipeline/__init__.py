@@ -23,7 +23,11 @@ from .analyzers import (
     optimize_portfolio_mst,
     analyze_volume_anomalies,
     track_events_with_news,
-    run_adaptive_portfolio
+    run_adaptive_portfolio,
+    # NEW: 2026-01-29 통합
+    analyze_bubble_risk,
+    analyze_sentiment,
+    run_ai_validation
 )
 from .debate import (
     run_dual_mode_debate,
@@ -84,6 +88,10 @@ __all__ = [
     'analyze_volume_anomalies',
     'track_events_with_news',
     'run_adaptive_portfolio',
+    # NEW: 2026-01-29
+    'analyze_bubble_risk',
+    'analyze_sentiment',
+    'run_ai_validation',
     
     # Debate
     'run_dual_mode_debate',

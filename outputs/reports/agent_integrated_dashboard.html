@@ -1,0 +1,575 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>EIMAS Agent Intelligence Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; line-height: 1.6; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        /* 헤더 스타일 */
+        header { text-align: center; margin-bottom: 60px; border-bottom: 2px solid #334155; padding-bottom: 30px; }
+        h1 { color: #60a5fa; font-size: 2.8rem; margin: 0; }
+        .subtitle { color: #94a3b8; font-size: 1.1rem; margin-top: 10px; }
+
+        /* Agent 활동 강조 섹션 */
+        .agent-section { background: #1e293b; border-radius: 16px; padding: 30px; margin-bottom: 40px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #334155; }
+        h2 { color: #a855f7; border-bottom: 1px solid #475569; padding-bottom: 15px; margin-top: 0; font-size: 1.8rem; display: flex; align-items: center; gap: 10px; }
+        
+        /* 1. Council Debate Grid */
+        .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 25px; }
+        .agent-card { background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 25px; transition: transform 0.2s; }
+        .agent-card:hover { transform: translateY(-5px); border-color: #60a5fa; }
+        
+        .role-badge { display: inline-block; padding: 4px 12px; border-radius: 99px; font-weight: bold; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 15px; }
+        .role-economist { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; }
+        .role-advocate { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+        .role-risk { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid #10b981; }
+        
+        .stance { font-size: 1.5rem; font-weight: 800; margin-bottom: 15px; }
+        .stance-bearish { color: #f87171; }
+        .stance-bullish { color: #34d399; }
+        .stance-neutral { color: #fbbf24; }
+        
+        .reasoning-list { list-style: none; padding: 0; margin: 0; }
+        .reasoning-list li { padding: 8px 0; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-size: 0.95rem; }
+        .reasoning-list li:last-child { border-bottom: none; }
+        .reasoning-list li::before { content: "•"; color: #60a5fa; display: inline-block; width: 1em; margin-left: -1em; }
+
+        /* 2. Reasoning Chain Timeline */
+        .timeline { position: relative; padding-left: 40px; margin-top: 30px; }
+        .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: #334155; border-radius: 2px; }
+        
+        .step-item { position: relative; margin-bottom: 30px; background: #0f172a; padding: 20px; border-radius: 8px; border: 1px solid #334155; }
+        .step-item::before { content: ''; position: absolute; left: -46px; top: 20px; width: 16px; height: 16px; background: #a855f7; border-radius: 50%; border: 4px solid #1e293b; z-index: 1; }
+        
+        .step-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .agent-name { font-weight: bold; color: #a855f7; font-size: 1.1rem; }
+        .confidence { background: #334155; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        
+        .step-io { display: grid; grid-template-columns: 100px 1fr; gap: 10px; margin-bottom: 5px; font-size: 0.95rem; }
+        .label { color: #64748b; font-weight: 600; text-align: right; }
+        .value { color: #e2e8f0; }
+
+        /* 3. Report Content */
+        .report-box { background: #0f172a; padding: 30px; border-radius: 8px; font-family: 'Georgia', serif; line-height: 1.8; color: #e2e8f0; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>🧠 EIMAS Agent Intelligence Dashboard</h1>
+        <div class="subtitle">Economic Intelligence Multi-Agent System • Integrated Report</div>
+    </header>
+    
+    <!-- 1. The Council Debate -->
+    <div class="agent-section">
+        <h2>🏛️ The Council Debate (Multi-LLM)</h2>
+        <p style="color:#94a3b8">Three specialized AI agents debated the market interpretation.</p>
+        <div class="agent-grid">
+        <div class="agent-card">
+            <span class="role-badge role-economist">Economist</span>
+            <div class="stance stance-bearish">BEARISH</div>
+            <ul class="reasoning-list"><li>Risk Score of 9.0 indicates extreme market stress and potential systemic vulnerabilities in the crypto sector, suggesting unsustainable valuations despite current bull regime</li><li>High regime confidence (82%) combined with maximum risk suggests a classic late-cycle bubble formation where euphoria masks underlying structural weaknesses</li><li>Crypto markets exhibit classic Austrian malinvestment characteristics - artificial liquidity from prolonged low rates has distorted capital allocation, creating fragile speculative structures that are vulnerable to monetary tightening</li></ul></div>
+        <div class="agent-card">
+            <span class="role-badge role-advocate">Devil's Advocate</span>
+            <div class="stance stance-bearish">BEARISH</div>
+            <ul class="reasoning-list"><li>Current high risk score of 9.0 suggests significant underlying vulnerabilities and issues within the crypto market that could lead to instability or sharp corrections.</li><li>The lack of regulation and historical precedence for cryptocurrency behavior in various economic climates contributes to uncertainty and potential systemic risks.</li><li>Crypto's primary risk being itself indicates an inherent volatility and reliance on speculative trading which does not necessarily align with fundamental economic values and can lead to bubbles or crashes.</li></ul></div>
+        <div class="agent-card">
+            <span class="role-badge role-risk">Risk Manager</span>
+            <div class="stance stance-neutral">NEUTRAL</div>
+            <ul class="reasoning-list"><li>Client not configured</li><li>Using default fallback</li></ul></div></div>
+    </div>
+
+    <!-- 2. Reasoning Chain -->
+    <div class="agent-section" style="border-color: #a855f7;">
+        <h2>🔗 Reasoning Chain (Traceability)</h2>
+        <p style="color:#94a3b8">Step-by-step decision audit trail of the Meta-Orchestrator.</p>
+        <div class="timeline">
+    <div class="step-item">
+        <div class="step-header">
+            <span class="agent-name">Step 1: AnalysisAgent</span>
+            <span class="confidence">Confidence: 82.2%</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Input:</span>
+            <span class="value">Market data + CriticalPath analysis</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Output:</span>
+            <span class="value" style="color:#a855f7">Risk=9.0, Regime=BULL</span>
+        </div></div>
+    <div class="step-item">
+        <div class="step-header">
+            <span class="agent-name">Step 2: DebateProtocol</span>
+            <span class="confidence">Confidence: 60.0%</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Input:</span>
+            <span class="value">3 opinions on 1 topics</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Output:</span>
+            <span class="value" style="color:#a855f7">Consensus on 1 topics</span>
+        </div>
+        <div class="step-io" style="margin-top:10px">
+            <span class="label">Key Factors:</span>
+            <span class="value">crypto_correlation: Moderate crypto-equity correlation</span>
+        </div></div>
+    <div class="step-item">
+        <div class="step-header">
+            <span class="agent-name">Step 3: MultiLLMDebate</span>
+            <span class="confidence">Confidence: 70.0%</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Input:</span>
+            <span class="value">Analysis results + Economic schools</span>
+        </div>
+        <div class="step-io">
+            <span class="label">Output:</span>
+            <span class="value" style="color:#a855f7">Interpretation: BEARISH, Methodology: NEUTRAL</span>
+        </div>
+        <div class="step-io" style="margin-top:10px">
+            <span class="label">Key Factors:</span>
+            <span class="value">Claude (Economist), GPT-4 (Devil's Advocate), Gemini (Risk Manager)</span>
+        </div></div></div>
+    </div>
+
+    <!-- 3. AI Report -->
+    <div class="agent-section">
+        <h2>📄 AI Investment Report (Full Text)</h2>
+        <div class="report-box"># EIMAS 투자 제안서
+**생성일시**: 2026-01-28T18:41:14.398292
+
+---
+## 📊 이전 리포트 대비 변화
+**비교 대상**: 2026-01-25T04:11:40.345893
+
+**변화 수준**: 🟢 MINOR
+
+### 📈 지표 비교
+| 항목 | 이전 | 현재 | 변화 |
+|------|------|------|------|
+| 레짐 | Bull (Low Vol) | Bull (Low Vol) | ➡️ SAME |
+| 신뢰도 | 75% | 71% | ⬇️ -4%p |
+| 리스크 점수 | 10.8 | 9.0 | ⬇️ -1.8 |
+| VIX | 16.1 | 16.2 | ⬆️ +0.2 |
+| 투자 권고 | BULLISH | BULLISH | ➡️ |
+
+---
+
+## 1. 시장 요약
+현재 시장은 **Bull (Low Vol)** 레짐에 있으며,
+추세는 **Weak Uptrend**, 변동성은 **Normal** 수준입니다.
+
+**유동성 현황:**
+- RRP: $1.3B (Δ-0.2B)
+- TGA: $869.3B (Δ+90.1B)
+- Net Liquidity: $5714.1B (Abundant)
+
+**금리 환경:**
+- Fed Funds: 3.64%
+- 10Y Treasury: 4.22%
+- 10Y-2Y Spread: 0.71% (Normal)
+
+## 2. 레짐 분석
+
+**현재 레짐**: Bull (Low Vol)
+**신뢰도**: 75%
+**설명**: 최적의 투자 환경. 리스크 자산 선호
+**권장 전략**: 주식 비중 확대, 성장주/소형주 선호
+
+두 분석 모드(FULL/REFERENCE) 결과:
+- FULL Mode: BULLISH
+- REFERENCE Mode: BULLISH
+- 모드 일치: 예
+
+
+### 📊 신뢰도 분석
+레짐 신뢰도(75%)와 최종 권고 신뢰도(71%)가 일관성 있게 유지되고 있습니다.
+
+✅ **높은 신뢰도**: 분석 결과에 대한 확신이 높습니다.
+
+## 3. 기술적 지표
+### 📈 주요 지수
+- **SPY**: $695.49 (S&P 500 ≈ 6,955)
+- **VIX**: 16.25 (-0.61%)
+
+### 📉 모멘텀 지표
+- **RSI (14일)**: 53.9
+  - 해석: 중립 구간
+- **MACD**: 2.42
+- **MACD Signal**: 2.53
+  - 해석: 매도 신호
+
+### 📊 이동평균선
+- **50일 이동평균**: 681.37
+- **200일 이동평균**: 635.72
+  - 해석: 골든 크로스 상태 (상승 추세)
+
+### 🎯 지지/저항선
+- **지지선**: 677.58
+- **저항선**: 695.49
+
+## 4. 국제 시장 분석
+### 💵 달러 인덱스
+- **DXY**: 96.17 (-0.06%)
+
+### 🌍 글로벌 지수
+- **DAX (독일)**: 24,827.21 (-0.27%)
+- **FTSE 100 (영국)**: 10,186.21 (-0.21%)
+- **Nikkei 225 (일본)**: 53,358.71 (+0.05%)
+- **Shanghai Composite (중국)**: 4,151.24 (+0.27%)
+- **KOSPI (한국)**: 5,170.81 (+1.69%)
+
+### ⛏️ 원자재
+- **Gold**: $5,305.70 (+4.44%)
+- **WTI 원유**: $62.27 (-0.19%)
+- **Copper**: $5.95 (+2.06%)
+
+### 📊 글로벌 시장 심리
+- **글로벌 심리**: 🟡 NEUTRAL
+- **미국 시장 연동성**: 지역별 차별화
+- **주요 리스크**:
+  - 안전자산 선호 증가 - 위험 회피 심리
+
+## 5. 리스크 평가
+
+🟢 **리스크 점수**: 9.0/100 (매우 낮음)
+
+**최종 권고**: BULLISH
+**신뢰도**: 71%
+
+
+## 6. 시나리오 분석
+### 📊 Base Case (기본 시나리오)
+- **확률**: 55%
+- **예상 수익률**: +8% ~ +12%
+- **S&P 500 목표**: 7,200 ~ 7,400
+- **전략**: 현재 포지션 유지, 조정 시 추가 매수
+- **주요 트리거**:
+  - 현재 경제 지표 추세 유지
+  - Fed 정책 예상대로 진행
+  - 기업 실적 컨센서스 부합
+
+### 🐂 Bull Case (강세 시나리오)
+- **확률**: 30%
+- **예상 수익률**: +15% ~ +20%
+- **S&P 500 목표**: 7,600 ~ 8,000
+- **전략**: 주식 비중 최대 확대, 성장주/소형주 집중, 레버리지 ETF 활용
+- **주요 트리거**:
+  - 인플레이션 예상보다 빠른 안정화
+  - Fed 금리 인하 가속화
+  - AI 생산성 향상 가시화
+  - 중국 경기 부양책 효과
+
+### 🐻 Bear Case (약세 시나리오)
+- **확률**: 15%
+- **예상 수익률**: -10% ~ -15%
+- **S&P 500 목표**: 5,800 ~ 6,200
+- **전략**: 주식 비중 최소화, 현금/채권 확대, 인버스 ETF 헤지
+- **주요 트리거**:
+  - 인플레이션 재상승
+  - Fed 긴축 재개
+  - 경기 침체 진입
+  - 지정학적 리스크 확대
+  - 신용 위기 발생
+
+## 7. 주목할 종목
+### GLD
+- 1일 변화: +2.45%
+- 5일 변화: +7.33%
+- 20일 변화: +19.44%
+- 변동성: 1.70%
+- **주목 이유**: 5일간 큰 상승 (+7.3%)
+
+GLD는 최근 금 가격의 상승과 함께 강한 상승세를 보이고 있습니다. 글로벌 경제 불확실성과 인플레이션 우려가 금에 대한 안전자산 수요를 증가시켰으며, 이는 GLD의 가격 상승에 기여한 주요 요인입니다. 현재 시장이 강세장에 있으며 변동성이 낮은 상황에서, GLD는 추가 상승 여력이 있을 수 있지만, 금 가격의 변동성에 주의가 필요합니다. 리스크 점수가 낮아 상대적으로 안정적인 투자로 평가되지만, 외부 경제 요인의 변화에 민감할 수 있습니다.
+
+### ^VIX
+- 1일 변화: -0.61%
+- 5일 변화: +3.90%
+- 20일 변화: +13.40%
+- 변동성: 7.97%
+- **주목 이유**: 높은 변동성 (일일 8.0%)
+
+^VIX는 시장의 변동성을 측정하는 지표로, 최근 20일 동안 13.40% 상승하며 변동성이 증가하고 있습니다. 이는 투자자들이 시장의 불확실성에 대해 우려하고 있음을 시사합니다. 현재 시장이 Bull (Low Vol) 상태임에도 불구하고 VIX의 상승은 잠재적인 조정이나 시장 변동성을 예고할 수 있습니다. 향후 경제 지표나 주요 이벤트에 따라 VIX의 움직임이 계속해서 주목받을 가능성이 높습니다.
+
+### ETH-USD
+- 1일 변화: -0.57%
+- 5일 변화: +1.91%
+- 20일 변화: -2.53%
+- 변동성: 3.09%
+- **주목 이유**: 높은 변동성 (일일 3.1%)
+
+ETH-USD는 최근 1일 동안 -0.57% 하락했지만, 5일 변화에서는 +1.91% 상승을 보였습니다. 이는 단기적으로 긍정적인 시장 심리를 반영할 수 있으며, 현재 Bull 시장 레짐에서의 저변동성 환경이 이를 뒷받침합니다. 그러나 20일 변화가 -2.53%로 나타나면서 중기적인 불확실성이 존재함을 시사합니다. 높은 변동성(3.09%)은 투자자들에게 리스크를 의미하지만, 리스크 점수가 9.0/100으로 낮아 상대적으로 안정적인 투자 기회로 평가될 수 있습니다. 향후 시장의 방향은 글로벌 경제 상황과 암호화폐 규제 변화에 따라 달라질 가능성이 큽니다.
+
+## 8. 최신 뉴스 및 이벤트
+### 1. 미국 주식시장 상황 및 전망 (Bull Low Vol 레짐)
+S&P 500 지수는 1월 27일 6990포인트로 0.58% 상승하며 사상 최고치를 경신했으며, 나스닥도 기술주 강세로 1% 상승 마감했다[2][8]. 다만 2026년 전망은 엇갈리는데, 경제 성장 2.5%에도 과도한 실적 기대(14%)와 인플레이션으로 하락 가능성을 경고하는 분석이 나오고 있으며, 전문가 64개 중 2개만 하락 전망[1][7]. 원자재 섹터(은 65.8%↑) 강세와 기술주 양극화, 중소형주 약세 지속 중[3][4][8].
+
+### 2. Fed 통화정책 및 금리 전망
+연준은 1월 회의에서 금리 동결(3.50~3.75%)이 90% 이상 예상되며, CPI 2.7%, PCE 2.8%, 실업률 4.4% 상황에서 파월 메시지에 주목[6]. 인플레이션 지속과 고용 둔화 평가로 인내심 유지 전망[6]. 트럼프 정책 불확실성 속 채권 금리 4%대 등락 가능[1].
+
+### 3. 주요 경제 지표 발표 일정
+- **1월 28일(오늘)**: 연준 FOMC 금리 결정 발표 및 파월 기자회견[6][10].
+- 실적 발표 주간: 메가캡 기업(마이크로소프트, 애플 등) 4Q 실적 대기 중[2][4].
+- 추가: 일본 채권 시장 불안정 여파, 트럼프 정책 변화 반응 모니터링[4].
+
+### 4. 종목 최근 뉴스
+| 종목 | 최근 동향 |
+|------|-----------|
+| **GLD** (금 ETF) | 1월 원자재 섹터 폭발적 강세 속 은 관련주(Hecla Mining 65.8%↑) 동반 상승, 인플레이션 헤지 수요 증가[3]. |
+| **^VIX** | 1월 28일 16.16 (-0.19%), 저변동성(Bull Low Vol) 유지하나 지속 변동성 논란[2]. |
+| **ETH-USD** | 직접 뉴스 없음. 미국 주식 기술주 강세(AI·바이오)와 글로벌 자금 흐름 영향 받을 전망[9]. |
+
+## 9. AI 종합 분석
+# 📊 종합 시장 분석 리포트
+
+## 1. 현재 시장 상황 해석
+
+### 🟢 최적화된 투자 환경 지속
+현재 시장은 **Bull (Low Vol)** 레짐으로, 투자자들에게 가장 우호적인 환경을 제공하고 있습니다. S&P 500이 6990포인트로 사상 최고치를 경신하며 상승 모멘텀을 유지하고 있고, 변동성(VIX 16.16)은 안정적 수준을 보이고 있습니다.
+
+### 💰 풍부한 시장 유동성
+- **Net Liquidity**: $5.7조로 풍부한 수준
+- **RRP 감소**: $1.3B로 시장 자금 공급 확대
+- **TGA 증가**: $869.3B로 정부 현금 보유 늘어남
+
+이는 시장에 충분한 자금이 공급되고 있어 리스크 자산에 대한 수요를 뒷받침하고 있습니다.
+
+## 2. 주요 리스크 요인
+
+### ⚠️ 단기 리스크 (리스크 점수: 9.0/100 - 매우 낮음)
+
+**1. FOMC 회의 결과 (오늘 발표)**
+- 금리 동결 확률 90% 이상이나 파월 의장의 향후 통화정책 메시지가 핵심
+- 인플레이션 지속(CPI 2.7%, PCE 2.8%) 우려
+
+**2. 기업 실적 부담**
+- 2026년 기업 실적 기대치 14%로 과도하게 높은 수준
+- 메가캡 기업들의 4분기 실적 발표 대기
+
+**3. 정책 불확실성**
+- 트럼프 정책 변화에 따른 시장 반응 모니터링 필요
+
+## 3. 기회 요인
+
+### 🚀 핵심 성장 동력
+
+**1. 원자재 슈퍼사이클 신호**
+- 은 관련주 65.8% 급등 등 원자재 섹터 폭발적 강세
+- 인플레이션 헤지 수요로 금(GLD) 7.3% 상승
+
+**2. 기술주 양극화 기회**
+- AI·바이오 등 핵심 기술 분야 지속 강세
+- 나스닥 1% 상승으로 기술주 모멘텀 유지
+
+**3. 안정적 거시경제 환경**
+- 경제성장률 2.5% 유지 전망
+- 실업률 4.4%로 완전고용 수준
+
+## 4. 섹터/자산군별 전망
+
+### 📈 섹터별 투자 전망
+
+| 섹터 | 전망 | 근거 |
+|------|------|------|
+| **원자재** | 🟢 매우 긍정적 | 슈퍼사이클 진입, 인플레이션 헤지 수요 |
+| **기술주(AI/바이오)** | 🟢 긍정적 | 핵심 성장 동력, 나스닥 강세 |
+| **금융주** | 🟡 중립 | 금리 동결 예상, 수익성 개선 제한적 |
+| **중소형주** | 🔴 주의 | 지속적 약세, 대형주 대비 부진 |
+
+### 💎 자산군별 배분 전략
+
+**1. 주식 (비중 확대 권고)**
+- 대형 성장주 중심 포트폴리오 구성
+- 원자재 관련주 전략적 편입
+
+**2. 채권**
+- 10년물 4.22%로 상당한 수익률 제공
+- 금리 동결 시 채권 가격 상승 기대
+
+**3. 대안투자**
+- 금(GLD): 인플레이션 헤지 및 포트폴리오 안정성
+- 암호화폐(ETH): 기술주 강세와 연동 가능성
+
+## 5. 투자자 유형별 권고사항
+
+### 🎯 보수적 투자자
+**권고 포트폴리오: 주식 60% | 채권 30% | 대안투자 10%**
+- 배당주 및 대형 우량주 중심
+- 금 ETF로 안정성 확보
+- 단기채로 유동성 관리
+
+### 🚀 적극적 투자자  
+**권고 포트폴리오: 주식 80% | 대안투자 15% | 현금 5%**
+- 성장주 및 원자재 관련주 집중
+- 기술주 중 AI/바이오 선별 투자
+- 암호화폐 소량 편입
+
+### 💼 기관투자자
+**권고 포트폴리오: 다각화된 글로벌 포트폴리오**
+- 지역별 분산투자 (미국 60%, 신흥국 20%, 선진국 20%)
+- 섹터 로테이션 전략 활용
+- 헤징 전략으로 리스크 관리
+
+## 📋 결론 및 향후 전망
+
+현재 시장은 **투자자에게 매우 우호적인 환경**을 제공하고 있습니다. 풍부한 유동성과 안정적인 경제 성장, 낮은 변동성이 리스크 자산에 대한 투자 매력을 높이고 있습니다.
+
+**단기적으로는** 오늘 발표되는 FOMC 결과와 주요 기업들의 실적 발표에 주목해야 하며, **중장기적으로는** 원자재 슈퍼사이클과 AI 기술 혁신이 주요 투자 기회를 제공할 것으로 전망됩니다.
+
+**핵심 투자 전략**: 주식 비중 확대, 성장주 및 원자재 관련주 선호, 적절한 분산투자를 통한 리스크 관리
+
+---
+*본 분석은 현재 시점 기준이며, 시장 상황 변화에 따라 전략 조정이 필요할 수 있습니다.*
+
+## 10. 투자 권고
+현재 시장 상황을 고려한 투자 권고는 다음과 같습니다:
+
+1. **자산배분 권고:**
+   - 주식: 70%
+   - 채권: 20%
+   - 현금: 10%
+
+2. **섹터 선호도:**
+   - 기술주: Overweight
+   - 헬스케어: Overweight
+   - 에너지: Neutral
+   - 금융: Underweight
+
+3. **구체적인 ETF 또는 종목 제안:**
+   - 기술주 ETF: QQQ (Invesco QQQ Trust)
+   - 헬스케어 ETF: XLV (Health Care Select Sector SPDR Fund)
+   - 개별 종목: 삼성전자 (005930.KS), 네이버 (035420.KS)
+
+4. **진입/청산 전략:**
+   - 진입: 현재 시장이 Bullish하고 변동성이 낮으므로 단계적으로 매수하여 평균 매입가를 낮추는 전략을 추천합니다.
+   - 청산: 목표 수익률에 도달하거나 시장 변동성이 급격히 증가할 경우 부분 청산을 고려하세요.
+
+5. **리스크 관리 방안:**
+   - 손절매 설정: 각 종목 및 ETF에 대해 10% 손절매를 설정하여 하락 리스크를 관리합니다.
+   - 포트폴리오 다각화: 다양한 섹터와 자산군에 분산 투자하여 리스크를 줄입니다.
+   - 정기적인 포트폴리오 리뷰: 시장 상황 변화에 따라 자산 배분 및 섹터 선호도를 주기적으로 재평가합니다.
+
+이러한 전략을 통해 현재 시장의 긍정적인 흐름을 활용하면서도 리스크를 효과적으로 관리할 수 있을 것입니다.
+
+## 11. 진입/청산 전략
+### 📍 현재 가격: $695.49
+
+### 📥 진입 전략
+**분할 매수 비율**: 30%-30%-40%
+
+| 구분 | 진입가 | 비율 | 조건 |
+|------|--------|------|------|
+| 1차 진입 | $695.49 | 30% | 즉시 진입 |
+| 2차 진입 | $684.36 | 30% | 지지선 확인 후 |
+| 3차 진입 | $677.58 | 40% | 지지선 터치 시 |
+
+### 📤 청산 전략
+| 구분 | 목표가 | 비율 | 예상 수익 |
+|------|--------|------|----------|
+| 1차 청산 | $695.49 | 50% | +0.0% |
+| 2차 청산 | $716.35 | 30% | +3.0% |
+| 3차 청산 | $730.26 | 20% | +5.0% |
+
+### 🛑 손절 전략
+- **손절가**: $657.25 (-5.5%)
+- **트레일링 스탑**: 고점 대비 -5% 하락 시
+
+### 📊 시나리오별 전략
+- **상승장**: 레버리지 ETF (SSO) 비중 확대 고려
+- **하락장**: 현금 비중 50%로 확대, 방어주 중심
+
+### ⚖️ 포지션 관리
+- **포지션 사이징**: 총 자산의 44% 배분
+- **리밸런싱 조건**: 저항선 돌파 시 추가 매수, RSI 70 이상 시 일부 청산
+
+
+## 12. 추천 섹터 및 산업군
+### 📈 강세 예상 섹터
+**기술**
+- 투자 의견: Overweight
+- 근거: 기술주 강세와 AI 및 바이오 기술의 발전으로 인한 지속적인 성장 기대.
+- 관련 ETF: XLK
+
+**소재**
+- 투자 의견: Overweight
+- 근거: 원자재 섹터의 강세와 인플레이션 헤지 수요 증가로 인한 긍정적 전망.
+- 관련 ETF: XLB
+
+### ➡️ 중립 섹터
+**헬스케어**
+- 투자 의견: Neutral
+- 근거: 기술 발전과 인구 고령화로 인한 장기적 성장 가능성에도 불구하고 단기적 불확실성 존재.
+
+**금융**
+- 투자 의견: Neutral
+- 근거: 금리 동결과 인플레이션 지속에 따른 수익성 압박 가능성.
+
+### 📉 약세 예상 섹터
+**부동산**
+- 투자 의견: Underweight
+- 근거: 금리 변동성과 경제 성장 둔화 우려로 인한 부정적 전망.
+
+**중소형주**
+- 투자 의견: Underweight
+- 근거: 기술주 양극화와 대형주 중심의 시장 흐름으로 인한 약세 지속.
+
+### 🔥 주목할 산업군
+- **AI 및 바이오 기술**: 기술주 강세와 혁신적 기술 발전으로 인한 투자자 관심 증가.
+- **은 관련 산업**: 원자재 섹터의 강세와 인플레이션 헤지 수요로 인한 주목.
+
+### 🤖 AI 섹터 분석
+현재 시장은 기술주와 원자재 섹터의 강세가 두드러지며, 특히 AI 및 바이오 기술의 발전이 주목받고 있습니다. 금리 동결과 인플레이션 지속은 금융 및 부동산 섹터에 부담을 줄 수 있으며, 중소형주는 대형주 중심의 시장 흐름에 밀려 약세를 보일 가능성이 큽니다. 투자자들은 이러한 시장 상황을 고려하여 포트폴리오를 조정할 필요가 있습니다.
+
+## 13. 최종 제안
+
+📈 **적극적 매수** (신뢰도: 71%)
+
+현재 시장은 Bull (Low Vol) 레짐에서 리스크 점수 9.0/100 수준입니다.
+두 분석 모드(FULL/REFERENCE)가 일치하여
+신호의 신뢰성이 높습니다.
+
+
+### 액션 아이템
+- 주식 비중 확대 고려
+- 성장주/소형주 비중 점검
+- 레버리지 ETF 검토 가능
+
+### 리스크 경고
+- ⚠️ 📊 저항선 근접 - 돌파 실패 시 조정 가능
+- ⚠️ 🥇 금 급등 (4.4%) - 안전자산 선호 증가
+
+## 14. 참고문헌 및 데이터 소스
+### 📚 데이터 소스
+- Yahoo Finance (시장 데이터, 2026-01-28 18:42 기준)
+- FRED - Federal Reserve Economic Data (유동성/금리 데이터)
+- Perplexity AI (실시간 뉴스 검색)
+- OpenAI GPT-4o (투자 분석 및 권고)
+- Anthropic Claude Sonnet (종합 분석)
+
+## 17. 면책조항
+
+⚠️ **투자 위험 고지**
+
+본 리포트는 정보 제공 목적으로만 작성되었으며, 투자 권유나 매매 추천을 구성하지 않습니다.
+
+**주요 한계점:**
+- AI 모델의 분석은 과거 데이터에 기반하며, 미래 수익을 보장하지 않습니다
+- 시장 데이터는 15-20분 지연될 수 있습니다
+- 레짐 탐지 모델은 급격한 시장 변화에 후행할 수 있습니다
+- 뉴스 분석은 실시간이 아닐 수 있습니다
+
+**투자자 유의사항:**
+- 모든 투자 결정은 본인의 판단과 책임 하에 이루어져야 합니다
+- 투자 전 전문 금융 상담사와 상담하시기 바랍니다
+- 과거 수익률이 미래 수익을 보장하지 않습니다
+- 레버리지 상품은 원금 손실 위험이 있습니다
+
+</div>
+    </div>
+</div>
+</body>
+</html>
