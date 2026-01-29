@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import useSWR from "swr"
 import { fetchLatestAnalysis } from "@/lib/api"
+import { formatBillions, safeToFixed, safeNumber } from "@/lib/format"
 import type { EIMASAnalysis } from "@/lib/types"
 import { TrendingUp, TrendingDown, DollarSign, AlertCircle } from "lucide-react"
 
@@ -18,23 +19,17 @@ export function FREDLiquidityDashboard() {
 
   const fred = analysis.fred_summary
 
-  const formatBillions = (value: number) => {
-    if (value >= 1000) {
-      return `$${(value / 1000).toFixed(2)}T`
-    }
-    return `$${value.toFixed(1)}B`
-  }
+  // Using imported formatBillions from @/lib/format
 
   const getDeltaBadge = (delta: number) => {
     const isPositive = delta > 0
     return (
       <Badge
         variant="outline"
-        className={`${
-          isPositive
+        className={`${isPositive
             ? "bg-green-500/10 text-green-400 border-green-500/20"
             : "bg-red-500/10 text-red-400 border-red-500/20"
-        } text-xs`}
+          } text-xs`}
       >
         {isPositive ? "+" : ""}
         {formatBillions(delta)}
@@ -156,7 +151,7 @@ export function FREDLiquidityDashboard() {
             <CardTitle className="text-xs font-medium text-gray-400">Fed Funds Rate</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{fred.fed_funds.toFixed(2)}%</div>
+            <div className="text-2xl font-bold text-white">{safeToFixed(fred.fed_funds, 2)}%</div>
           </CardContent>
         </Card>
 
@@ -165,7 +160,7 @@ export function FREDLiquidityDashboard() {
             <CardTitle className="text-xs font-medium text-gray-400">10Y Treasury</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{fred.treasury_10y.toFixed(2)}%</div>
+            <div className="text-2xl font-bold text-white">{safeToFixed(fred.treasury_10y, 2)}%</div>
           </CardContent>
         </Card>
 
@@ -176,8 +171,8 @@ export function FREDLiquidityDashboard() {
           <CardContent>
             <div className="space-y-2">
               <div className="text-xl font-bold text-white">
-                {fred.spread_10y2y > 0 ? "+" : ""}
-                {(fred.spread_10y2y * 100).toFixed(0)}bp
+                {safeNumber(fred.spread_10y2y) > 0 ? "+" : ""}
+                {safeToFixed(safeNumber(fred.spread_10y2y) * 100, 0)}bp
               </div>
               <Badge variant="outline" className={getCurveColor(fred.curve_status)}>
                 {fred.curve_status}

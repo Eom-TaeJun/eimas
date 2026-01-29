@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import useSWR from "swr"
 import { fetchLatestAnalysis } from "@/lib/api"
+import { formatBillions, safeToFixed, safeNumber } from "@/lib/format"
 import type { EIMASAnalysis } from "@/lib/types"
 import { Coins, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react"
 
@@ -32,9 +33,7 @@ export function StablecoinMonitor() {
   const meta = stablecoinSignal.metadata
   const components = meta.components || {}
 
-  const formatBillions = (value: number) => {
-    return `$${value.toFixed(1)}B`
-  }
+  // Using imported formatBillions from @/lib/format
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -96,20 +95,18 @@ export function StablecoinMonitor() {
             <div>
               <div className="text-xs text-gray-400 mb-1">7-Day Change</div>
               <div
-                className={`text-2xl font-bold ${
-                  meta.total_delta_7d > 0 ? "text-green-400" : "text-red-400"
-                }`}
+                className={`text-2xl font-bold ${meta.total_delta_7d > 0 ? "text-green-400" : "text-red-400"
+                  }`}
               >
                 {meta.total_delta_7d > 0 ? "+" : ""}
                 {formatBillions(meta.total_delta_7d)}
               </div>
               <div
-                className={`text-xs ${
-                  meta.total_delta_pct > 0 ? "text-green-400" : "text-red-400"
-                }`}
+                className={`text-xs ${meta.total_delta_pct > 0 ? "text-green-400" : "text-red-400"
+                  }`}
               >
-                {meta.total_delta_pct > 0 ? "+" : ""}
-                {meta.total_delta_pct.toFixed(2)}%
+                {safeNumber(meta.total_delta_pct) > 0 ? "+" : ""}
+                {safeToFixed(meta.total_delta_pct, 2)}%
               </div>
             </div>
             <div>
@@ -148,20 +145,18 @@ export function StablecoinMonitor() {
                 <div>
                   <div className="text-xs text-gray-400">7-Day Change</div>
                   <div
-                    className={`text-sm font-mono ${
-                      data.delta_7d > 0 ? "text-green-400" : "text-red-400"
-                    }`}
+                    className={`text-sm font-mono ${data.delta_7d > 0 ? "text-green-400" : "text-red-400"
+                      }`}
                   >
                     {data.delta_7d > 0 ? "+" : ""}
                     {formatBillions(data.delta_7d)}
                   </div>
                   <div
-                    className={`text-xs ${
-                      data.delta_pct > 0 ? "text-green-400" : "text-red-400"
-                    }`}
+                    className={`text-xs ${data.delta_pct > 0 ? "text-green-400" : "text-red-400"
+                      }`}
                   >
-                    {data.delta_pct > 0 ? "+" : ""}
-                    {data.delta_pct.toFixed(2)}%
+                    {safeNumber(data.delta_pct) > 0 ? "+" : ""}
+                    {safeToFixed(data.delta_pct, 2)}%
                   </div>
                 </div>
               </div>

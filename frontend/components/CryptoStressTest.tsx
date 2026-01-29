@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import useSWR from "swr"
 import { fetchLatestAnalysis } from "@/lib/api"
+import { formatMoney, safeToFixed, safeNumber } from "@/lib/format"
 import type { EIMASAnalysis } from "@/lib/types"
 import { AlertTriangle, Shield } from "lucide-react"
 
@@ -18,11 +19,7 @@ export function CryptoStressTest() {
 
   const test = analysis.crypto_stress_test
 
-  const formatMoney = (value: number) => {
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`
-    return `$${value.toFixed(0)}`
-  }
+  // Using imported formatMoney from @/lib/format
 
   const getRiskColor = (rating: string) => {
     if (rating.includes("LOW") || rating.includes("낮음")) {
@@ -91,7 +88,7 @@ export function CryptoStressTest() {
                   variant="outline"
                   className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-xs"
                 >
-                  {(coin.weight * 100).toFixed(1)}%
+                  {safeToFixed(safeNumber(coin.weight) * 100, 1)}%
                 </Badge>
               </div>
             </CardHeader>
@@ -105,7 +102,7 @@ export function CryptoStressTest() {
                   <div>
                     <div className="text-gray-400">Depeg Prob.</div>
                     <div className="text-orange-400 font-mono">
-                      {(coin.depeg_probability * 100).toFixed(2)}%
+                      {safeToFixed(safeNumber(coin.depeg_probability) * 100, 2)}%
                     </div>
                   </div>
                   <div>
@@ -116,7 +113,7 @@ export function CryptoStressTest() {
                 <div>
                   <div className="text-xs text-gray-400">Loss Rate</div>
                   <div className="text-xs text-gray-300 font-mono">
-                    {(coin.loss_rate * 100).toFixed(3)}%
+                    {safeToFixed(safeNumber(coin.loss_rate) * 100, 3)}%
                   </div>
                 </div>
               </div>

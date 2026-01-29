@@ -23,7 +23,8 @@ async def get_latest_result():
     """
     Get the latest integrated analysis result from outputs directory.
 
-    Returns the most recent integrated_YYYYMMDD_HHMMSS.json file.
+    Returns the most recent eimas_YYYYMMDD_HHMMSS.json file.
+    Falls back to integrated_*.json for backward compatibility.
     This endpoint is used by the real-time dashboard for auto-polling.
 
     Returns:
@@ -40,12 +41,17 @@ async def get_latest_result():
     if not outputs_dir.exists():
         raise HTTPException(status_code=404, detail="Outputs directory not found")
 
-    # Get all integrated JSON files
-    pattern = str(outputs_dir / "integrated_*.json")
-    files = glob.glob(pattern)
+    # Get all EIMAS JSON files (new format first, then legacy)
+    pattern_new = str(outputs_dir / "eimas_*.json")
+    pattern_legacy = str(outputs_dir / "integrated_*.json")
+    
+    files = glob.glob(pattern_new)
+    if not files:
+        # Fallback to legacy format
+        files = glob.glob(pattern_legacy)
 
     if not files:
-        raise HTTPException(status_code=404, detail="No integrated results found")
+        raise HTTPException(status_code=404, detail="No EIMAS results found. Run 'python main.py' first.")
 
     # Get the most recent file
     latest_file = max(files, key=os.path.getmtime)

@@ -789,6 +789,42 @@ class FinalReportAgent:
         print(f"\n[SUCCESS] Report saved: {output_path}")
         return output_path
 
+    def save_pdf(self, html_path: Path = None) -> Path:
+        """HTML을 PDF로 변환 (wkhtmltopdf 필요)"""
+        import subprocess
+        
+        if html_path is None:
+            html_path = self.save_report()
+        
+        pdf_path = html_path.with_suffix('.pdf')
+        
+        try:
+            result = subprocess.run([
+                'wkhtmltopdf',
+                '--enable-local-file-access',
+                '--encoding', 'utf-8',
+                '--page-size', 'A4',
+                '--margin-top', '10mm',
+                '--margin-bottom', '10mm',
+                '--margin-left', '10mm',
+                '--margin-right', '10mm',
+                str(html_path),
+                str(pdf_path)
+            ], capture_output=True, text=True, timeout=60)
+            
+            if pdf_path.exists():
+                print(f"[SUCCESS] PDF saved: {pdf_path}")
+                return pdf_path
+            else:
+                print(f"[WARN] PDF conversion failed: {result.stderr}")
+                return None
+        except FileNotFoundError:
+            print("[WARN] wkhtmltopdf not installed. Install with: sudo apt install wkhtmltopdf")
+            return None
+        except subprocess.TimeoutExpired:
+            print("[WARN] PDF conversion timeout")
+            return None
+
     # ========================================================================
     # Section Generators
     # ========================================================================
@@ -2016,10 +2052,11 @@ class FinalReportAgent:
 
 def main():
     parser = argparse.ArgumentParser(
-        description='EIMAS Final Report Agent v2.0 - 최종 HTML 리포트 생성'
+        description='EIMAS Final Report Agent v2.0 - 최종 HTML/PDF 리포트 생성'
     )
     parser.add_argument('--user', '-u', type=str, default='EIMAS', help='보고서 작성자/수신자 이름')
     parser.add_argument('--output', '-o', type=str, default='outputs', help='출력 디렉토리')
+    parser.add_argument('--pdf', '-p', action='store_true', help='PDF도 함께 생성')
 
     args = parser.parse_args()
 
@@ -2039,8 +2076,16 @@ def main():
     print("\n[3/3] Saving report...")
     output_path = agent.save_report()
 
+    # PDF 변환 (옵션)
+    pdf_path = None
+    if args.pdf:
+        print("\n[4/4] Converting to PDF...")
+        pdf_path = agent.save_pdf(output_path)
+
     print("\n" + "=" * 60)
-    print(f"Report: {output_path}")
+    print(f"HTML: {output_path}")
+    if pdf_path:
+        print(f"PDF:  {pdf_path}")
     print("=" * 60)
 
     return output_path
