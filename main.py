@@ -201,6 +201,91 @@ def _set_genius_act(result):
     result.genius_act_regime = ga_res.regime
 
 
+def _apply_extended_data_adjustment(result: EIMASResult):
+    """
+    [Phase 2.Extended] Extended Data 기반 리스크 조정
+
+    조정 로직:
+    - Put/Call Ratio: >1.0 (공포) → -5, <0.7 (탐욕) → +5
+    - Crypto F&G: <25 (Extreme Fear) → -3, >75 (Extreme Greed) → +5
+    - News Sentiment: Bearish → -3, Bullish → +2
+    - Credit Spreads: Risk OFF → +3, Risk ON → -2
+    - KRW Risk: Overheated → +5, Volatile → +3
+
+    총 조정 범위: -13 ~ +23 (clamp to ±15)
+    """
+    if not result.extended_data:
+        return
+
+    ext = result.extended_data
+    adjustment = 0.0
+    details = []
+
+    # 1. Put/Call Ratio (옵션 센티먼트)
+    pcr = ext.get('put_call_ratio', {})
+    if pcr.get('ratio', 0) > 0:
+        ratio = pcr['ratio']
+        if ratio > 1.0:  # 공포/헤징 → 리스크 인식 높음 → 조심
+            adjustment -= 5
+            details.append(f"PCR={ratio:.2f} (Fear) → -5")
+        elif ratio < 0.7:  # 탐욕 → 과열 신호
+            adjustment += 5
+            details.append(f"PCR={ratio:.2f} (Greed) → +5")
+
+    # 2. Crypto Fear & Greed
+    fng = ext.get('crypto_fng', {})
+    if fng.get('value', 0) > 0:
+        val = fng['value']
+        if val < 25:  # Extreme Fear
+            adjustment -= 3
+            details.append(f"Crypto F&G={val} (Fear) → -3")
+        elif val > 75:  # Extreme Greed
+            adjustment += 5
+            details.append(f"Crypto F&G={val} (Greed) → +5")
+
+    # 3. News Sentiment
+    news = ext.get('news_sentiment', {})
+    label = news.get('label', '')
+    if label == 'Bearish':
+        adjustment -= 3
+        details.append("News=Bearish → -3")
+    elif label == 'Bullish':
+        adjustment += 2
+        details.append("News=Bullish → +2")
+
+    # 4. Credit Spreads (HYG/IEF 리스크 비율)
+    credit = ext.get('credit_spreads', {})
+    interp = credit.get('interpretation', '')
+    if interp == 'Risk OFF':
+        adjustment += 3
+        details.append("Credit=Risk OFF → +3")
+    elif interp == 'Risk ON':
+        adjustment -= 2
+        details.append("Credit=Risk ON → -2")
+
+    # 5. KRW Risk (한국 시장 리스크)
+    krw = ext.get('korea_risk', {})
+    status = krw.get('status', '')
+    if 'Overheated' in status:
+        adjustment += 5
+        details.append("KRW=Overheated → +5")
+    elif 'Volatile' in status:
+        adjustment += 3
+        details.append("KRW=Volatile → +3")
+
+    # Clamp to ±15
+    adjustment = max(-15, min(15, adjustment))
+
+    # Apply adjustment
+    if adjustment != 0:
+        result.extended_data_adjustment = adjustment
+        old_risk = result.risk_score
+        result.risk_score = max(0, min(100, result.risk_score + adjustment))
+        print(f"      ✓ Extended Data Adjustment: {adjustment:+.0f} ({old_risk:.1f} → {result.risk_score:.1f})")
+        if details:
+            print(f"        Details: {', '.join(details)}")
+
+
 def _analyze_sentiment_bubble(result: EIMASResult, market_data: Dict, quick_mode: bool):
     """[Phase 2.3] 센티먼트 & 버블 분석"""
     # Bubble (full mode only)
@@ -223,7 +308,7 @@ async def _run_debate(result: EIMASResult, market_data: Dict):
     """[Phase 3] AI 에이전트 토론: Dual Mode Debate"""
     print("\n[Phase 3] Running AI Debate...")
     try:
-        debate_res = await run_dual_mode_debate(market_data)
+        debate_res = await run_dual_mode_debate(market_data, extended_data=result.extended_data)
         result.full_mode_position = debate_res.full_mode_position
         result.reference_mode_position = debate_res.reference_mode_position
         result.modes_agree = debate_res.modes_agree
@@ -396,8 +481,9 @@ async def run_integrated_pipeline(
     events, regime_res = _analyze_basic(result, market_data)
     _analyze_enhanced(result, market_data, quick_mode)
     _analyze_sentiment_bubble(result, market_data, quick_mode)
+    _apply_extended_data_adjustment(result)  # PCR, Sentiment, Credit 기반 리스크 조정
     _run_adaptive_portfolio(result, regime_res, quick_mode)
-    
+
     # Phase 3-4: Debate & Realtime
     await _run_debate(result, market_data)
     await _run_realtime(result, enable_realtime, realtime_duration)

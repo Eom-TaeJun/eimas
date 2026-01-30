@@ -101,7 +101,8 @@ async def run_single_mode(mode_name: str, lookback: int, query: str,
 
 async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
                                lookback_full: int = 365,
-                               lookback_ref: int = 90) -> DebateResult:
+                               lookback_ref: int = 90,
+                               extended_data: Dict[str, Any] = None) -> DebateResult:
     """
     듀얼 모드 토론 실행
 
@@ -109,12 +110,18 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     - Full orchestrator result에서 enhanced_debate, reasoning_chain 추출
     - 7개 에이전트 기여도 추적
     - Multi-LLM 토론 결과 포함
+    - Extended Data (PCR, F&G, Credit Spreads 등) 컨텍스트 제공
     """
     print("\n" + "=" * 50)
     print("PHASE 3: MULTI-AGENT DEBATE")
     print("=" * 50)
 
+    # Build query with extended data context
     query = "Analyze current market conditions, risks, and generate trading signals"
+    if extended_data:
+        ext_context = _build_extended_context(extended_data)
+        if ext_context:
+            query += f"\n\nExtended Market Context:\n{ext_context}"
 
     # 1. Full Mode (enhanced results 추출용)
     full_result, full_orch_result = await run_single_mode('FULL', lookback_full, query, market_data)
@@ -190,3 +197,67 @@ def extract_consensus(debate_result: DebateResult) -> Dict[str, Any]:
         'reasoning_steps': len(debate_result.reasoning_chain),
         'verification_passed': debate_result.verification.get('passed', None)
     }
+
+
+def _build_extended_context(extended_data: Dict[str, Any]) -> str:
+    """
+    Extended Data를 AI 토론용 자연어 컨텍스트로 변환
+
+    Args:
+        extended_data: ExtendedDataCollector.collect_all() 결과
+
+    Returns:
+        AI 에이전트가 이해할 수 있는 자연어 요약
+    """
+    if not extended_data:
+        return ""
+
+    lines = []
+
+    # 1. Options Sentiment
+    pcr = extended_data.get('put_call_ratio', {})
+    if pcr.get('ratio', 0) > 0:
+        lines.append(f"- Options: Put/Call Ratio {pcr['ratio']:.2f} → {pcr.get('sentiment', 'N/A')}")
+
+    # 2. Valuation
+    fund = extended_data.get('fundamentals', {})
+    if fund.get('earnings_yield', 0) > 0:
+        lines.append(f"- Valuation: S&P500 Earnings Yield {fund['earnings_yield']:.2f}% (PE {fund.get('pe_ratio', 0):.1f})")
+
+    # 3. Digital Liquidity
+    stable = extended_data.get('digital_liquidity', {})
+    if stable.get('total_mcap', 0) > 0:
+        lines.append(f"- Digital Liquidity: Stablecoin Market Cap ${stable['total_mcap']/1e9:.1f}B")
+
+    # 4. Credit Market
+    credit = extended_data.get('credit_spreads', {})
+    if credit.get('interpretation'):
+        lines.append(f"- Credit Market: {credit['interpretation']} (HYG/IEF 5d change: {credit.get('change_5d', 0):.2f}%)")
+
+    # 5. Crypto Sentiment
+    fng = extended_data.get('crypto_fng', {})
+    if fng.get('value', 0) > 0:
+        lines.append(f"- Crypto Sentiment: Fear & Greed Index {fng['value']} ({fng.get('classification', 'N/A')})")
+
+    # 6. DeFi Health
+    tvl = extended_data.get('defi_tvl', {})
+    if tvl.get('total_tvl', 0) > 0:
+        lines.append(f"- DeFi Health: Total TVL ${tvl['total_tvl']/1e9:.1f}B")
+
+    # 7. Short Interest
+    depth = extended_data.get('market_depth', {})
+    spy_short = depth.get('SPY_short_float', 0)
+    if spy_short and spy_short > 0:
+        lines.append(f"- Short Interest: SPY {spy_short*100:.2f}%, TSLA {depth.get('TSLA_short_float', 0)*100:.2f}%")
+
+    # 8. News Sentiment
+    news = extended_data.get('news_sentiment', {})
+    if news.get('label'):
+        lines.append(f"- News Sentiment: {news['label']} (Score: {news.get('score', 0):.2f}, Headline: '{news.get('top_headline', '')[:50]}...')")
+
+    # 9. Emerging Market Risk (KRW)
+    krw = extended_data.get('korea_risk', {})
+    if krw.get('status'):
+        lines.append(f"- EM Risk (KRW): {krw['status']} (Volatility: {krw.get('volatility', 0):.2f}%)")
+
+    return "\n".join(lines) if lines else ""

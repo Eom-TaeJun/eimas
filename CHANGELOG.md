@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.1] - 2026-01-31
+
+### Added
+- **Extended Data Integration**: Full pipeline integration of `ExtendedDataCollector`
+  - 9개 지표 수집 및 분석 반영 (PCR, Earnings Yield, Stablecoin, Credit, F&G, TVL, Short, News, KRW)
+  - 리스크 점수 자동 조정 (`extended_data_adjustment`): PCR, Sentiment, Credit, KRW 기반 ±15 조정
+  - AI 토론 컨텍스트 전달: Extended Data를 자연어 요약으로 변환하여 에이전트에 제공
+  - 마크다운 리포트 확장: "Extended Market Metrics" 섹션에 9개 지표 전체 표시
+
+### Changed
+- `pipeline/schemas.py`: `extended_data_adjustment` 필드 추가, `to_markdown()` 확장
+- `pipeline/debate.py`: `run_dual_mode_debate()` 시그니처에 `extended_data` 파라미터 추가, `_build_extended_context()` 헬퍼 함수
+- `main.py`: `_apply_extended_data_adjustment()` 함수 추가, Phase 2.Extended에서 호출
+
+---
+
+## [2.3.0] - 2026-01-31
+
+### Added
+- **New Frontend Indicators & Charts**:
+  - `MarketSentimentGauge`: Composite sentiment analysis gauge
+  - `ArkAnalysisDashboard`: ARK Invest trading activity heatmap & table
+  - `CryptoRiskGauge`: Crypto stress test and risk gauge
+  - `FREDLiquidityDashboard`: Fed liquidity metrics (TGA, RRP) dashboard
+  - `MarketRegimeRadar`: Multi-dimensional regime analysis radar chart
+  - `VolumeAnomalyScatter`: Volume anomaly (Whale activity) detection scatter plot
+  - `SignalsPieChart`: Buy/Sell signal distribution pie chart
+- **Security Enhancements**:
+  - Implemented `.env` environment variable management
+  - Hardened `.gitignore` to prevent API key leaks
+
+### Fixed
+- **Pipeline Critical Bugs**:
+  - `RegimeDetector`: Fixed `float(Series)` casting error in `to_scalar()`
+  - `VerificationAgent`: Resolved `dict` vs `AgentOpinion` object compatibility issues
+  - `AIReportGenerator`: Corrected `VIXTermStructureResult` & `PutCallRatioResult` attribute access errors
+  - `lib/imports`: Added safe import handling for optional dependencies (e.g., `arch`)
+- **Git Repository Integrity**:
+  - Repaired corrupted empty object files and rebuilt git index
+  - Restored repository consistency via soft reset and clean commit
+
+### Cleaned
+- **Project Structure Finalization**:
+  - Removed root clutter (scripts moved to `scripts/`)
+  - Standardized module imports in `main.py`
+  - Archived outdated experimental files
+
+---
+
 ## [2.2.0] - 2026-01-30
 
 ### Added

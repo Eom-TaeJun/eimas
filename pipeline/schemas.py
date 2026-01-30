@@ -316,6 +316,7 @@ class EIMASResult:
     base_risk_score: float = 0.0
     microstructure_adjustment: float = 0.0
     bubble_risk_adjustment: float = 0.0
+    extended_data_adjustment: float = 0.0  # PCR, Sentiment, Credit, KRW 기반 조정
 
     # Crypto Stress Test
     crypto_stress_test: Dict = field(default_factory=dict)
@@ -438,7 +439,9 @@ class EIMASResult:
             md.append("### Breakdown")
             md.append(f"- Base: {self.base_risk_score:.1f}")
             md.append(f"- Microstructure Adj: {self.microstructure_adjustment:+.1f}")
-            md.append(f"- Bubble Adj: +{self.bubble_risk_adjustment:.0f}")
+            md.append(f"- Bubble Adj: {self.bubble_risk_adjustment:+.0f}")
+            if self.extended_data_adjustment != 0:
+                md.append(f"- Extended Data Adj: {self.extended_data_adjustment:+.0f}")
 
         if self.bubble_risk:
             md.append(f"- **Bubble Status**: {self.bubble_risk.overall_status}")
@@ -633,18 +636,57 @@ class EIMASResult:
             if not (ark.get('consensus_buys') or ark.get('consensus_sells')):
                 md.append("- No major consensus trades detected")
 
-        # NEW: Extended Metrics (PCR, Valuation)
+        # NEW: Extended Metrics (PCR, Valuation, Sentiment, etc.)
         if self.extended_data:
             md.append("### Extended Market Metrics")
             ext = self.extended_data
+
+            # 1. Options Sentiment
             pcr = ext.get('put_call_ratio', {})
-            if pcr: md.append(f"- **Put/Call Ratio**: {pcr.get('ratio', 0):.2f} ({pcr.get('sentiment')})")
-            
+            if pcr and pcr.get('ratio', 0) > 0:
+                md.append(f"- **Put/Call Ratio**: {pcr.get('ratio', 0):.2f} ({pcr.get('sentiment', 'N/A')})")
+
+            # 2. Valuation
             fund = ext.get('fundamentals', {})
-            if fund: md.append(f"- **SP500 Earnings Yield**: {fund.get('earnings_yield', 0):.2f}%")
-            
+            if fund and fund.get('earnings_yield', 0) > 0:
+                md.append(f"- **SP500 Earnings Yield**: {fund.get('earnings_yield', 0):.2f}% (PE: {fund.get('pe_ratio', 0):.1f})")
+
+            # 3. Digital Liquidity
             stable = ext.get('digital_liquidity', {})
-            if stable: md.append(f"- **Stablecoin Mcap**: ${stable.get('total_mcap', 0)/1e9:.1f}B")
+            if stable and stable.get('total_mcap', 0) > 0:
+                md.append(f"- **Stablecoin Mcap**: ${stable.get('total_mcap', 0)/1e9:.1f}B")
+
+            # 4. Credit Spreads (Risk Appetite)
+            credit = ext.get('credit_spreads', {})
+            if credit and credit.get('risk_ratio_hyg_ief', 0) > 0:
+                md.append(f"- **Credit Risk**: HYG/IEF={credit.get('risk_ratio_hyg_ief', 0):.2f} ({credit.get('interpretation', 'N/A')})")
+
+            # 5. Crypto Fear & Greed
+            fng = ext.get('crypto_fng', {})
+            if fng and fng.get('value', 0) > 0:
+                md.append(f"- **Crypto Fear & Greed**: {fng.get('value', 0)} ({fng.get('classification', 'N/A')})")
+
+            # 6. DeFi TVL
+            tvl = ext.get('defi_tvl', {})
+            if tvl and tvl.get('total_tvl', 0) > 0:
+                md.append(f"- **DeFi Total TVL**: ${tvl.get('total_tvl', 0)/1e9:.1f}B")
+
+            # 7. Short Interest
+            depth = ext.get('market_depth', {})
+            if depth:
+                spy_short = depth.get('SPY_short_float', 0)
+                if spy_short and spy_short > 0:
+                    md.append(f"- **Short Interest**: SPY {spy_short*100:.2f}%")
+
+            # 8. News Sentiment
+            news = ext.get('news_sentiment', {})
+            if news and news.get('label'):
+                md.append(f"- **News Sentiment**: {news.get('label', 'Neutral')} (Score: {news.get('score', 0):.2f})")
+
+            # 9. Korea Risk (KRW)
+            krw = ext.get('korea_risk', {})
+            if krw and krw.get('status'):
+                md.append(f"- **KRW Risk**: {krw.get('status', 'Unknown')} (Vol: {krw.get('volatility', 0):.2f}%)")
 
         md.append("")
 
