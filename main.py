@@ -119,6 +119,9 @@ from pipeline.analyzers import (
     detect_outliers_with_dbscan, analyze_dtw_similarity, analyze_ark_trades
 )
 from lib.extended_data_sources import ExtendedDataCollector
+from lib.bubble_framework import FiveStageBubbleFramework
+from lib.gap_analyzer import MarketModelGapAnalyzer
+from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 
 
 # ============================================================================
@@ -296,12 +299,52 @@ def _analyze_sentiment_bubble(result: EIMASResult, market_data: Dict, quick_mode
                 result.bubble_risk = BubbleRiskMetrics(**bubble_res)
         except Exception as e:
             print(f"⚠️ Bubble Risk Error: {e}")
-    
+
     # Sentiment (always)
     try:
         result.sentiment_analysis = analyze_sentiment()
     except Exception as e:
         print(f"⚠️ Sentiment Error: {e}")
+
+
+def _analyze_institutional_frameworks(result: EIMASResult, market_data: Dict, quick_mode: bool):
+    """
+    [Phase 2.Institutional] 기관급 분석 프레임워크
+
+    JP Morgan, Goldman Sachs 방법론 기반:
+    1. 5-Stage Bubble Framework
+    2. Market-Model Gap Analysis
+    3. FOMC Dot Plot Analysis
+    """
+    print("\n[Phase 2.Institutional] Running Institutional Frameworks...")
+
+    # 1. 5-Stage Bubble Framework (JP Morgan WM)
+    try:
+        bubble_fw = FiveStageBubbleFramework()
+        bubble_result = bubble_fw.analyze(market_data, sector='tech')
+        result.bubble_framework = bubble_result.to_dict()
+        print(f"      ✓ 5-Stage Bubble: {bubble_result.stage} (Score: {bubble_result.total_score:.1f}/100)")
+    except Exception as e:
+        print(f"      ⚠️ 5-Stage Bubble Error: {e}")
+
+    # 2. Gap Analyzer (Goldman Sachs)
+    try:
+        gap_analyzer = MarketModelGapAnalyzer()
+        gap_result = gap_analyzer.analyze()
+        result.gap_analysis = gap_result.to_dict()
+        print(f"      ✓ Market-Model Gap: {gap_result.overall_signal} ({gap_result.opportunity[:40]}...)")
+    except Exception as e:
+        print(f"      ⚠️ Gap Analysis Error: {e}")
+
+    # 3. FOMC Dot Plot Analyzer (JP Morgan AM) - full mode only
+    if not quick_mode:
+        try:
+            fomc_analyzer = FOMCDotPlotAnalyzer()
+            fomc_result = fomc_analyzer.analyze('2026')
+            result.fomc_analysis = fomc_result.to_dict()
+            print(f"      ✓ FOMC Analysis: {fomc_result.stance} (Uncertainty: {fomc_result.policy_uncertainty_index:.0f}/100)")
+        except Exception as e:
+            print(f"      ⚠️ FOMC Analysis Error: {e}")
 
 
 async def _run_debate(result: EIMASResult, market_data: Dict):
@@ -482,6 +525,7 @@ async def run_integrated_pipeline(
     _analyze_enhanced(result, market_data, quick_mode)
     _analyze_sentiment_bubble(result, market_data, quick_mode)
     _apply_extended_data_adjustment(result)  # PCR, Sentiment, Credit 기반 리스크 조정
+    _analyze_institutional_frameworks(result, market_data, quick_mode)  # JP Morgan, Goldman Sachs 프레임워크
     _run_adaptive_portfolio(result, regime_res, quick_mode)
 
     # Phase 3-4: Debate & Realtime

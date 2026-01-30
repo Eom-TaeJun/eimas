@@ -748,6 +748,7 @@ class FinalReportAgent:
             self._generate_change_comparison(),       # NEW: 이전 대비 변화
             self._generate_executive_summary(),
             self._generate_extended_metrics(),        # NEW: 확장 지표
+            self._generate_institutional_frameworks(), # NEW: JP Morgan/Goldman Sachs 프레임워크
             self._generate_valuation_section(),
             self._generate_technical_indicators(),    # NEW: 기술적 지표 (RSI, MACD 등)
             self._generate_global_markets(),          # NEW: 국제 시장
@@ -1035,6 +1036,163 @@ class FinalReportAgent:
             <p class="tech-value">{risk_ratio:.3f}</p>
             <span class="tech-badge {'bg-red' if 'OFF' in credit_interp else 'bg-green'}">{credit_interp}</span>
         </div>
+    </div>
+</div>'''
+
+    def _generate_institutional_frameworks(self) -> str:
+        """기관급 분석 프레임워크 (JP Morgan, Goldman Sachs) - NEW 2026-01-31"""
+        data = self.integrated_data
+
+        bubble_fw = data.get('bubble_framework', {})
+        gap_analysis = data.get('gap_analysis', {})
+        fomc = data.get('fomc_analysis', {})
+
+        # 데이터가 없으면 빈 문자열 반환
+        if not bubble_fw and not gap_analysis and not fomc:
+            return ''
+
+        # 5-Stage Bubble Framework
+        bubble_html = ''
+        if bubble_fw:
+            stage = bubble_fw.get('stage', 'N/A')
+            score = bubble_fw.get('total_score', 0)
+            stage_results = bubble_fw.get('stage_results', [])
+
+            # 단계별 색상
+            stage_colors = {
+                'NO_BUBBLE': ('text-green', 'bg-green'),
+                'EARLY_FORMATION': ('text-yellow', 'bg-yellow'),
+                'BUBBLE_BUILDING': ('text-orange', 'bg-orange'),
+                'LATE_STAGE': ('text-red', 'bg-red'),
+                'IMMINENT_POP': ('text-red', 'bg-red')
+            }
+            color, badge_color = stage_colors.get(stage, ('text-yellow', 'bg-yellow'))
+
+            # 단계별 상세
+            stages_html = ''
+            for sr in stage_results:
+                s_name = sr.get('stage', '').replace('_', ' ').title()
+                s_passed = sr.get('passed', True)
+                s_score = sr.get('score', 0)
+                s_evidence = sr.get('evidence', '')[:60]
+                icon = '✅' if s_passed else '⚠️'
+                stages_html += f'''
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border);">
+                    <span>{icon} {s_name}</span>
+                    <span style="color: var(--text-secondary);">{s_score:.0f}/20</span>
+                </div>'''
+
+            bubble_html = f'''
+            <div class="tech-item" style="flex: 1; min-width: 280px;">
+                <p class="tech-label">5-Stage Bubble (JP Morgan WM)</p>
+                <p class="tech-value {color}">{stage.replace('_', ' ')}</p>
+                <span class="tech-badge {badge_color}">Score: {score:.0f}/100</span>
+                <div style="margin-top: 12px; font-size: 0.85rem;">
+                    {stages_html}
+                </div>
+            </div>'''
+
+        # Gap Analysis
+        gap_html = ''
+        if gap_analysis:
+            signal = gap_analysis.get('overall_signal', 'NEUTRAL')
+            opportunity = gap_analysis.get('opportunity', '')[:80]
+            pessimistic = gap_analysis.get('market_too_pessimistic', False)
+            optimistic = gap_analysis.get('market_too_optimistic', False)
+            confidence = gap_analysis.get('confidence', 0.5)
+
+            if signal == 'BULLISH':
+                color, badge_color = 'text-green', 'bg-green'
+            elif signal == 'BEARISH':
+                color, badge_color = 'text-red', 'bg-red'
+            else:
+                color, badge_color = 'text-yellow', 'bg-yellow'
+
+            gaps = gap_analysis.get('gaps', [])
+            gaps_html = ''
+            for g in gaps:
+                metric = g.get('metric', '').replace('_', ' ').title()
+                g_signal = g.get('signal', 'NEUTRAL')
+                implied = g.get('market_implied', 0)
+                forecast = g.get('model_forecast', 0)
+                g_icon = '📈' if g_signal == 'BULLISH' else ('📉' if g_signal == 'BEARISH' else '➖')
+                gaps_html += f'''
+                <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem;">
+                    <span>{g_icon} {metric}</span>
+                    <span>{implied:.1f} vs {forecast:.1f}</span>
+                </div>'''
+
+            gap_html = f'''
+            <div class="tech-item" style="flex: 1; min-width: 280px;">
+                <p class="tech-label">Market-Model Gap (Goldman Sachs)</p>
+                <p class="tech-value {color}">{signal}</p>
+                <span class="tech-badge {badge_color}">Confidence: {confidence:.0%}</span>
+                <p style="margin-top: 8px; color: var(--text-secondary); font-size: 0.85rem;">{opportunity}</p>
+                <div style="margin-top: 12px;">
+                    {gaps_html}
+                </div>
+            </div>'''
+
+        # FOMC Analysis
+        fomc_html = ''
+        if fomc:
+            stance = fomc.get('stance', 'N/A')
+            proj = fomc.get('2026_projections', {})
+            median_rate = proj.get('median', 0)
+            rate_range = proj.get('range', [0, 0])
+            uncertainty = fomc.get('uncertainty', {})
+            policy_unc = uncertainty.get('policy_uncertainty_index', 0)
+            member_dist = fomc.get('member_distribution', {})
+
+            if stance == 'HAWKISH':
+                color, badge_color = 'text-red', 'bg-red'
+            elif stance == 'DOVISH':
+                color, badge_color = 'text-green', 'bg-green'
+            else:
+                color, badge_color = 'text-yellow', 'bg-yellow'
+
+            # 시나리오 경로
+            scenarios = fomc.get('scenarios', {})
+            base_path = scenarios.get('base', [])
+            hawkish_path = scenarios.get('hawkish', [])
+            dovish_path = scenarios.get('dovish', [])
+
+            path_html = ''
+            if base_path:
+                path_str = ' → '.join([f"{r:.2f}%" for r in base_path])
+                path_html = f'<p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 8px;">Base: {path_str}</p>'
+
+            fomc_html = f'''
+            <div class="tech-item" style="flex: 1; min-width: 280px;">
+                <p class="tech-label">FOMC Dot Plot (JP Morgan AM)</p>
+                <p class="tech-value {color}">{stance}</p>
+                <span class="tech-badge {badge_color}">2026 Median: {median_rate:.2f}%</span>
+                <div style="margin-top: 12px; font-size: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                        <span>Range</span>
+                        <span>{rate_range[0]:.2f}% - {rate_range[1]:.2f}%</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                        <span>Policy Uncertainty</span>
+                        <span style="color: {'var(--accent-red)' if policy_unc > 50 else 'var(--accent-green)'};">{policy_unc:.0f}/100</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                        <span>Hawkish / Neutral / Dovish</span>
+                        <span>{member_dist.get('hawkish', 0)} / {member_dist.get('neutral', 0)} / {member_dist.get('dovish', 0)}</span>
+                    </div>
+                </div>
+                {path_html}
+            </div>'''
+
+        return f'''
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-purple);">
+    <div class="card-header">
+        <span class="card-title">🏛️ 기관급 분석 프레임워크 (JP Morgan / Goldman Sachs)</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 16px;">
+        {bubble_html}
+        {gap_html}
+        {fomc_html}
     </div>
 </div>'''
 

@@ -375,6 +375,11 @@ class EIMASResult:
     # NEW: Sentiment Analysis (2026-01-29)
     sentiment_analysis: Dict = field(default_factory=dict)
 
+    # NEW: Institutional Frameworks (2026-01-31)
+    bubble_framework: Dict = field(default_factory=dict)  # 5-Stage Bubble (JP Morgan WM)
+    gap_analysis: Dict = field(default_factory=dict)      # Market-Model Gap (Goldman Sachs)
+    fomc_analysis: Dict = field(default_factory=dict)     # FOMC Dot Plot (JP Morgan AM)
+
     # Phase 3.Enhanced: New Agent Outputs
     agent_outputs: Optional[AgentOutputs] = None
     debate_results: Optional[DebateResults] = None
@@ -687,6 +692,37 @@ class EIMASResult:
             krw = ext.get('korea_risk', {})
             if krw and krw.get('status'):
                 md.append(f"- **KRW Risk**: {krw.get('status', 'Unknown')} (Vol: {krw.get('volatility', 0):.2f}%)")
+
+        # NEW: Institutional Frameworks (2026-01-31)
+        if self.bubble_framework or self.gap_analysis or self.fomc_analysis:
+            md.append("")
+            md.append("### Institutional Analysis (JP Morgan / Goldman Sachs)")
+
+            # 5-Stage Bubble Framework
+            if self.bubble_framework:
+                bf = self.bubble_framework
+                md.append(f"- **5-Stage Bubble**: {bf.get('stage', 'N/A')} (Score: {bf.get('total_score', 0):.0f}/100)")
+                stages = bf.get('stage_results', [])
+                warnings = [s for s in stages if not s.get('passed', True)]
+                if warnings:
+                    md.append(f"  - Warnings: {', '.join([w.get('stage', '') for w in warnings])}")
+
+            # Market-Model Gap
+            if self.gap_analysis:
+                ga = self.gap_analysis
+                md.append(f"- **Market-Model Gap**: {ga.get('overall_signal', 'N/A')}")
+                if ga.get('market_too_pessimistic'):
+                    md.append("  - Market too pessimistic - potential upside")
+                elif ga.get('market_too_optimistic'):
+                    md.append("  - Market too optimistic - caution advised")
+
+            # FOMC Analysis
+            if self.fomc_analysis:
+                fa = self.fomc_analysis
+                proj = fa.get('2026_projections', {})
+                md.append(f"- **FOMC 2026**: {fa.get('stance', 'N/A')} (Median: {proj.get('median', 0):.2f}%)")
+                unc = fa.get('uncertainty', {})
+                md.append(f"  - Policy Uncertainty: {unc.get('policy_uncertainty_index', 0):.0f}/100")
 
         md.append("")
 
