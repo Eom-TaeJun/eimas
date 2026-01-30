@@ -76,6 +76,17 @@ from api.routes import analysis_router
 app.include_router(analysis_router, prefix="")
 
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for frontend dashboard"""
+    return {
+        "status": "healthy",
+        "version": "2.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "last_analysis_id": None
+    }
+
+
 # ============================================================================
 # Request/Response Models
 # ============================================================================

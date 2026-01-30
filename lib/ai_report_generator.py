@@ -2101,17 +2101,17 @@ class AIReportGenerator:
                     'structure': vts_result.structure.value,
                     'vix_spot': vts_result.vix_spot,
                     'vix_3m': vts_result.vix_3m,
-                    'spread': vts_result.spread_pct,
-                    'signal': vts_result.market_signal
+                    'spread': getattr(vts_result, 'spread', getattr(vts_result, 'spread_pct', 0)),
+                    'signal': getattr(vts_result, 'signal', getattr(vts_result, 'market_signal', 'NEUTRAL'))
                 }
 
             # Put/Call Ratio
             pcr_result = analyzer.analyze_put_call_ratio("SPY")
             if pcr_result:
                 options_data['put_call_ratio'] = {
-                    'ratio': pcr_result.ratio,
-                    'level': pcr_result.level,
-                    'contrarian_signal': pcr_result.contrarian_signal
+                    'ratio': getattr(pcr_result, 'put_call_ratio', getattr(pcr_result, 'ratio', 0)),
+                    'level': getattr(pcr_result, 'signal', getattr(pcr_result, 'level', 'NEUTRAL')),
+                    'contrarian_signal': getattr(pcr_result, 'interpretation', getattr(pcr_result, 'contrarian_signal', ''))
                 }
 
             # IV Percentile

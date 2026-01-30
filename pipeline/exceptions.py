@@ -32,15 +32,15 @@ def log_error(logger: logging.Logger, message: str, exception: Optional[Exceptio
     """표준화된 에러 로깅 (Console에는 간단히, Log에는 상세히)"""
     if exception:
         logger.error(f"{message}: {str(exception)}", exc_info=True)
-        print(f"      ✗ {message}: {str(exception)}")
+        print(f"      [X] {message}: {str(exception)}")
     else:
         logger.error(message)
-        print(f"      ✗ {message}")
+        print(f"      [X] {message}")
 
 def log_warning(logger: logging.Logger, message: str):
     """경고 로깅"""
     logger.warning(message)
-    print(f"      ⚠ {message}")
+    print(f"      [!] {message}")
 
 class PipelineError(Exception):
     """Base class for pipeline exceptions"""

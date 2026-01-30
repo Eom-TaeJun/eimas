@@ -52,7 +52,7 @@ export function RiskGauge({ score }: RiskGaugeProps) {
       </ResponsiveContainer>
       <div className="mt-[-40px] text-center">
         <div className="text-4xl font-bold" style={{ color }}>
-          {score.toFixed(1)}
+          {(score ?? 0).toFixed(1)}
         </div>
         <div className="text-sm text-gray-400">Risk Score</div>
       </div>

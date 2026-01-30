@@ -48,22 +48,77 @@ equities:
     - ticker: 'SPY'    # S&P 500 ETF
     - ticker: 'QQQ'    # NASDAQ ETF
     - ticker: 'IWM'    # Russell 2000 ETF
-  
-  sectors:
-    - ticker: 'XLK'    # Technology
-    - ticker: 'XLF'    # Financials
-    - ticker: 'XLE'    # Energy
-    - ticker: 'XLV'    # Healthcare
-    - ticker: 'XLY'    # Consumer Discretionary
-    - ticker: 'XLP'    # Consumer Staples
-    - ticker: 'XLI'    # Industrials
-    - ticker: 'XLB'    # Materials
-    - ticker: 'XLU'    # Utilities
-    - ticker: 'XLRE'   # Real Estate
-
-  volatility:
     - ticker: '^VIX'   # CBOE Volatility Index
-    - ticker: 'VXX'    # VIX Short-Term Futures ETN
+
+  global_indices:
+    - ticker: '^STOXX50E' # Euro Stoxx 50 (Europe)
+    - ticker: '^N225'     # Nikkei 225 (Japan)
+    - ticker: '^HSI'      # Hang Seng Index (Hong Kong)
+    - ticker: 'EEM'       # MSCI Emerging Markets ETF
+
+  us_sectors:
+    technology:
+      - ticker: 'XLK'    # Technology ETF
+      - ticker: 'AAPL'   # Apple
+      - ticker: 'MSFT'   # Microsoft
+      - ticker: 'NVDA'   # NVIDIA
+      - ticker: 'AVGO'   # Broadcom
+      - ticker: 'ORCL'   # Oracle
+    
+    financials:
+      - ticker: 'XLF'    # Financials ETF
+      - ticker: 'JPM'    # JP Morgan
+      - ticker: 'BAC'    # Bank of America
+      - ticker: 'V'      # Visa
+    
+    healthcare:
+      - ticker: 'XLV'    # Healthcare ETF
+      - ticker: 'LLY'    # Eli Lilly
+      - ticker: 'UNH'    # UnitedHealth
+      - ticker: 'JNJ'    # Johnson & Johnson
+
+    consumer:
+      - ticker: 'XLY'    # Consumer Discretionary ETF
+      - ticker: 'AMZN'   # Amazon
+      - ticker: 'TSLA'   # Tesla
+      - ticker: 'XLP'    # Consumer Staples ETF
+      - ticker: 'WMT'    # Walmart
+      - ticker: 'PG'     # Procter & Gamble
+
+    energy_industrial:
+      - ticker: 'XLE'    # Energy ETF
+      - ticker: 'XOM'    # Exxon Mobil
+      - ticker: 'CVX'    # Chevron
+      - ticker: 'XLI'    # Industrials ETF
+      - ticker: 'CAT'    # Caterpillar
+      - ticker: 'GE'     # GE Aerospace
+
+  korea_market:
+    indices:
+      - ticker: '^KS11'  # KOSPI
+      - ticker: '^KQ11'  # KOSDAQ
+      - ticker: 'EWY'    # MSCI South Korea ETF
+    
+    semiconductor:
+      - ticker: '005930.KS' # Samsung Electronics
+      - ticker: '000660.KS' # SK Hynix
+    
+    battery:
+      - ticker: '373220.KS' # LG Energy Solution
+      - ticker: '006400.KS' # Samsung SDI
+      - ticker: '051910.KS' # LG Chem
+
+    auto:
+      - ticker: '005380.KS' # Hyundai Motor
+      - ticker: '000270.KS' # Kia
+    
+    bio:
+      - ticker: '207940.KS' # Samsung Biologics
+      - ticker: '068270.KS' # Celltrion
+
+    internet:
+      - ticker: '035420.KS' # NAVER
+      - ticker: '035720.KS' # Kakao
 
 # 채권 (Bonds)
 bonds:
@@ -79,15 +134,21 @@ bonds:
 
 # 상품 (Commodities)
 commodities:
-  metals:
-    - ticker: 'GLD'    # Gold
-    - ticker: 'SLV'    # Silver
-  
   energy:
+    - ticker: 'CL=F'   # Crude Oil (WTI)
+    - ticker: 'BZ=F'   # Brent Crude Oil
+    - ticker: 'NG=F'   # Natural Gas
     - ticker: 'USO'    # Oil Fund
-    - ticker: 'UNG'    # Natural Gas Fund
+  
+  metals:
+    - ticker: 'GC=F'   # Gold Futures
+    - ticker: 'SI=F'   # Silver Futures
+    - ticker: 'HG=F'   # Copper Futures (Dr. Copper)
+    - ticker: 'GLD'    # Gold ETF
   
   agriculture:
+    - ticker: 'ZC=F'   # Corn Futures
+    - ticker: 'ZS=F'   # Soybean Futures
     - ticker: 'DBA'    # Agriculture Fund
 
 # 외환 (FX)
@@ -96,9 +157,24 @@ fx:
   - ticker: 'EURUSD=X' # EUR/USD
   - ticker: 'JPY=X'    # USD/JPY
   - ticker: 'GBPUSD=X' # GBP/USD
+  - ticker: 'KRW=X'    # USD/KRW (Won)
 
 # 암호화폐 (Crypto)
 crypto:
-  - ticker: 'BTC-USD'  # Bitcoin
-  - ticker: 'ETH-USD'  # Ethereum
-  - ticker: 'SOL-USD'  # Solana
+  majors:
+    - ticker: 'BTC-USD'  # Bitcoin
+    - ticker: 'ETH-USD'  # Ethereum
+    - ticker: 'SOL-USD'  # Solana
+  
+  alts_defi:
+    - ticker: 'ADA-USD'  # Cardano
+    - ticker: 'XRP-USD'  # XRP
+    - ticker: 'AVAX-USD' # Avalanche
+    - ticker: 'LINK-USD' # Chainlink
+    - ticker: 'UNI7083-USD' # Uniswap
+  
+  ai_meme:
+    - ticker: 'DOGE-USD' # Dogecoin
+    - ticker: 'SHIB-USD' # Shiba Inu
+    - ticker: 'FET-USD'  # Fetch.ai
+    - ticker: 'RNDR-USD' # Render

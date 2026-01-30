@@ -98,6 +98,49 @@ class VerificationAgent(BaseAgent):
         self.min_diversity_score = config.custom_config.get('min_diversity_score', 40.0)
         self.data_tolerance = config.custom_config.get('data_tolerance', 10.0)
 
+    def _normalize_opinions(self, opinions: List) -> List[AgentOpinion]:
+        """
+        Normalize opinions to AgentOpinion objects.
+        Handles both dict and AgentOpinion inputs.
+        """
+        normalized = []
+        for op in opinions:
+            if isinstance(op, AgentOpinion):
+                normalized.append(op)
+            elif isinstance(op, dict):
+                # Convert dict to AgentOpinion
+                role_val = op.get('agent_role', 'ANALYSIS')
+                if isinstance(role_val, str):
+                    try:
+                        role = AgentRole(role_val)
+                    except ValueError:
+                        role = AgentRole.ANALYSIS
+                else:
+                    role = role_val
+                    
+                strength_val = op.get('strength', 'NEUTRAL')
+                if isinstance(strength_val, str):
+                    try:
+                        strength = OpinionStrength(strength_val)
+                    except ValueError:
+                        strength = OpinionStrength.NEUTRAL
+                else:
+                    strength = strength_val
+                    
+                normalized.append(AgentOpinion(
+                    agent_role=role,
+                    topic=op.get('topic', 'unknown'),
+                    position=op.get('position', 'unknown'),
+                    confidence=op.get('confidence', 0.5),
+                    strength=strength,
+                    evidence=op.get('evidence', []),
+                    caveats=op.get('caveats', []),
+                    key_metrics=op.get('key_metrics', {})
+                ))
+            else:
+                self.logger.warning(f"Unknown opinion type: {type(op)}")
+        return normalized
+
     async def _execute(self, request: AgentRequest) -> Dict[str, Any]:
         """
         검증 실행
@@ -113,8 +156,11 @@ class VerificationAgent(BaseAgent):
         """
         context = request.context or {}
         debate_results = context.get('debate_results', {})
-        opinions = context.get('opinions', [])
+        opinions_raw = context.get('opinions', [])
         market_data = context.get('market_data', {})
+        
+        # Normalize opinions (handle both dict and AgentOpinion)
+        opinions = self._normalize_opinions(opinions_raw)
 
         self.logger.info(f"Verifying debate with {len(opinions)} agent opinions")
 

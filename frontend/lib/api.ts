@@ -3,7 +3,7 @@ const API_BASE_URL = "http://localhost:8000"
 
 // Fetch the latest integrated EIMAS analysis result
 export async function fetchLatestAnalysis() {
-  const response = await fetch(`${API_BASE_URL}/latest`)
+  const response = await fetch(`${API_BASE_URL}/api/latest`)
   if (!response.ok) throw new Error("Failed to fetch latest analysis")
   return response.json()
 }
@@ -24,7 +24,8 @@ export async function fetchMarketRegime(ticker = "SPY") {
 export async function fetchSignals(limit = 10) {
   const response = await fetch(`${API_BASE_URL}/api/signals?limit=${limit}`)
   if (!response.ok) throw new Error("Failed to fetch signals")
-  return response.json()
+  const data = await response.json()
+  return data.signals || []
 }
 
 export async function fetchRisk() {

@@ -1,6 +1,0 @@
-  # 방법 1: 독립 실행
-  python lib/portfolio_report_generator.py --standalone
-
-  # 방법 2: main 실행 후 리포트 생성
-  python -m cli.eimas run --quick
-  python lib/portfolio_report_generator.py --latest --with-signals --with-metrics

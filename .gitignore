@@ -24,10 +24,22 @@ ENV/
 outputs/*.json
 outputs/*.md
 outputs/*.db
+outputs/*.html
+outputs/archive/
 outputs/report_images/
-data/events.db
+outputs/dashboards/
+outputs/reports/
 data/*.db
+data/archive/
+data/cache/
+data/logs/
+
+# Logs
+logs/
 *.log
+
+# Personal documents (optional to keep)
+docx/
 
 # IDE
 .vscode/

@@ -101,6 +101,39 @@ app.include_router(debate_router, prefix="/api")
 app.include_router(report_router, prefix="/api")
 
 
+from fastapi.staticfiles import StaticFiles
+import os
+
+# Create reports directory if it doesn't exist
+os.makedirs("outputs/reports", exist_ok=True)
+
+# Mount reports directory
+app.mount("/reports", StaticFiles(directory="outputs/reports"), name="reports")
+
+@app.get("/api/reports/latest")
+async def get_latest_report_url():
+    """Get URL for the latest HTML report"""
+    import glob
+    import os
+    
+    # Find all HTML reports
+    pattern = "outputs/reports/*.html"
+    files = glob.glob(pattern)
+    
+    if not files:
+        return {"url": None}
+        
+    # Get newest file
+    latest_file = max(files, key=os.path.getmtime)
+    filename = os.path.basename(latest_file)
+    
+    return {
+        "url": f"/reports/{filename}",
+        "filename": filename,
+        "timestamp": os.path.getmtime(latest_file)
+    }
+
+
 @app.get("/")
 async def root():
     """Root endpoint with API info"""

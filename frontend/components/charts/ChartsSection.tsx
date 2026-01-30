@@ -10,6 +10,13 @@ import { ConsensusComparisonChart } from "./ConsensusComparisonChart";
 import { SystemStatusDashboard } from "./SystemStatusDashboard";
 import { CorrelationHeatmap } from "./CorrelationHeatmap";
 import { RiskHeatmap, AssetRisk } from "./RiskHeatmap";
+import { ArkAnalysisDashboard } from "./ArkAnalysisDashboard";
+import { DebateSchoolCards } from "./DebateSchoolCards";
+import { MarketSentimentGauge } from "./MarketSentimentGauge";
+import { SignalsPieChart } from "./SignalsPieChart";
+import { VolumeAnomalyScatter } from "./VolumeAnomalyScatter";
+import { CryptoRiskGauge } from "./CryptoRiskGauge";
+import { MarketRegimeRadar } from "./MarketRegimeRadar";
 
 export function ChartsSection() {
   // Fetch latest EIMAS analysis every 5 seconds (same as MetricsGrid)
@@ -18,6 +25,7 @@ export function ChartsSection() {
     fetchLatestAnalysis,
     {
       refreshInterval: 5000,
+      dedupingInterval: 1000,
     }
   );
 
@@ -51,6 +59,7 @@ export function ChartsSection() {
       </section>
     );
   }
+
   // Check if we have the required data
   const hasPortfolioData =
     data.portfolio_weights && Object.keys(data.portfolio_weights).length > 0;
@@ -63,12 +72,11 @@ export function ChartsSection() {
     data.reference_mode_position &&
     data.modes_agree !== undefined;
 
-  // GMM probabilities - need to parse from regime data or use defaults
-  // Since gmm_probabilities is not in the schema, we'll show a placeholder or extract from description
-  const gmmProbabilities = {
-    Bull: 0.001,
-    Neutral: 0.998,
-    Bear: 0.001,
+  // GMM probabilities
+  const gmmProbabilities = data.regime?.gmm_probabilities || {
+    Bull: 0.33,
+    Neutral: 0.34,
+    Bear: 0.33,
   };
 
   // Prepare correlation data
@@ -78,33 +86,33 @@ export function ChartsSection() {
   // Prepare risk heatmap data
   const riskAssets: AssetRisk[] | undefined = hasPortfolioData
     ? Object.entries(data.portfolio_weights).map(([ticker, weight]) => {
-        const liquidityScore = data.market_quality?.liquidity_scores?.[ticker];
-        const bubbleRiskTicker = data.bubble_risk?.risk_tickers?.find(
-          (r: any) => r.ticker === ticker
-        );
-        const bubbleRisk = bubbleRiskTicker?.bubble_score || 0;
+      const liquidityScore = data.market_quality?.liquidity_scores?.[ticker];
+      const bubbleRiskTicker = data.bubble_risk?.risk_tickers?.find(
+        (r: any) => r.ticker === ticker
+      );
+      const bubbleRisk = bubbleRiskTicker?.bubble_score || 0;
 
-        // Calculate composite risk score
-        const baseRisk = data.base_risk_score || 50;
-        const microAdj = data.microstructure_adjustment || 0;
-        const bubbleAdj = data.bubble_risk_adjustment || 0;
+      // Calculate composite risk score
+      const baseRisk = data.base_risk_score || 50;
+      const microAdj = data.microstructure_adjustment || 0;
+      const bubbleAdj = data.bubble_risk_adjustment || 0;
 
-        // Normalize to 0-100 scale per asset
-        let riskScore = baseRisk;
-        if (liquidityScore !== undefined) {
-          riskScore += (50 - liquidityScore) / 5; // Lower liquidity = higher risk
-        }
-        riskScore += bubbleRisk;
-        riskScore = Math.max(0, Math.min(100, riskScore)); // Clamp to 0-100
+      // Normalize to 0-100 scale per asset
+      let riskScore = baseRisk;
+      if (liquidityScore !== undefined) {
+        riskScore += (50 - liquidityScore) / 5; // Lower liquidity = higher risk
+      }
+      riskScore += bubbleRisk;
+      riskScore = Math.max(0, Math.min(100, riskScore)); // Clamp to 0-100
 
-        return {
-          ticker,
-          weight,
-          riskScore,
-          liquidityScore,
-          bubbleRisk,
-        };
-      })
+      return {
+        ticker,
+        weight,
+        riskScore,
+        liquidityScore,
+        bubbleRisk,
+      };
+    })
     : undefined;
 
   return (
@@ -113,6 +121,24 @@ export function ChartsSection() {
 
       {/* Row 0: System Status Dashboard */}
       <SystemStatusDashboard />
+
+      {/* Row 0.5: New Visualizations - Sentiment & HFT */}
+      {data.sentiment_analysis && data.hft_microstructure && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MarketSentimentGauge
+            sentiment={data.sentiment_analysis}
+            hft={data.hft_microstructure}
+          />
+          {data.debate_consensus?.enhanced && (
+            <DebateSchoolCards data={data.debate_consensus.enhanced} />
+          )}
+        </div>
+      )}
+
+      {/* Row 0.7: ARK Analysis */}
+      {data.ark_analysis && (
+        <ArkAnalysisDashboard data={data.ark_analysis} />
+      )}
 
       {/* Row 1: Portfolio + GMM Probabilities */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -170,6 +196,25 @@ export function ChartsSection() {
           correlationMatrix={correlationMatrix}
         />
         <RiskHeatmap assets={riskAssets} />
+      </div>
+
+      {/* Row 6: Volume Anomalies & Risk Gauges */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <VolumeAnomalyScatter />
+        </div>
+        <div className="space-y-6">
+          <CryptoRiskGauge />
+          <div className="h-[250px]">
+            <SignalsPieChart />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 7: Market Regime Radar */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <MarketRegimeRadar />
+        {/* Placeholder for future expansion */}
       </div>
     </section>
   );

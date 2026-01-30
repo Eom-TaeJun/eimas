@@ -126,6 +126,8 @@ class RegimeIndicators:
         return asdict(self)
 
 
+from sklearn.mixture import GaussianMixture
+
 @dataclass
 class RegimeResult:
     """레짐 탐지 결과"""
@@ -149,6 +151,9 @@ class RegimeResult:
 
     # 전환 확률
     transition_probs: Dict[str, float] = field(default_factory=dict)
+    
+    # GMM Probabilities
+    gmm_probabilities: Dict[str, float] = field(default_factory=lambda: {"Bull": 0.33, "Neutral": 0.34, "Bear": 0.33})
 
     # 이력
     prev_regime: Optional[str] = None
@@ -166,6 +171,7 @@ class RegimeResult:
             'strategy': self.strategy,
             'risk_appetite': self.risk_appetite,
             'transition_probs': {k: round(v, 2) for k, v in self.transition_probs.items()},
+            'gmm_probabilities': {k: round(v, 3) for k, v in self.gmm_probabilities.items()},
             'prev_regime': self.prev_regime,
             'days_in_regime': self.days_in_regime,
         }
@@ -220,14 +226,31 @@ class RegimeDetector:
         close = df['Close']
         high = df['High']
         low = df['Low']
+        
+        # Handle potential multi-level columns from yfinance
+        if isinstance(close, pd.DataFrame):
+            close = close.iloc[:, 0]
+        if isinstance(high, pd.DataFrame):
+            high = high.iloc[:, 0]
+        if isinstance(low, pd.DataFrame):
+            low = low.iloc[:, 0]
 
         # 이동평균
         ma50 = close.rolling(50).mean()
         ma200 = close.rolling(200).mean()
 
-        current_price = float(close.iloc[-1])
-        current_ma50 = float(ma50.iloc[-1]) if len(ma50) > 50 else current_price
-        current_ma200 = float(ma200.iloc[-1]) if len(ma200) > 200 else current_price
+        # Safe scalar extraction
+        def to_scalar(val):
+            """Convert Series/array to scalar safely"""
+            if hasattr(val, 'item'):
+                return float(val.item())
+            elif hasattr(val, 'iloc'):
+                return float(val.iloc[0]) if len(val) > 0 else 0.0
+            return float(val)
+
+        current_price = to_scalar(close.iloc[-1])
+        current_ma50 = to_scalar(ma50.iloc[-1]) if len(ma50) > 50 else current_price
+        current_ma200 = to_scalar(ma200.iloc[-1]) if len(ma200) > 200 else current_price
 
         # RSI
         delta = close.diff()
@@ -235,21 +258,21 @@ class RegimeDetector:
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
-        current_rsi = float(rsi.iloc[-1]) if len(rsi) > 14 else 50
+        current_rsi = to_scalar(rsi.iloc[-1]) if len(rsi) > 14 else 50
 
         # 52주 고점 대비
-        high_52w = float(high.tail(252).max())
+        high_52w = to_scalar(high.tail(252).max())
         distance_from_high = ((current_price / high_52w) - 1) * 100
 
         # 20일 모멘텀
         if len(close) >= 20:
-            momentum_20d = ((current_price / float(close.iloc[-20])) - 1) * 100
+            momentum_20d = ((current_price / to_scalar(close.iloc[-20])) - 1) * 100
         else:
             momentum_20d = 0.0
 
         # 실현 변동성 (20일)
         returns = close.pct_change()
-        realized_vol = float(returns.tail(20).std() * np.sqrt(252) * 100)
+        realized_vol = to_scalar(returns.tail(20).std()) * np.sqrt(252) * 100
 
         # VIX
         try:
@@ -413,6 +436,58 @@ class RegimeDetector:
 
         return probs
 
+    def _run_gmm(self, df: pd.DataFrame, vix: pd.Series) -> Dict[str, float]:
+        """GMM 기반 레짐 확률 계산"""
+        try:
+            # 데이터 준비
+            if df.empty or vix.empty:
+                return {"Bull": 0.33, "Neutral": 0.34, "Bear": 0.33}
+            
+            data = pd.DataFrame()
+            data['Returns'] = df['Close'].pct_change()
+            
+            # VIX 인덱스 맞추기
+            data['VIX'] = vix.reindex(data.index).fillna(method='ffill')
+            
+            data = data.dropna()
+            
+            if len(data) < 50: # 데이터 부족
+                return {"Bull": 0.33, "Neutral": 0.34, "Bear": 0.33}
+
+            # 학습 데이터 (Returns, VIX)
+            X = data[['Returns', 'VIX']].values
+            
+            # GMM 모델 학습 (3개 컴포넌트)
+            gmm = GaussianMixture(n_components=3, covariance_type='full', random_state=42)
+            gmm.fit(X)
+            
+            # 컴포넌트 해석 (VIX 기준으로 정렬: Low VIX -> Bull, High VIX -> Bear)
+            # means_[:, 1] 은 VIX의 평균
+            vix_means = gmm.means_[:, 1]
+            sorted_indices = np.argsort(vix_means) # 오름차순 (Low VIX first)
+            
+            # 매핑: 0 -> Bull, 1 -> Neutral, 2 -> Bear (by VIX)
+            component_map = {
+                sorted_indices[0]: "Bull",
+                sorted_indices[1]: "Neutral",
+                sorted_indices[2]: "Bear"
+            }
+            
+            # 현재 상태 확률 예측
+            current_X = X[-1].reshape(1, -1)
+            probs = gmm.predict_proba(current_X)[0]
+            
+            result = {}
+            for i, prob in enumerate(probs):
+                label = component_map[i]
+                result[label] = float(prob)
+                
+            return result
+
+        except Exception as e:
+            print(f"GMM Error: {e}")
+            return {"Bull": 0.33, "Neutral": 0.34, "Bear": 0.33}
+
     def detect(self) -> RegimeResult:
         """레짐 탐지 실행"""
         print(f"Detecting market regime for {self.ticker}...")
@@ -423,6 +498,9 @@ class RegimeDetector:
 
         # 지표 계산
         indicators = self._calculate_indicators(df, vix)
+        
+        # GMM 분석
+        gmm_probs = self._run_gmm(df, vix)
 
         # 추세 판단
         trend = self._determine_trend(indicators)
@@ -453,6 +531,7 @@ class RegimeDetector:
             strategy=chars['strategy'],
             risk_appetite=chars['risk_appetite'],
             transition_probs=transition_probs,
+            gmm_probabilities=gmm_probs,
         )
 
     def save_to_db(self, result: RegimeResult,

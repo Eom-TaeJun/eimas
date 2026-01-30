@@ -2,10 +2,22 @@
 """
 EIMAS - Economic Intelligence Multi-Agent System
 =================================================
-통합 실행 파이프라인 (Unified Main Entry)
+통합 실행 파이프라인 (Unified Main Entry Point)
+Unified execution pipeline for comprehensive market analysis.
 
 ================================================================================
-WORKFLOW OVERVIEW
+ARCHITECTURE OVERVIEW | 아키텍처 개요
+================================================================================
+
+This is the main entry point that orchestrates all EIMAS components:
+    - Data Collection: Multi-source data gathering (FRED, Market, Crypto)
+    - Analysis Engine: Quantitative analysis (Regime, Risk, Microstructure)
+    - AI Debate: Multi-agent debate for consensus building
+    - Report Generation: AI-powered narrative reports
+    - Validation: Fact-checking and whitening
+
+================================================================================
+PIPELINE FLOW | 파이프라인 흐름
 ================================================================================
 
     [CLI] main()
@@ -14,30 +26,61 @@ WORKFLOW OVERVIEW
     run_integrated_pipeline()
            │
            ├─► [Phase 1] _collect_data()        # 데이터 수집 (FRED, Market, Crypto)
+           │                                    # Data collection from multiple sources
            │
            ├─► [Phase 2] _analyze_basic()       # 기본 분석 (Regime, Events, Risk)
            │        └─► _analyze_enhanced()     # 고급 분석 (HFT, GARCH, DTW, etc.)
+           │        └─► _analyze_sentiment_bubble()  # 센티먼트 & 버블 분석
            │
            ├─► [Phase 3] _run_debate()          # AI 에이전트 토론 (Multi-LLM)
+           │                                    # Dual-mode debate with consensus
            │
-           ├─► [Phase 4] _run_realtime()        # 실시간 스트리밍 (선택)
+           ├─► [Phase 4] _run_realtime()        # 실시간 스트리밍 (Optional)
+           │                                    # VPIN/OFI stream analysis
            │
            ├─► [Phase 5] _save_results()        # 결과 저장 (unified JSON)
+           │                                    # Save to outputs/eimas_*.json
            │
-           ├─► [Phase 6] _generate_report()     # AI 리포트 생성 (선택)
+           ├─► [Phase 6] _generate_report()     # AI 리포트 생성 (Optional)
+           │                                    # LLM-powered narrative report
            │
            ├─► [Phase 7] _validate_report()     # Whitening & Fact Check
+           │                                    # Data quality validation
            │
            └─► [Phase 8] _run_ai_validation()   # Multi-LLM 검증 (--full only)
+                                                # Cross-LLM consensus check
 
 ================================================================================
+USAGE | 사용법
+================================================================================
 
-Usage:
     python main.py              # 기본 분석 (버블/센티먼트 포함)
-    python main.py --short      # Quick 분석 (버블 제외)
-    python main.py --full       # 전체 기능 (AI Validation 포함)
+                                # Default analysis with bubble/sentiment
+    
+    python main.py --short      # Quick 분석 (버블/DTW 제외)
+                                # Quick mode - skip heavy computations
+    
+    python main.py --full       # 전체 기능 (AI Validation 포함, API 비용 발생)
+                                # Full mode - includes Multi-LLM validation
+    
     python main.py --realtime   # 실시간 스트리밍 포함
+                                # Include real-time streaming
+    
+    python main.py --full -r    # 전체 기능 + 실시간
+                                # Full mode with real-time streaming
+
+================================================================================
+OUTPUT | 출력물
+================================================================================
+
+    outputs/
+    ├── eimas_YYYYMMDD_HHMMSS.json   # Unified analysis results
+    ├── eimas_YYYYMMDD.md            # Markdown summary
+    └── reports/                     # AI-generated reports
+
+================================================================================
 """
+
 
 import asyncio
 import argparse
@@ -297,14 +340,49 @@ async def run_integrated_pipeline(
     full_mode: bool = False
 ) -> EIMASResult:
     """
-    EIMAS 통합 파이프라인 실행
+    Execute the EIMAS integrated analysis pipeline.
+    EIMAS 통합 분석 파이프라인 실행.
+    
+    This function orchestrates the complete analysis workflow from data collection
+    through AI-powered report generation and validation.
+    
+    Pipeline Phases:
+        Phase 1: Data collection (FRED macroeconomic, market prices, crypto)
+        Phase 2: Quantitative analysis (regime detection, risk scoring, etc.)
+        Phase 3: AI agent debate with dual-mode consensus
+        Phase 4: Real-time streaming analysis (optional)
+        Phase 5: Result storage (JSON, database)
+        Phase 6: AI report generation (optional)
+        Phase 7: Report validation (whitening, fact-check)
+        Phase 8: Multi-LLM cross-validation (full mode only)
     
     Args:
-        enable_realtime: 실시간 스트리밍 활성화
-        realtime_duration: 스트리밍 지속 시간 (초)
-        quick_mode: Quick 분석 모드 (버블/DTW 등 제외)
-        generate_report: AI 리포트 생성 여부
-        full_mode: 전체 기능 (AI Validation 포함)
+        enable_realtime (bool): Enable real-time VPIN/OFI streaming.
+                               실시간 스트리밍 활성화. Default: False.
+        realtime_duration (int): Duration in seconds for streaming.
+                                스트리밍 지속 시간 (초). Default: 30.
+        quick_mode (bool): Skip heavy computations (bubble, DTW, DBSCAN).
+                          버블/DTW 등 고비용 분석 제외. Default: False.
+        generate_report (bool): Generate AI-powered narrative report.
+                               AI 리포트 생성 여부. Default: False.
+        full_mode (bool): Include Multi-LLM validation (incurs API costs).
+                         Multi-LLM 검증 포함 (API 비용 발생). Default: False.
+    
+    Returns:
+        EIMASResult: Comprehensive analysis result object containing:
+            - fred_summary: Macroeconomic data summary
+            - regime: Current market regime classification
+            - risk_score: Composite risk score (0-100)
+            - debate results: AI agent consensus
+            - And many more analysis outputs...
+    
+    Raises:
+        No exceptions are raised; errors are logged with warnings.
+        모든 에러는 경고로 출력되며, 예외는 발생하지 않습니다.
+    
+    Example:
+        >>> result = await run_integrated_pipeline(quick_mode=True)
+        >>> print(f"Risk Score: {result.risk_score}")
     """
     start_time = datetime.now()
     result = EIMASResult(timestamp=start_time.isoformat())

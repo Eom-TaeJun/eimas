@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { AnalysisResult, Stance } from "@/lib/types/analysis"
@@ -49,7 +48,7 @@ export function HistoricalAnalyses({ analyses, onLoadAnalysis, currentAnalysisId
   }
 
   return (
-    <ScrollArea className="h-[600px] -mx-6 px-6">
+    <div className="h-[600px] -mx-6 px-6 overflow-y-auto">
       <div className="space-y-3">
         {analyses.map((analysis) => (
           <Button
@@ -81,6 +80,6 @@ export function HistoricalAnalyses({ analyses, onLoadAnalysis, currentAnalysisId
           </Button>
         ))}
       </div>
-    </ScrollArea>
+    </div>
   )
 }

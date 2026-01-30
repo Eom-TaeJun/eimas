@@ -89,8 +89,8 @@ async def run_integrated_pipeline(
     sim_res = enhance_portfolio_with_systemic_similarity(market_data)
     # result 스키마에 matrix용 필드가 있으면 넣고 아니면 dict로
     if hasattr(result, 'correlation_matrix') and 'systemic_similarity_matrix' in sim_res:
-         # 단순화를 위해 일단 저장
-         pass
+         result.correlation_matrix = sim_res['systemic_similarity_matrix']
+         result.correlation_tickers = sim_res.get('tickers', [])
     
     if not quick_mode:
         result.dtw_similarity = analyze_dtw_similarity(market_data)

@@ -1,6 +1,6 @@
 {
   "name": "eimas",
-  "version": "1.0.0",
+  "version": "2.2.0",
   "description": "**Multi-Agent 기반 경제 분석 및 예측 시스템**",
   "main": "index.js",
   "directories": {

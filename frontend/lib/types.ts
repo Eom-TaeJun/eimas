@@ -92,6 +92,11 @@ export interface EIMASAnalysis {
         recommended_action: string
         consensus_points: string[]
         divergence_points?: string[]
+        school_interpretations?: Array<{
+          school: string
+          stance: "BULLISH" | "BEARISH" | "NEUTRAL"
+          reasoning: string[]
+        }>
       }
       methodology?: {
         selected_methodology: string
@@ -122,6 +127,58 @@ export interface EIMASAnalysis {
   warnings: string[]
   realtime_signals: any[]
 
+  // ARK Invest Analysis
+  ark_analysis: {
+    timestamp: string
+    consensus_buys: string[]
+    consensus_sells: string[]
+    new_positions: string[]
+    signals: string[]
+    top_increases: Array<{
+      ticker: string
+      company: string
+      sector: string
+      weight_change_1d: number
+      signal_type: string
+    }>
+    top_decreases: Array<{
+      ticker: string
+      company: string
+      sector: string
+      weight_change_1d: number
+      signal_type: string
+    }>
+  } | null
+
+  // Market Sentiment & HFT
+  sentiment_analysis: {
+    fear_greed: {
+      value: number
+      level: string
+      previous_close: number
+    }
+    vix_structure?: {
+      vix_spot: number
+      structure: string
+      signal: string
+    }
+    news_sentiment?: {
+      overall: string
+      avg_score: number
+    }
+  } | null
+
+  hft_microstructure: {
+    tick_rule: {
+      buy_ratio: number
+      sell_ratio: number
+      interpretation: string
+    }
+    kyles_lambda?: {
+      interpretation: string
+    }
+  } | null
+
   // Event tracking
   tracked_events: Array<{
     ticker: string
@@ -145,7 +202,7 @@ export interface EIMASAnalysis {
     depeg_probability_pct: string
     estimated_loss_under_stress: number
     estimated_loss_pct: string
-    breakdown_by_coin: Array<{
+    breakdown_by_coin?: Array<{
       ticker: string
       amount: number
       weight: number

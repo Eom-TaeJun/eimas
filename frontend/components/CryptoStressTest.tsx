@@ -21,7 +21,8 @@ export function CryptoStressTest() {
 
   // Using imported formatMoney from @/lib/format
 
-  const getRiskColor = (rating: string) => {
+  const getRiskColor = (rating: string | undefined | null) => {
+    if (!rating) return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     if (rating.includes("LOW") || rating.includes("낮음")) {
       return "bg-green-500/10 text-green-400 border-green-500/20"
     }
@@ -79,7 +80,7 @@ export function CryptoStressTest() {
 
       {/* Breakdown by Coin */}
       <div className="grid gap-3 md:grid-cols-3">
-        {test.breakdown_by_coin.map((coin, idx) => (
+        {test.breakdown_by_coin?.map((coin, idx) => (
           <Card key={idx} className="bg-[#161b22] border-[#30363d]">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">

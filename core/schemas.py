@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 """
-Multi-Agent System - Schemas
-=============================
+Multi-Agent System - Core Schemas
+=================================
 에이전트 간 통신을 위한 표준화된 데이터 스키마
+Standardized data schemas for inter-agent communication.
 
-경제학적 의미:
-- 에이전트 간 정보 비대칭 최소화
-- 표준화된 인터페이스로 모듈화 극대화
-- Type safety로 런타임 에러 최소화
+Schema Organization | 스키마 구성:
+    - core/schemas.py (이 파일): 에이전트 통신, 토론, 워크플로우 스키마
+    - pipeline/schemas.py: 분석 결과 및 저장용 스키마 (EIMASResult 등)
+
+Key Classes:
+    - AgentRequest/Response: Agent communication protocol
+    - AgentOpinion/Consensus: Multi-agent debate schemas
+    - WorkflowPlan/WorkflowStep: Task orchestration schemas
+    - ForecastResult/LASSODiagnostics: Prediction output schemas
+
+Design Principles | 설계 원칙:
+    - 에이전트 간 정보 비대칭 최소화 (Information Symmetry)
+    - 표준화된 인터페이스로 모듈화 극대화 (Standardization)
+    - Type safety로 런타임 에러 최소화 (Type Safety)
+    - to_dict() 메서드로 JSON 직렬화 지원 (Serialization)
 """
 
 from dataclasses import dataclass, field, asdict

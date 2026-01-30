@@ -1,8 +1,36 @@
+"""
+EIMAS Pipeline - Result Schemas
+================================
+분석 결과 저장 및 직렬화를 위한 데이터 스키마
+Data schemas for analysis result storage and serialization.
+
+Schema Organization | 스키마 구성:
+    - pipeline/schemas.py (이 파일): 분석 결과, 저장용 스키마
+    - core/schemas.py: 에이전트 통신, 토론, 워크플로우 스키마
+
+Key Classes (Primary):
+    - EIMASResult: Main unified analysis result container
+    - FREDSummary: FRED macroeconomic data summary
+    - RegimeResult: Market regime classification
+    - DebateResult: AI agent debate outcomes
+
+Key Classes (Secondary):
+    - BubbleRiskMetrics: Bubble risk assessment
+    - MarketQualityMetrics: Market microstructure quality
+    - LiquiditySignal, CriticalPathResult, etc.
+
+Usage:
+    from pipeline.schemas import EIMASResult, FREDSummary
+    result = EIMASResult(timestamp=datetime.now().isoformat())
+    result.to_dict()  # JSON-serializable output
+    result.to_markdown()  # Human-readable report
+"""
+
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional, Any
 import json
 
-# Import new schemas from core
+# Import agent-related schemas from core for integration
 try:
     from core.schemas import AgentOutputs, DebateResults, VerificationResults
 except ImportError:
@@ -11,6 +39,7 @@ except ImportError:
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.schemas import AgentOutputs, DebateResults, VerificationResults
+
 
 @dataclass
 class FREDSummary:
