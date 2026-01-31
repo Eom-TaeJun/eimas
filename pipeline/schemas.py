@@ -192,6 +192,7 @@ class DebateResult:
     agent_outputs: Dict = field(default_factory=dict)  # 에이전트별 출력
     verification: Dict = field(default_factory=dict)  # 검증 결과
     metadata: Dict = field(default_factory=dict)  # 통계 정보
+    institutional_analysis: Dict = field(default_factory=dict)  # 기관 투자자 종합 분석 (JP Morgan, Goldman)
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -379,6 +380,7 @@ class EIMASResult:
     bubble_framework: Dict = field(default_factory=dict)  # 5-Stage Bubble (JP Morgan WM)
     gap_analysis: Dict = field(default_factory=dict)      # Market-Model Gap (Goldman Sachs)
     fomc_analysis: Dict = field(default_factory=dict)     # FOMC Dot Plot (JP Morgan AM)
+    institutional_analysis: Dict = field(default_factory=dict)  # 기관 투자자 종합 분석 (Orchestrator)
 
     # Phase 3.Enhanced: New Agent Outputs
     agent_outputs: Optional[AgentOutputs] = None

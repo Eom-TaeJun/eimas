@@ -333,6 +333,85 @@ class TradingDB:
             )
         """)
 
+        # 7. Backtest Runs 테이블 (v2.0 추가)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS backtest_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                strategy_name VARCHAR(100) NOT NULL,
+                start_date DATE NOT NULL,
+                end_date DATE NOT NULL,
+                initial_capital FLOAT NOT NULL,
+                final_capital FLOAT,
+                total_return FLOAT,
+                annual_return FLOAT,
+                benchmark_return FLOAT,
+                alpha FLOAT,
+                volatility FLOAT,
+                max_drawdown FLOAT,
+                max_drawdown_duration INTEGER,
+                sharpe_ratio FLOAT,
+                sortino_ratio FLOAT,
+                calmar_ratio FLOAT,
+                total_trades INTEGER,
+                winning_trades INTEGER,
+                losing_trades INTEGER,
+                win_rate FLOAT,
+                avg_win FLOAT,
+                avg_loss FLOAT,
+                profit_factor FLOAT,
+                avg_holding_days FLOAT,
+                total_commission FLOAT,
+                total_slippage FLOAT,
+                total_short_cost FLOAT,
+                parameters JSON,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # 8. Backtest Trades 테이블 (v2.0 추가)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS backtest_trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                entry_date DATE NOT NULL,
+                exit_date DATE NOT NULL,
+                ticker VARCHAR(10) NOT NULL,
+                direction VARCHAR(10) NOT NULL,
+                entry_price FLOAT,
+                exit_price FLOAT,
+                shares FLOAT,
+                pnl FLOAT,
+                pnl_pct FLOAT,
+                holding_days INTEGER,
+                commission FLOAT,
+                slippage_cost FLOAT,
+                short_cost FLOAT,
+                signal_reason TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (run_id) REFERENCES backtest_runs(id)
+            )
+        """)
+
+        # 9. Walk-Forward Results 테이블 (v2.0 추가)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS walk_forward_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                fold_number INTEGER NOT NULL,
+                train_start DATE NOT NULL,
+                train_end DATE NOT NULL,
+                test_start DATE NOT NULL,
+                test_end DATE NOT NULL,
+                in_sample_return FLOAT,
+                in_sample_sharpe FLOAT,
+                out_sample_return FLOAT,
+                out_sample_sharpe FLOAT,
+                degradation_pct FLOAT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (run_id) REFERENCES backtest_runs(id)
+            )
+        """)
+
         # 인덱스 생성
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_source ON signals(signal_source)")
@@ -340,6 +419,12 @@ class TradingDB:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_performance_date ON performance_tracking(date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signal_perf_date ON signal_performance(evaluation_date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_date_ticker ON session_analysis(date, ticker)")
+
+        # v2.0 백테스트 인덱스
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_backtest_strategy ON backtest_runs(strategy_name)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_backtest_date ON backtest_runs(start_date, end_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_backtest_trades_run ON backtest_trades(run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_walk_forward_run ON walk_forward_results(run_id)")
 
         conn.commit()
         conn.close()
@@ -760,6 +845,236 @@ class TradingDB:
         return {}
 
     # ========================================================================
+    # Backtest Methods (v2.0)
+    # ========================================================================
+
+    def save_backtest_run(self, result: Dict) -> int:
+        """백테스트 실행 결과 저장
+
+        Args:
+            result: BacktestResult.to_dict() 결과
+
+        Returns:
+            run_id: 저장된 백테스트 ID
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO backtest_runs
+            (strategy_name, start_date, end_date, initial_capital, final_capital,
+             total_return, annual_return, benchmark_return, alpha,
+             volatility, max_drawdown, max_drawdown_duration,
+             sharpe_ratio, sortino_ratio, calmar_ratio,
+             total_trades, winning_trades, losing_trades, win_rate,
+             avg_win, avg_loss, profit_factor, avg_holding_days,
+             total_commission, total_slippage, total_short_cost, parameters)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            result.get('strategy_name'),
+            result.get('start_date'),
+            result.get('end_date'),
+            result.get('initial_capital'),
+            result.get('final_capital'),
+            result.get('total_return'),
+            result.get('annual_return'),
+            result.get('benchmark_return'),
+            result.get('alpha'),
+            result.get('volatility'),
+            result.get('max_drawdown'),
+            result.get('max_drawdown_duration'),
+            result.get('sharpe_ratio'),
+            result.get('sortino_ratio'),
+            result.get('calmar_ratio'),
+            result.get('total_trades'),
+            result.get('winning_trades'),
+            result.get('losing_trades'),
+            result.get('win_rate'),
+            result.get('avg_win'),
+            result.get('avg_loss'),
+            result.get('profit_factor'),
+            result.get('avg_holding_days'),
+            result.get('total_commission', 0),
+            result.get('total_slippage', 0),
+            result.get('total_short_cost', 0),
+            json.dumps(result.get('parameters', {})),
+        ))
+
+        run_id = cursor.lastrowid
+
+        # 개별 거래 저장
+        trades = result.get('trades', [])
+        for trade in trades:
+            cursor.execute("""
+                INSERT INTO backtest_trades
+                (run_id, entry_date, exit_date, ticker, direction,
+                 entry_price, exit_price, shares, pnl, pnl_pct,
+                 holding_days, commission, slippage_cost, short_cost, signal_reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                run_id,
+                trade.get('entry_date'),
+                trade.get('exit_date'),
+                trade.get('ticker'),
+                trade.get('direction'),
+                trade.get('entry_price'),
+                trade.get('exit_price'),
+                trade.get('shares'),
+                trade.get('pnl'),
+                trade.get('pnl_pct'),
+                trade.get('holding_days'),
+                trade.get('commission', 0),
+                trade.get('slippage_cost', 0),
+                trade.get('short_cost', 0),
+                trade.get('signal_reason'),
+            ))
+
+        conn.commit()
+        conn.close()
+        return run_id
+
+    def get_backtest_runs(
+        self,
+        strategy_name: str = None,
+        start_date: str = None,
+        limit: int = 50
+    ) -> List[Dict]:
+        """백테스트 실행 이력 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM backtest_runs WHERE 1=1"
+        params = []
+
+        if strategy_name:
+            query += " AND strategy_name = ?"
+            params.append(strategy_name)
+
+        if start_date:
+            query += " AND start_date >= ?"
+            params.append(start_date)
+
+        query += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for row in rows:
+            d = dict(row)
+            d['parameters'] = json.loads(d['parameters']) if d['parameters'] else {}
+            results.append(d)
+
+        return results
+
+    def get_backtest_trades(self, run_id: int) -> List[Dict]:
+        """특정 백테스트의 거래 내역 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM backtest_trades
+            WHERE run_id = ?
+            ORDER BY entry_date
+        """, (run_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    def get_strategy_performance_history(self, strategy_name: str) -> List[Dict]:
+        """전략별 성과 이력 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                start_date, end_date,
+                total_return, sharpe_ratio, max_drawdown,
+                total_trades, win_rate, profit_factor,
+                created_at
+            FROM backtest_runs
+            WHERE strategy_name = ?
+            ORDER BY created_at DESC
+        """, (strategy_name,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+
+    def save_walk_forward_result(
+        self,
+        run_id: int,
+        fold_number: int,
+        train_start: str,
+        train_end: str,
+        test_start: str,
+        test_end: str,
+        in_sample_return: float,
+        in_sample_sharpe: float,
+        out_sample_return: float,
+        out_sample_sharpe: float
+    ) -> int:
+        """Walk-Forward 결과 저장"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        # 성과 저하율 계산
+        degradation = 0.0
+        if in_sample_sharpe != 0:
+            degradation = ((in_sample_sharpe - out_sample_sharpe) / abs(in_sample_sharpe)) * 100
+
+        cursor.execute("""
+            INSERT INTO walk_forward_results
+            (run_id, fold_number, train_start, train_end, test_start, test_end,
+             in_sample_return, in_sample_sharpe, out_sample_return, out_sample_sharpe,
+             degradation_pct)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            run_id, fold_number, train_start, train_end, test_start, test_end,
+            in_sample_return, in_sample_sharpe, out_sample_return, out_sample_sharpe,
+            degradation
+        ))
+
+        result_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return result_id
+
+    def get_walk_forward_summary(self, run_id: int) -> Dict:
+        """Walk-Forward 결과 요약"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_folds,
+                AVG(in_sample_sharpe) as avg_is_sharpe,
+                AVG(out_sample_sharpe) as avg_oos_sharpe,
+                AVG(degradation_pct) as avg_degradation,
+                MIN(out_sample_sharpe) as min_oos_sharpe,
+                MAX(out_sample_sharpe) as max_oos_sharpe
+            FROM walk_forward_results
+            WHERE run_id = ?
+        """, (run_id,))
+
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row['total_folds'] > 0:
+            return {
+                'total_folds': row['total_folds'],
+                'avg_in_sample_sharpe': round(row['avg_is_sharpe'] or 0, 2),
+                'avg_out_sample_sharpe': round(row['avg_oos_sharpe'] or 0, 2),
+                'avg_degradation_pct': round(row['avg_degradation'] or 0, 1),
+                'min_oos_sharpe': round(row['min_oos_sharpe'] or 0, 2),
+                'max_oos_sharpe': round(row['max_oos_sharpe'] or 0, 2),
+            }
+        return {}
+
+    # ========================================================================
     # Utility Methods
     # ========================================================================
 
@@ -788,6 +1103,24 @@ class TradingDB:
         """)
         summary['signals_by_source'] = {
             row['signal_source']: row['cnt'] for row in cursor.fetchall()
+        }
+
+        # v2.0: 백테스트 통계 추가
+        cursor.execute("SELECT COUNT(*) as cnt FROM backtest_runs")
+        summary['total_backtest_runs'] = cursor.fetchone()['cnt']
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM backtest_trades")
+        summary['total_backtest_trades'] = cursor.fetchone()['cnt']
+
+        cursor.execute("""
+            SELECT strategy_name, COUNT(*) as cnt, AVG(sharpe_ratio) as avg_sharpe
+            FROM backtest_runs GROUP BY strategy_name
+        """)
+        summary['backtests_by_strategy'] = {
+            row['strategy_name']: {
+                'count': row['cnt'],
+                'avg_sharpe': round(row['avg_sharpe'] or 0, 2)
+            } for row in cursor.fetchall()
         }
 
         conn.close()

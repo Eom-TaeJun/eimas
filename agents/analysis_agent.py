@@ -137,6 +137,8 @@ class AnalysisAgent(BaseAgent):
         - "primary_risk": 주요 위험 요인
         - "regime_stability": 레짐 안정성
         - "crypto_correlation": 암호화폐 상관관계
+        - "bubble_assessment": JP Morgan 5단계 버블 평가 (NEW)
+        - "institutional_view": 기관 투자자 관점 종합 (NEW)
 
         Args:
             topic: 의견 주제
@@ -187,6 +189,16 @@ class AnalysisAgent(BaseAgent):
             # Would use crypto_result from context
             crypto_result = context.get('critical_path_result', {}).get('crypto_result', {})
             return self._opinion_crypto_correlation(crypto_result)
+        elif topic == "bubble_assessment":
+            # JP Morgan 5단계 버블 프레임워크 평가 (NEW)
+            bubble_data = context.get('bubble_risk', {})
+            return self._opinion_bubble_assessment(bubble_data)
+        elif topic == "institutional_view":
+            # 기관 투자자 관점 종합 (NEW)
+            return self._opinion_institutional_view(
+                total_risk_score, current_regime, regime_confidence,
+                active_warnings, context
+            )
         else:
             # Default: neutral opinion
             return AgentOpinion(
@@ -407,6 +419,195 @@ class AnalysisAgent(BaseAgent):
             strength=strength,
             confidence=confidence,
             evidence=evidence,
+            key_metrics=key_metrics
+        )
+
+    def _opinion_bubble_assessment(self, bubble_data: dict) -> AgentOpinion:
+        """
+        JP Morgan 5단계 버블 프레임워크 기반 의견 형성 (NEW)
+
+        Reference: docs/INSTITUTIONAL_REFERENCE.md
+        - Stage 1: 패러다임 전환
+        - Stage 2: 신용 가용성
+        - Stage 3: 레버리지/밸류에이션 괴리
+        - Stage 4: 투기적 피드백 루프
+        - Stage 5: 붕괴 트리거
+        """
+        overall_status = bubble_data.get('overall_status', 'NONE')
+        highest_risk_ticker = bubble_data.get('highest_risk_ticker', 'N/A')
+        highest_risk_score = bubble_data.get('highest_risk_score', 0)
+        risk_tickers = bubble_data.get('risk_tickers', [])
+
+        # JP Morgan 프레임워크 데이터 추출
+        jpmorgan_stage = 'None'
+        historical_comparison = 'No comparison'
+        if risk_tickers:
+            for rt in risk_tickers:
+                jpmorgan = rt.get('jpmorgan_framework', {})
+                if jpmorgan:
+                    jpmorgan_stage = jpmorgan.get('current_stage', 'None')
+                    historical_comparison = jpmorgan.get('historical_comparison', 'No comparison')
+                    break
+
+        # 의견 형성
+        if overall_status == 'DANGER':
+            position = f"DANGER: {highest_risk_ticker} shows Stage 4 speculative loop ({historical_comparison})"
+            strength = OpinionStrength.STRONG_DISAGREE
+            confidence = 0.9
+        elif overall_status == 'WARNING':
+            position = f"WARNING: Elevated bubble risk in {highest_risk_ticker} ({jpmorgan_stage})"
+            strength = OpinionStrength.DISAGREE
+            confidence = 0.75
+        elif overall_status == 'WATCH':
+            position = f"WATCH: Monitor {highest_risk_ticker} for bubble formation"
+            strength = OpinionStrength.NEUTRAL
+            confidence = 0.6
+        else:
+            position = "No significant bubble risk detected"
+            strength = OpinionStrength.AGREE
+            confidence = 0.7
+
+        evidence = [
+            f"Overall Status: {overall_status}",
+            f"JP Morgan Stage: {jpmorgan_stage}",
+            f"Historical Comparison: {historical_comparison}",
+            f"Highest Risk: {highest_risk_ticker} ({highest_risk_score:.1f})"
+        ]
+
+        key_metrics = {
+            'bubble_status': overall_status,
+            'highest_risk_score': highest_risk_score,
+            'jpmorgan_stage': jpmorgan_stage
+        }
+
+        caveats = []
+        if 'Dot-com' in historical_comparison:
+            caveats.append("Warning: Historical parallel to 1990s dot-com bubble detected")
+        if jpmorgan_stage and 'Stage 4' in str(jpmorgan_stage):
+            caveats.append("Critical: Speculative feedback loop in progress")
+
+        return AgentOpinion(
+            agent_role=self.config.role,
+            topic="bubble_assessment",
+            position=position,
+            strength=strength,
+            confidence=confidence,
+            evidence=evidence,
+            caveats=caveats,
+            key_metrics=key_metrics
+        )
+
+    def _opinion_institutional_view(
+        self,
+        total_risk_score: float,
+        current_regime: str,
+        regime_confidence: float,
+        active_warnings: list,
+        context: dict
+    ) -> AgentOpinion:
+        """
+        기관 투자자 관점 종합 의견 형성 (NEW)
+
+        References:
+        - JP Morgan Asset Management: Time-series Shock Modeling, Mag7 vs Russell 493
+        - Goldman Sachs: Gap-Bridging (시장 내재 vs 예측), AI 버블 DCF 검증
+        - Berkshire Hathaway: 보수적 추정, Fair Value Hierarchy
+
+        Key Methodology:
+        1. 정량적 검증 필수 (회귀분석, DCF, 시나리오)
+        2. 구조적 vs 순환적 분리
+        3. 가치사슬 매핑
+        4. 리스크 프리미엄 정량화
+        """
+        # Gap-Bridging: 시장 내재 기대 vs 분석 결과 비교
+        bubble_data = context.get('bubble_risk', {})
+        market_quality = context.get('market_quality', {})
+
+        # 기관 투자자 체크리스트
+        institutional_checks = []
+        confidence_adjustments = []
+
+        # 1. DCF/펀더멘털 검증 (Berkshire 방식)
+        # Risk score < 30이면 낙관적 → 펀더멘털 검증 필요
+        if total_risk_score < 30 and current_regime in ['BULL', 'EXPANSION']:
+            institutional_checks.append("✓ Low risk + Bull regime: Fundamentals supportive")
+            confidence_adjustments.append(+0.05)
+        elif total_risk_score > 60:
+            institutional_checks.append("⚠ High risk: Conservative positioning recommended (Berkshire approach)")
+            confidence_adjustments.append(-0.10)
+
+        # 2. 버블 리스크 오버레이 (JP Morgan 5단계)
+        bubble_status = bubble_data.get('overall_status', 'NONE')
+        if bubble_status in ['WARNING', 'DANGER']:
+            institutional_checks.append(f"⚠ Bubble risk: {bubble_status} (JP Morgan Framework)")
+            confidence_adjustments.append(-0.15)
+        else:
+            institutional_checks.append("✓ No bubble warning (JP Morgan Framework)")
+            confidence_adjustments.append(+0.05)
+
+        # 3. 시장 미세구조 품질 (Goldman approach)
+        avg_liquidity = market_quality.get('avg_liquidity_score', 50)
+        if avg_liquidity < 30:
+            institutional_checks.append("⚠ Low liquidity: Execution risk elevated")
+            confidence_adjustments.append(-0.10)
+        elif avg_liquidity > 70:
+            institutional_checks.append("✓ High liquidity: Good execution conditions")
+            confidence_adjustments.append(+0.05)
+
+        # 4. 레짐 신뢰도 (GMM Entropy 기반)
+        if regime_confidence < 60:
+            institutional_checks.append("⚠ Low regime confidence: Mixed signals")
+            confidence_adjustments.append(-0.10)
+        elif regime_confidence > 80:
+            institutional_checks.append("✓ High regime confidence: Clear directional signal")
+            confidence_adjustments.append(+0.05)
+
+        # 최종 신뢰도 계산
+        base_confidence = 0.65
+        final_confidence = max(0.3, min(0.95, base_confidence + sum(confidence_adjustments)))
+
+        # 포지션 결정
+        bullish_signals = sum(1 for c in institutional_checks if '✓' in c)
+        bearish_signals = sum(1 for c in institutional_checks if '⚠' in c)
+
+        if bullish_signals > bearish_signals and total_risk_score < 50:
+            position = "Institutional View: CONSTRUCTIVE - Fundamentals support risk-on"
+            strength = OpinionStrength.AGREE
+        elif bearish_signals > bullish_signals or total_risk_score > 60:
+            position = "Institutional View: CAUTIOUS - Defensive positioning recommended"
+            strength = OpinionStrength.DISAGREE
+        else:
+            position = "Institutional View: NEUTRAL - Balanced approach, await clarity"
+            strength = OpinionStrength.NEUTRAL
+
+        evidence = institutional_checks + [
+            f"Base confidence: {base_confidence:.0%}",
+            f"Adjustment: {sum(confidence_adjustments):+.0%}",
+            f"Final confidence: {final_confidence:.0%}"
+        ]
+
+        key_metrics = {
+            'institutional_bullish_signals': bullish_signals,
+            'institutional_bearish_signals': bearish_signals,
+            'confidence_adjustment': sum(confidence_adjustments),
+            'liquidity_score': avg_liquidity,
+            'regime_confidence': regime_confidence
+        }
+
+        caveats = []
+        if len(active_warnings) > 5:
+            caveats.append(f"Multiple active warnings ({len(active_warnings)}) require monitoring")
+        if bubble_status == 'DANGER':
+            caveats.append("CRITICAL: JP Morgan Stage 4/5 bubble risk - extreme caution")
+
+        return AgentOpinion(
+            agent_role=self.config.role,
+            topic="institutional_view",
+            position=position,
+            strength=strength,
+            confidence=final_confidence,
+            evidence=evidence,
+            caveats=caveats,
             key_metrics=key_metrics
         )
 

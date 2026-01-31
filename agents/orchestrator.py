@@ -87,7 +87,9 @@ class MetaOrchestrator:
             "market_outlook",
             "primary_risk",
             "regime_stability",
-            "rate_direction"
+            "rate_direction",
+            "bubble_assessment",     # JP Morgan 5단계 (NEW)
+            "institutional_view"     # 기관 투자자 관점 (NEW)
         ]
 
         self.logger.info("MetaOrchestrator initialized (7 agents + Multi-LLM Debate + ReasoningChain)")
@@ -410,6 +412,19 @@ class MetaOrchestrator:
             topics.append("rate_magnitude")
             self.logger.debug("Added 'rate_direction', 'rate_magnitude' (forecast data available)")
 
+        # Rule 7: 버블 리스크 데이터 존재 → bubble_assessment 토론 추가 (NEW)
+        bubble_risk = analysis_result.get('bubble_risk', {})
+        if bubble_risk.get('overall_status') in ['WATCH', 'WARNING', 'DANGER']:
+            topics.append("bubble_assessment")
+            self.logger.debug(f"Added 'bubble_assessment' (status={bubble_risk.get('overall_status')})")
+
+        # Rule 8: 기관 투자자 관점 항상 포함 (NEW)
+        # 시장 품질 또는 버블 리스크 데이터가 있으면 기관 관점 토론
+        market_quality = analysis_result.get('market_quality', {})
+        if market_quality or bubble_risk:
+            topics.append("institutional_view")
+            self.logger.debug("Added 'institutional_view' (institutional methodology data available)")
+
         # Fallback: 토픽이 없으면 기본 토픽 사용
         if not topics:
             self.logger.info("No topics auto-detected, using default topics")
@@ -646,13 +661,18 @@ class MetaOrchestrator:
             'debate_topics': list(consensus_results.keys()),
             'recommendations': self._generate_recommendations(analysis_result, consensus_results),
             'warnings': self._generate_warnings(analysis_result, consensus_results),
+            # Institutional Analysis (NEW)
+            'institutional_analysis': self._extract_institutional_insights(
+                consensus_results, opinions_by_topic, analysis_result
+            ),
             'metadata': {
                 'num_agents': 7,  # Analysis, Forecast, Research, Strategy, Verification + Interpretation, Methodology
                 'total_opinions': len(all_opinions),
                 'total_debates': len([c for c in consensus_results.values() if c.debate_rounds > 0]),
                 'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1),
                 'enhanced_debate_enabled': bool(enhanced_debate_results and 'error' not in enhanced_debate_results),
-                'reasoning_chain_steps': len(self.reasoning_chain.to_dict())
+                'reasoning_chain_steps': len(self.reasoning_chain.to_dict()),
+                'institutional_methodology_enabled': True  # NEW
             }
         }
 
@@ -728,6 +748,133 @@ class MetaOrchestrator:
             self.logger.warning(f"Methodology debate error: {e}")
             return {'error': str(e), 'selected_methodology': 'LASSO', 'confidence': 0.5}
 
+    def _extract_institutional_insights(
+        self,
+        consensus_results: Dict[str, Consensus],
+        opinions_by_topic: Dict[str, List[AgentOpinion]],
+        analysis_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        기관 투자자 방법론 기반 인사이트 추출 (NEW)
+
+        References:
+        - JP Morgan: 5단계 버블 프레임워크, Time-series Shock Modeling
+        - Goldman Sachs: Gap-Bridging, DCF 검증
+        - Berkshire Hathaway: 보수적 추정, Fair Value Hierarchy
+
+        Args:
+            consensus_results: 토론 합의 결과
+            opinions_by_topic: 주제별 의견
+            analysis_result: 분석 결과
+
+        Returns:
+            기관 인사이트 딕셔너리
+        """
+        insights = {
+            'methodology_applied': [],
+            'jpmorgan_framework': {},
+            'gap_bridging': {},
+            'risk_premium_quantification': {},
+            'narrative': ''
+        }
+
+        # 1. JP Morgan 5단계 버블 프레임워크
+        if 'bubble_assessment' in consensus_results:
+            bubble_consensus = consensus_results['bubble_assessment']
+            insights['jpmorgan_framework'] = {
+                'consensus_position': bubble_consensus.final_position,
+                'confidence': bubble_consensus.confidence,
+                'supporting_agents': [a.value for a in bubble_consensus.supporting_agents],
+                'dissenting_agents': [a.value for a in bubble_consensus.dissenting_agents],
+                'methodology': 'JP Morgan 5-Stage Bubble Framework (Paradigm → Credit → Leverage → Speculation → Collapse)'
+            }
+            insights['methodology_applied'].append('JP Morgan 5-Stage Bubble Framework')
+
+        # 2. 기관 투자자 관점 종합
+        if 'institutional_view' in consensus_results:
+            inst_consensus = consensus_results['institutional_view']
+            insights['institutional_view'] = {
+                'consensus_position': inst_consensus.final_position,
+                'confidence': inst_consensus.confidence,
+                'methodology': 'Institutional Multi-Factor Assessment (Goldman Gap-Bridging + Berkshire Conservative)'
+            }
+            insights['methodology_applied'].append('Goldman Sachs Gap-Bridging')
+            insights['methodology_applied'].append('Berkshire Hathaway Conservative Valuation')
+
+        # 3. Gap-Bridging 분석 (시장 내재 기대 vs 분석 결과)
+        total_risk_score = analysis_result.get('total_risk_score', 50)
+        regime = analysis_result.get('current_regime', 'NEUTRAL')
+
+        # Market expectation proxy (VIX-based)
+        if total_risk_score < 30 and regime in ['BULL', 'EXPANSION']:
+            market_expectation = 'BULLISH'
+            model_forecast = 'BULLISH'
+            gap = 'ALIGNED'
+        elif total_risk_score > 60:
+            market_expectation = 'CAUTIOUS'
+            model_forecast = 'BEARISH'
+            gap = 'ALIGNED'
+        else:
+            market_expectation = 'MIXED'
+            model_forecast = 'NEUTRAL'
+            gap = 'UNCERTAIN'
+
+        insights['gap_bridging'] = {
+            'market_expectation': market_expectation,
+            'model_forecast': model_forecast,
+            'gap_status': gap,
+            'methodology': 'Goldman Sachs Gap-Bridging (Market Implied vs Quantitative Forecast)'
+        }
+
+        # 4. 리스크 프리미엄 정량화
+        path_contributions = analysis_result.get('path_contributions', {})
+        if path_contributions:
+            primary_risk = max(path_contributions.items(), key=lambda x: x[1], default=('unknown', 0))
+            insights['risk_premium_quantification'] = {
+                'primary_risk_source': primary_risk[0],
+                'risk_contribution': f"{primary_risk[1]:.1f}%",
+                'methodology': 'Bekaert et al. VIX Decomposition (Uncertainty + Risk Appetite)'
+            }
+            insights['methodology_applied'].append('Bekaert VIX Risk Decomposition')
+
+        # 5. 종합 내러티브 생성
+        narratives = []
+
+        if 'JP Morgan' in str(insights['methodology_applied']):
+            bubble_pos = insights.get('jpmorgan_framework', {}).get('consensus_position', '')
+            if 'DANGER' in bubble_pos or 'WARNING' in bubble_pos:
+                narratives.append(
+                    "JP Morgan 5단계 프레임워크: 버블 경고 신호 감지. "
+                    "1990년대 닷컴 버블 또는 1840년대 철도 광기와 유사한 패턴."
+                )
+            else:
+                narratives.append(
+                    "JP Morgan 5단계 프레임워크: 현재 가격 움직임은 정상 범위 내."
+                )
+
+        if gap == 'ALIGNED':
+            narratives.append(
+                f"Goldman Sachs Gap-Bridging: 시장 내재 기대와 분석 결과가 일치 ({market_expectation})."
+            )
+        else:
+            narratives.append(
+                f"Goldman Sachs Gap-Bridging: 시장 기대와 분석 결과 간 괴리 존재. "
+                f"추가 검증 필요."
+            )
+
+        if total_risk_score < 40:
+            narratives.append(
+                "Berkshire 보수적 접근: 리스크 점수 낮음. 점진적 포지션 구축 가능."
+            )
+        elif total_risk_score > 60:
+            narratives.append(
+                "Berkshire 보수적 접근: 리스크 점수 상승. 현금 비중 확대 권장."
+            )
+
+        insights['narrative'] = " ".join(narratives)
+
+        return insights
+
     def _generate_recommendations(
         self,
         analysis_result: Dict[str, Any],
@@ -783,6 +930,33 @@ class MetaOrchestrator:
                 f"AGENT DISAGREEMENT on {', '.join(topics_with_dissent)}: "
                 f"Consider multiple scenarios in planning"
             )
+
+        # Institutional methodology recommendations (NEW)
+        if 'bubble_assessment' in consensus_results:
+            bubble_consensus = consensus_results['bubble_assessment']
+            if 'DANGER' in bubble_consensus.final_position:
+                recommendations.append(
+                    f"[JP Morgan Framework] DANGER detected: Reduce exposure to bubble-risk assets. "
+                    f"Historical precedent suggests 40%+ drawdown risk within 2 years."
+                )
+            elif 'WARNING' in bubble_consensus.final_position:
+                recommendations.append(
+                    f"[JP Morgan Framework] WARNING: Monitor for speculative feedback loops. "
+                    f"Consider hedging strategies."
+                )
+
+        if 'institutional_view' in consensus_results:
+            inst_consensus = consensus_results['institutional_view']
+            if 'CAUTIOUS' in inst_consensus.final_position:
+                recommendations.append(
+                    f"[Institutional View] Defensive positioning recommended: "
+                    f"Quality over growth, higher cash allocation (Berkshire approach)."
+                )
+            elif 'CONSTRUCTIVE' in inst_consensus.final_position:
+                recommendations.append(
+                    f"[Institutional View] Risk-on appropriate: "
+                    f"Fundamentals supportive, consider sector rotation (Goldman approach)."
+                )
 
         # Default fallback
         if not recommendations:

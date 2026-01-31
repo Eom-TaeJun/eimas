@@ -149,6 +149,7 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     agent_outputs = full_orch_result.get('agent_outputs', {})
     verification = full_orch_result.get('verification', {})
     metadata = full_orch_result.get('metadata', {})
+    institutional_analysis = full_orch_result.get('institutional_analysis', {})
 
     # Display enhanced results summary
     interp = enhanced_debate.get('interpretation', {})
@@ -168,6 +169,14 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     if metadata:
         print(f"      ✓ Agents: {metadata.get('num_agents', 'N/A')}, Debates: {metadata.get('total_debates', 'N/A')}")
 
+    # Display institutional analysis if available
+    if institutional_analysis:
+        narrative = institutional_analysis.get('narrative', '')
+        methods = institutional_analysis.get('methodology_applied', [])
+        print(f"      ✓ Institutional Methods: {', '.join(methods[:3])}")
+        if narrative:
+            print(f"      ✓ Narrative: {narrative[:80]}...")
+
     return DebateResult(
         full_mode_position=full_result.position,
         reference_mode_position=ref_result.position,
@@ -182,7 +191,8 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
         reasoning_chain=reasoning_chain,
         agent_outputs=agent_outputs,
         verification=verification,
-        metadata=metadata
+        metadata=metadata,
+        institutional_analysis=institutional_analysis
     )
 
 def extract_consensus(debate_result: DebateResult) -> Dict[str, Any]:

@@ -58,6 +58,21 @@ class RiskSignalType(str, Enum):
     SHARE_ISSUANCE = "SHARE_ISSUANCE"         # 주식 발행 증가
     PRICE_ACCELERATION = "PRICE_ACCELERATION"  # 가격 가속화
     VOLUME_SURGE = "VOLUME_SURGE"             # 거래량 급증
+    # JP Morgan 5-Stage Framework (NEW)
+    PARADIGM_SHIFT = "PARADIGM_SHIFT"         # 패러다임 전환 (새 기술/산업)
+    CREDIT_AVAILABILITY = "CREDIT_AVAILABILITY"  # 신용 가용성 확대
+    LEVERAGE_GAP = "LEVERAGE_GAP"             # 레버리지/밸류에이션 괴리
+    SPECULATIVE_LOOP = "SPECULATIVE_LOOP"     # 투기적 피드백 루프
+
+
+class JPMorganBubbleStage(str, Enum):
+    """JP Morgan 5단계 버블 프레임워크"""
+    STAGE_1_PARADIGM = "Stage 1: Paradigm Shift"        # 패러다임 전환
+    STAGE_2_CREDIT = "Stage 2: Credit Availability"    # 신용 가용성
+    STAGE_3_LEVERAGE = "Stage 3: Leverage Gap"         # 레버리지 괴리
+    STAGE_4_SPECULATION = "Stage 4: Speculative Loop"  # 투기적 피드백
+    STAGE_5_COLLAPSE = "Stage 5: Collapse Trigger"     # 붕괴 트리거
+    NONE = "No Bubble Stage"
 
 
 # Bubbles for Fama 논문 기준값
@@ -155,6 +170,25 @@ class RiskSignal:
 
 
 @dataclass
+class JPMorganFrameworkResult:
+    """JP Morgan 5단계 버블 프레임워크 분석 결과"""
+    current_stage: 'JPMorganBubbleStage'
+    stage_scores: Dict[str, float]  # 각 단계별 점수 (0-100)
+    historical_comparison: str      # 역사적 비교 (철도, 닷컴 등)
+    key_indicators: List[str]
+    interpretation: str
+
+    def to_dict(self) -> Dict:
+        return {
+            'current_stage': self.current_stage.value,
+            'stage_scores': self.stage_scores,
+            'historical_comparison': self.historical_comparison,
+            'key_indicators': self.key_indicators,
+            'interpretation': self.interpretation
+        }
+
+
+@dataclass
 class BubbleDetectionResult:
     """버블 탐지 결과"""
     ticker: str
@@ -170,13 +204,16 @@ class BubbleDetectionResult:
     risk_signals: List[RiskSignal]
     risk_score: float              # 0-100
 
+    # JP Morgan Framework (NEW)
+    jpmorgan_framework: Optional[JPMorganFrameworkResult] = None
+
     # 추가 정보
     company_name: str = ""
     sector: str = ""
     market_cap: Optional[float] = None
 
     def to_dict(self) -> Dict:
-        return {
+        result = {
             'ticker': self.ticker,
             'timestamp': self.timestamp,
             'company_name': self.company_name,
@@ -189,6 +226,10 @@ class BubbleDetectionResult:
             'risk_signals': [s.to_dict() for s in self.risk_signals],
             'risk_score': self.risk_score
         }
+        # JP Morgan Framework (NEW)
+        if self.jpmorgan_framework:
+            result['jpmorgan_framework'] = self.jpmorgan_framework.to_dict()
+        return result
 
     def get_summary(self) -> str:
         """결과 요약 문자열"""
@@ -202,6 +243,18 @@ class BubbleDetectionResult:
             f"Volatility: z-score {self.volatility.zscore:.2f} ({self.volatility.interpretation})",
             f"Issuance: {self.issuance.interpretation}",
         ]
+
+        # JP Morgan Framework (NEW)
+        if self.jpmorgan_framework:
+            lines.append("")
+            lines.append("=== JP Morgan 5-Stage Framework ===")
+            lines.append(f"Current Stage: {self.jpmorgan_framework.current_stage.value}")
+            lines.append(f"Historical Comparison: {self.jpmorgan_framework.historical_comparison}")
+            lines.append(f"Interpretation: {self.jpmorgan_framework.interpretation}")
+            if self.jpmorgan_framework.key_indicators:
+                lines.append("Key Indicators:")
+                for indicator in self.jpmorgan_framework.key_indicators:
+                    lines.append(f"  - {indicator}")
 
         if self.risk_signals:
             lines.append("")
@@ -553,7 +606,201 @@ class BubbleDetector:
             )
 
     # -------------------------------------------------------------------------
-    # 4. Additional Risk Signals
+    # 4. JP Morgan 5-Stage Bubble Framework (NEW)
+    # -------------------------------------------------------------------------
+
+    def analyze_jpmorgan_framework(
+        self,
+        ticker: str,
+        price_data: pd.DataFrame,
+        runup: RunUpResult,
+        volatility: VolatilityResult,
+        issuance: IssuanceResult
+    ) -> JPMorganFrameworkResult:
+        """
+        JP Morgan 5단계 버블 프레임워크 분석
+
+        Reference: JP Morgan Wealth Management (제공된 J.docx)
+        - Stage 1: 패러다임 전환 (새 기술/산업)
+        - Stage 2: 신용 가용성 (자금 조달 용이성)
+        - Stage 3: 레버리지/밸류에이션 괴리
+        - Stage 4: 투기적 피드백 루프
+        - Stage 5: 붕괴 트리거
+
+        Args:
+            ticker: 종목 코드
+            price_data: OHLCV 데이터
+            runup: Run-up 분석 결과
+            volatility: 변동성 분석 결과
+            issuance: 발행주식 분석 결과
+
+        Returns:
+            JPMorganFrameworkResult
+        """
+        stage_scores = {}
+
+        # Stage 1: 패러다임 전환 (AI, 전기차 등 테마주 여부)
+        paradigm_sectors = ['Technology', 'Communication Services', 'Consumer Discretionary']
+        ai_keywords = ['AI', 'artificial intelligence', 'machine learning', 'semiconductor', 'data center']
+
+        try:
+            yf_ticker = yf.Ticker(ticker)
+            info = yf_ticker.info
+            sector = info.get('sector', '')
+            industry = info.get('industry', '').lower()
+            description = info.get('longBusinessSummary', '').lower()
+
+            # 패러다임 전환 점수
+            paradigm_score = 0
+            if sector in paradigm_sectors:
+                paradigm_score += 30
+            if any(kw.lower() in industry for kw in ai_keywords):
+                paradigm_score += 40
+            if any(kw.lower() in description for kw in ai_keywords):
+                paradigm_score += 30
+            stage_scores['paradigm_shift'] = min(100, paradigm_score)
+
+        except Exception:
+            stage_scores['paradigm_shift'] = 0
+
+        # Stage 2: 신용 가용성 (주식 발행 증가 = 자금 조달 용이)
+        if issuance.data_available and issuance.change_rate:
+            credit_score = min(100, max(0, issuance.change_rate * 500))  # 20% 발행 = 100점
+        else:
+            credit_score = 30  # 기본값
+        stage_scores['credit_availability'] = credit_score
+
+        # Stage 3: 레버리지/밸류에이션 괴리
+        # PE ratio, PB ratio 기반
+        leverage_score = 0
+        try:
+            pe_ratio = info.get('trailingPE', 0) or info.get('forwardPE', 0)
+            pb_ratio = info.get('priceToBook', 0)
+
+            # 닷컴 버블 기준: PE > 50, PB > 10
+            if pe_ratio and pe_ratio > 100:
+                leverage_score += 50
+            elif pe_ratio and pe_ratio > 50:
+                leverage_score += 30
+            elif pe_ratio and pe_ratio > 30:
+                leverage_score += 15
+
+            if pb_ratio and pb_ratio > 10:
+                leverage_score += 50
+            elif pb_ratio and pb_ratio > 5:
+                leverage_score += 30
+
+        except Exception:
+            pass
+        stage_scores['leverage_gap'] = min(100, leverage_score)
+
+        # Stage 4: 투기적 피드백 루프 (모멘텀 자기강화)
+        # Run-up + 변동성 급등 + 거래량 급증
+        speculation_score = 0
+        if runup.is_runup:
+            speculation_score += 40
+        if runup.cumulative_return > 2.0:  # 3배 이상
+            speculation_score += 30
+        if volatility.is_spike:
+            speculation_score += 30
+        stage_scores['speculative_loop'] = min(100, speculation_score)
+
+        # Stage 5: 붕괴 트리거 (아직 발생하지 않음 = 0점 유지)
+        # 향후 VIX 스파이크, 금리 인상 등으로 감지 가능
+        stage_scores['collapse_trigger'] = 0
+
+        # 현재 단계 결정
+        current_stage = self._determine_jpmorgan_stage(stage_scores)
+
+        # 역사적 비교
+        historical_comparison = self._get_historical_comparison(
+            runup.cumulative_return,
+            stage_scores['paradigm_shift'] > 50
+        )
+
+        # 핵심 지표
+        key_indicators = []
+        if stage_scores['paradigm_shift'] > 50:
+            key_indicators.append(f"Paradigm Shift: AI/Tech Theme ({stage_scores['paradigm_shift']:.0f}%)")
+        if stage_scores['credit_availability'] > 50:
+            key_indicators.append(f"Credit Expansion: Share Issuance ({stage_scores['credit_availability']:.0f}%)")
+        if stage_scores['leverage_gap'] > 50:
+            key_indicators.append(f"Valuation Gap: PE/PB Elevated ({stage_scores['leverage_gap']:.0f}%)")
+        if stage_scores['speculative_loop'] > 50:
+            key_indicators.append(f"Speculative Loop: Momentum ({stage_scores['speculative_loop']:.0f}%)")
+
+        # 해석
+        interpretation = self._generate_jpmorgan_interpretation(current_stage, stage_scores)
+
+        return JPMorganFrameworkResult(
+            current_stage=current_stage,
+            stage_scores=stage_scores,
+            historical_comparison=historical_comparison,
+            key_indicators=key_indicators,
+            interpretation=interpretation
+        )
+
+    def _determine_jpmorgan_stage(self, stage_scores: Dict[str, float]) -> JPMorganBubbleStage:
+        """JP Morgan 단계 결정"""
+        scores = [
+            (JPMorganBubbleStage.STAGE_4_SPECULATION, stage_scores.get('speculative_loop', 0)),
+            (JPMorganBubbleStage.STAGE_3_LEVERAGE, stage_scores.get('leverage_gap', 0)),
+            (JPMorganBubbleStage.STAGE_2_CREDIT, stage_scores.get('credit_availability', 0)),
+            (JPMorganBubbleStage.STAGE_1_PARADIGM, stage_scores.get('paradigm_shift', 0)),
+        ]
+
+        # 가장 높은 점수 단계 (50점 이상만 인정)
+        for stage, score in scores:
+            if score >= 50:
+                return stage
+
+        return JPMorganBubbleStage.NONE
+
+    def _get_historical_comparison(self, cumulative_return: float, is_tech: bool) -> str:
+        """역사적 비교 (철도, 닷컴 등)"""
+        if cumulative_return >= 5.0 and is_tech:
+            return "Similar to 1990s Dot-com Bubble (Tech mania, extreme valuations)"
+        elif cumulative_return >= 3.0 and is_tech:
+            return "Early-stage Dot-com comparison (1998-1999)"
+        elif cumulative_return >= 2.0:
+            return "Similar to 1840s Railway Mania (Infrastructure overinvestment)"
+        elif cumulative_return >= 1.0:
+            return "Moderate run-up, within historical norms"
+        else:
+            return "No significant historical parallel"
+
+    def _generate_jpmorgan_interpretation(
+        self,
+        stage: JPMorganBubbleStage,
+        scores: Dict[str, float]
+    ) -> str:
+        """JP Morgan 프레임워크 해석 생성"""
+        interpretations = {
+            JPMorganBubbleStage.STAGE_1_PARADIGM:
+                "패러다임 전환 단계: 새로운 기술/산업에 대한 관심 증가. 아직 버블 초기.",
+            JPMorganBubbleStage.STAGE_2_CREDIT:
+                "신용 확대 단계: 자금 조달이 용이해지고 있음. IPO, 유상증자 활발.",
+            JPMorganBubbleStage.STAGE_3_LEVERAGE:
+                "밸류에이션 괴리 단계: 가격이 펀더멘털을 크게 초과. 레버리지 주의.",
+            JPMorganBubbleStage.STAGE_4_SPECULATION:
+                "투기적 피드백 루프: 모멘텀이 모멘텀을 부르는 자기강화 단계. 위험 고조.",
+            JPMorganBubbleStage.STAGE_5_COLLAPSE:
+                "붕괴 임박: 트리거 이벤트 발생 가능성. 즉시 리스크 관리 필요.",
+            JPMorganBubbleStage.NONE:
+                "버블 징후 없음: 정상 범위 내 가격 움직임."
+        }
+
+        base = interpretations.get(stage, "분석 불가")
+
+        # 추가 경고
+        avg_score = sum(scores.values()) / max(len(scores), 1)
+        if avg_score > 60:
+            base += " [주의: 전반적 버블 지표 상승]"
+
+        return base
+
+    # -------------------------------------------------------------------------
+    # 5. Additional Risk Signals
     # -------------------------------------------------------------------------
 
     def check_price_acceleration(
@@ -716,10 +963,33 @@ class BubbleDetector:
             if volume_signal:
                 risk_signals.append(volume_signal)
 
-        # 5. 버블 경고 수준 결정
+        # 5. JP Morgan 5단계 프레임워크 분석 (NEW)
+        jpmorgan_result = self.analyze_jpmorgan_framework(
+            ticker=ticker,
+            price_data=price_data,
+            runup=runup,
+            volatility=volatility,
+            issuance=issuance
+        )
+
+        # JP Morgan 단계별 위험 신호 추가
+        if jpmorgan_result.current_stage != JPMorganBubbleStage.NONE:
+            risk_signals.append(RiskSignal(
+                signal_type=RiskSignalType.PARADIGM_SHIFT if 'PARADIGM' in jpmorgan_result.current_stage.value
+                    else RiskSignalType.LEVERAGE_GAP if 'LEVERAGE' in jpmorgan_result.current_stage.value
+                    else RiskSignalType.SPECULATIVE_LOOP,
+                severity=max(jpmorgan_result.stage_scores.values()) / 100.0,
+                description=f"JP Morgan Framework: {jpmorgan_result.current_stage.value}",
+                evidence={
+                    'stage_scores': jpmorgan_result.stage_scores,
+                    'historical_comparison': jpmorgan_result.historical_comparison
+                }
+            ))
+
+        # 6. 버블 경고 수준 결정
         bubble_level = self._determine_warning_level(runup, risk_signals)
 
-        # 6. 리스크 점수 계산
+        # 7. 리스크 점수 계산
         risk_score = self._calculate_risk_score(runup, risk_signals)
 
         return BubbleDetectionResult(
@@ -731,6 +1001,7 @@ class BubbleDetector:
             bubble_warning_level=bubble_level,
             risk_signals=risk_signals,
             risk_score=risk_score,
+            jpmorgan_framework=jpmorgan_result,
             company_name=company_name,
             sector=sector,
             market_cap=market_cap

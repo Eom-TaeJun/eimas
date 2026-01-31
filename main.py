@@ -360,13 +360,16 @@ async def _run_debate(result: EIMASResult, market_data: Dict):
         result.risk_level = debate_res.risk_level
         result.warnings.extend(debate_res.warnings)
         result.reasoning_chain = debate_res.reasoning_chain
-        
+
         if debate_res.enhanced_debate:
             result.debate_consensus['enhanced'] = debate_res.enhanced_debate
         if debate_res.verification:
             result.debate_consensus['verification'] = debate_res.verification
         if debate_res.metadata:
             result.debate_consensus['metadata'] = debate_res.metadata
+        # NEW: 기관 투자자 종합 분석 저장
+        if debate_res.institutional_analysis:
+            result.institutional_analysis = debate_res.institutional_analysis
     except Exception as e:
         print(f"⚠️ Debate Error: {e}")
 

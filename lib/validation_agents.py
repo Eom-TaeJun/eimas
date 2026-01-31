@@ -778,6 +778,23 @@ class ValidationAgentManager:
         # 합의 도출
         return self.consensus_engine.reach_consensus(validations)
 
+    def validate_all(
+        self,
+        agent_decision: Dict,
+        market_condition: Dict
+    ) -> ConsensusResult:
+        """동기 래퍼: validate_decision을 동기적으로 호출"""
+        import nest_asyncio
+        nest_asyncio.apply()
+
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(
+                self.validate_decision(agent_decision, market_condition)
+            )
+        finally:
+            loop.close()
+
     def get_report(self, consensus: ConsensusResult) -> str:
         """검증 리포트 생성"""
         lines = []

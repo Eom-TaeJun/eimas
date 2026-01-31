@@ -754,11 +754,14 @@ class FinalReportAgent:
             self._generate_global_markets(),          # NEW: 국제 시장
             self._generate_ark_invest_section(),
             self._generate_market_structure_section(),
+            self._generate_volume_shock_section(),    # NEW: 거래량 이상징후 & 충격 전파
             self._generate_hft_microstructure(),      # NEW: HFT 상세
             self._generate_garch_volatility(),        # NEW: GARCH 상세
             self._generate_information_flow(),        # NEW: CAPM, 이상거래
             self._generate_proof_of_index(),          # NEW: PoI 상세
             self._generate_debate_section(),
+            self._generate_institutional_narrative(), # NEW: 기관 투자자 분석 내러티브
+            self._generate_ai_institutional_interpretation(), # NEW: AI 기관 분석 해석
             self._generate_school_interpretations(),  # NEW: 학파별 해석
             self._generate_reasoning_chain(),         # NEW: 추론 과정
             self._generate_portfolio_section(),
@@ -1493,6 +1496,95 @@ class FinalReportAgent:
     </div>
 </div>'''
 
+    def _generate_volume_shock_section(self) -> str:
+        """거래량 이상징후 및 충격 전파 그래프"""
+        data = self.integrated_data
+
+        # 거래량 이상징후
+        vol_anomalies = data.get('volume_anomalies', [])
+
+        # 충격 전파 그래프
+        shock = data.get('shock_propagation', {})
+        impact_score = shock.get('impact_score', 0)
+        contagion_path = shock.get('contagion_path', [])
+        vulnerable = shock.get('vulnerable_assets', [])
+        details = shock.get('details', {})
+        graph_nodes = details.get('graph_nodes', 0)
+        paths_found = details.get('paths_found', 0)
+
+        # 거래량 이상징후 HTML
+        vol_html = ''
+        if vol_anomalies:
+            for va in vol_anomalies[:5]:
+                ticker = va.get('ticker', 'N/A')
+                severity = va.get('severity', 'LOW')
+                desc = va.get('description', '') or '거래량 이상 감지'
+
+                sev_color = '#c92a2a' if severity == 'HIGH' else '#f08c00' if severity == 'MEDIUM' else '#868e96'
+                vol_html += f'''
+                <div style="display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--bg-tertiary); border-radius: 6px; margin-bottom: 8px;">
+                    <span style="font-weight: 700; width: 80px;">{ticker}</span>
+                    <span style="background: {sev_color}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">{severity}</span>
+                    <span style="flex: 1; font-size: 0.85rem; color: var(--text-secondary);">{desc[:50]}</span>
+                </div>'''
+        else:
+            vol_html = '<p class="text-muted">탐지된 이상징후 없음</p>'
+
+        # 충격 전파 경로 HTML
+        path_html = ''
+        if contagion_path:
+            path_str = ' → '.join(contagion_path)
+            path_html = f'<p style="font-family: monospace; background: var(--bg-tertiary); padding: 12px; border-radius: 6px;">{path_str}</p>'
+        else:
+            path_html = '<p class="text-muted">활성 전파 경로 없음 (시장 안정)</p>'
+
+        # 취약 자산 HTML
+        vuln_html = ''
+        if vulnerable:
+            vuln_html = f'<p><span class="text-red">취약 자산:</span> {", ".join(vulnerable[:5])}</p>'
+
+        # 영향 점수 색상
+        impact_color = '#c92a2a' if impact_score > 70 else '#f08c00' if impact_score > 30 else '#2b8a3e'
+
+        return f'''
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-yellow);">
+    <div class="card-header">
+        <span class="card-title">📊 거래량 이상징후 & 충격 전파 그래프</span>
+    </div>
+    <div class="grid grid-2">
+        <!-- 거래량 이상징후 -->
+        <div>
+            <h4 style="margin-bottom: 12px; color: var(--accent-yellow);">📈 거래량 이상징후 (Volume Anomalies)</h4>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 12px;">
+                정상 범위를 벗어난 거래량 패턴 탐지 (Z-score 기반)
+            </p>
+            {vol_html}
+        </div>
+
+        <!-- 충격 전파 그래프 -->
+        <div>
+            <h4 style="margin-bottom: 12px; color: var(--accent-cyan);">🕸️ 충격 전파 그래프 (Shock Propagation)</h4>
+            <div style="display: flex; gap: 20px; margin-bottom: 16px;">
+                <div style="text-align: center;">
+                    <p style="font-size: 2rem; font-weight: 700; color: {impact_color};">{impact_score:.0f}</p>
+                    <p class="text-muted" style="font-size: 0.8rem;">영향 점수</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="font-size: 2rem; font-weight: 700; color: var(--accent-blue);">{graph_nodes}</p>
+                    <p class="text-muted" style="font-size: 0.8rem;">네트워크 노드</p>
+                </div>
+                <div style="text-align: center;">
+                    <p style="font-size: 2rem; font-weight: 700; color: var(--accent-purple);">{paths_found}</p>
+                    <p class="text-muted" style="font-size: 0.8rem;">전파 경로</p>
+                </div>
+            </div>
+            <h5 style="margin-bottom: 8px;">전파 경로 (Contagion Path)</h5>
+            {path_html}
+            {vuln_html}
+        </div>
+    </div>
+</div>'''
+
     def _generate_hft_microstructure(self) -> str:
         """HFT 미세구조 상세 (NEW)"""
         data = self.integrated_data
@@ -1752,6 +1844,304 @@ class FinalReportAgent:
         <strong>최종 합의: {consensus_text}</strong>
     </div>
 </div>'''
+
+    def _generate_institutional_narrative(self) -> str:
+        """기관 투자자 분석 내러티브 (JP Morgan, Goldman, Berkshire) - NEW 2026-01-31"""
+        data = self.integrated_data
+        inst_analysis = data.get('institutional_analysis', {})
+
+        if not inst_analysis:
+            return ''
+
+        narrative = inst_analysis.get('narrative', '')
+        methods = inst_analysis.get('methodology_applied', [])
+        jpmorgan = inst_analysis.get('jpmorgan_framework', {})
+        gap_bridging = inst_analysis.get('gap_bridging', {})
+        risk_quant = inst_analysis.get('risk_premium_quantification', {})
+
+        methods_html = ''.join([f'<span class="metric-badge bg-purple">{m}</span> ' for m in methods[:4]])
+
+        jpmorgan_html = ''
+        if jpmorgan:
+            stage = jpmorgan.get('consensus_position', 'N/A')
+            conf = jpmorgan.get('confidence', 0.5)
+            jpmorgan_html = f'''
+            <div class="tech-item">
+                <p class="tech-label">JP Morgan 5단계 버블 평가</p>
+                <p class="tech-value text-purple">{stage[:40]}...</p>
+                <p class="text-muted" style="font-size: 0.85rem;">신뢰도: {conf:.0%}</p>
+            </div>'''
+
+        gap_html = ''
+        if gap_bridging:
+            market_exp = gap_bridging.get('market_expectation', 'N/A')
+            model_fc = gap_bridging.get('model_forecast', 'N/A')
+            gap_status = gap_bridging.get('gap_status', 'UNKNOWN')
+            gap_color = 'text-green' if gap_status == 'ALIGNED' else 'text-yellow'
+            gap_html = f'''
+            <div class="tech-item">
+                <p class="tech-label">Goldman Sachs Gap-Bridging</p>
+                <p class="tech-value {gap_color}">{gap_status}</p>
+                <p class="text-muted" style="font-size: 0.85rem;">시장 기대: {market_exp} / 모델 예측: {model_fc}</p>
+            </div>'''
+
+        risk_html = ''
+        if risk_quant:
+            primary_risk = risk_quant.get('primary_risk_source', 'N/A')
+            contribution = risk_quant.get('risk_contribution', 'N/A')
+            risk_html = f'''
+            <div class="tech-item">
+                <p class="tech-label">Bekaert VIX 분해</p>
+                <p class="tech-value">{primary_risk}</p>
+                <p class="text-muted" style="font-size: 0.85rem;">기여도: {contribution}</p>
+            </div>'''
+
+        narrative_html = ''
+        if narrative:
+            narrative_html = f'''
+            <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px; margin-top: 16px;">
+                <p style="font-style: italic; line-height: 1.8;">{narrative}</p>
+            </div>'''
+
+        return f'''
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-cyan);">
+    <div class="card-header">
+        <span class="card-title">🏦 기관 투자자 관점 (Institutional View)</span>
+    </div>
+    <div style="margin-bottom: 12px;">
+        <p class="text-muted" style="font-size: 0.85rem;">적용된 방법론:</p>
+        {methods_html}
+    </div>
+    <div class="grid grid-3">
+        {jpmorgan_html}
+        {gap_html}
+        {risk_html}
+    </div>
+    {narrative_html}
+</div>'''
+
+    def _generate_ai_institutional_interpretation(self) -> str:
+        """AI 기관 분석 해석 (NEW) - Claude/GPT가 기관별 분석 결과를 종합 해석"""
+        data = self.integrated_data
+
+        # 데이터 수집
+        bubble = data.get('bubble_framework', {})
+        gap = data.get('gap_analysis', {})
+        fomc = data.get('fomc_analysis', {})
+        institutional = data.get('institutional_analysis', {})
+
+        # 버블 프레임워크 해석
+        bubble_stage = bubble.get('stage', 'UNKNOWN')
+        bubble_score = bubble.get('total_score', 0)
+        bubble_stages = bubble.get('stage_results', [])
+
+        # Gap 분석 해석
+        gap_signal = gap.get('overall_signal', 'NEUTRAL')
+        gap_opportunity = gap.get('opportunity', '')
+        gaps = gap.get('gaps', [])
+
+        # FOMC 해석
+        fomc_stance = fomc.get('stance', 'NEUTRAL')
+        fomc_uncertainty = fomc.get('uncertainty', {}).get('policy_uncertainty_index', 50)
+        fomc_interpretation = fomc.get('interpretation', '')
+
+        # CSS 클래스 결정
+        bubble_class = 'text-green' if bubble_score < 30 else 'text-yellow' if bubble_score < 60 else 'text-red'
+        gap_class = 'text-green' if gap_signal == 'BULLISH' else 'text-red' if gap_signal == 'BEARISH' else 'text-yellow'
+        fomc_class = 'text-red' if fomc_stance == 'HAWKISH' else 'text-green' if fomc_stance == 'DOVISH' else 'text-yellow'
+
+        # 버블 단계 시각화 바
+        bubble_stages_html = ''
+        for stage in bubble_stages:
+            stage_name = stage.get('stage', '').replace('_', ' ').title()
+            stage_passed = stage.get('passed', False)
+            stage_score = stage.get('score', 0)
+            evidence = stage.get('evidence', '')[:60]
+            icon = '✅' if stage_passed else '❌'
+            bubble_stages_html += f'''
+            <div style="display: flex; align-items: center; margin-bottom: 8px; padding: 8px; background: var(--bg-tertiary); border-radius: 6px;">
+                <span style="width: 24px;">{icon}</span>
+                <span style="flex: 1; font-weight: 500;">{stage_name}</span>
+                <span style="width: 60px; text-align: right; font-weight: 600;">{stage_score:.1f}</span>
+            </div>'''
+
+        # Gap 분석 시각화
+        gap_items_html = ''
+        for g in gaps[:4]:
+            metric = g.get('metric', '').replace('_', ' ').title()
+            market_val = g.get('market_implied', 0)
+            model_val = g.get('model_forecast', 0)
+            gap_val = g.get('gap', 0)
+            signal = g.get('signal', 'NEUTRAL')
+            signal_class = 'text-green' if signal == 'BULLISH' else 'text-red' if signal == 'BEARISH' else 'text-yellow'
+
+            # 바 차트 (시장 vs 모델)
+            max_val = max(abs(market_val), abs(model_val), 0.01)
+            market_pct = min((market_val / max_val) * 100, 100)
+            model_pct = min((model_val / max_val) * 100, 100)
+
+            gap_items_html += f'''
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                    <span style="font-weight: 500;">{metric}</span>
+                    <span class="{signal_class}" style="font-weight: 700;">{signal}</span>
+                </div>
+                <div style="display: flex; gap: 4px; height: 20px;">
+                    <div style="background: var(--accent-blue); width: {market_pct:.0f}%; border-radius: 4px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                    <span>시장: {market_val:.2f}</span>
+                    <span>모델: {model_val:.2f}</span>
+                    <span>Gap: {gap_val:+.2f}</span>
+                </div>
+            </div>'''
+
+        # FOMC 분포 시각화
+        member_dist = fomc.get('member_distribution', {})
+        hawkish_count = member_dist.get('hawkish', 0)
+        neutral_count = member_dist.get('neutral', 0)
+        dovish_count = member_dist.get('dovish', 0)
+        total = member_dist.get('total', 1) or 1
+
+        hawkish_pct = (hawkish_count / total) * 100
+        neutral_pct = (neutral_count / total) * 100
+        dovish_pct = (dovish_count / total) * 100
+
+        # AI 종합 해석 생성 (간단한 규칙 기반)
+        ai_interpretation = self._generate_ai_synthesis(
+            bubble_score=bubble_score,
+            bubble_stage=bubble_stage,
+            gap_signal=gap_signal,
+            gap_opportunity=gap_opportunity,
+            fomc_stance=fomc_stance,
+            fomc_uncertainty=fomc_uncertainty
+        )
+
+        return f'''
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-purple);">
+    <div class="card-header">
+        <span class="card-title">🧠 AI 기관 분석 해석</span>
+        <span class="text-muted" style="font-size: 0.85rem;">Claude + GPT Multi-LLM Synthesis</span>
+    </div>
+
+    <!-- 3열 그리드: 버블/Gap/FOMC -->
+    <div class="grid grid-3" style="margin-bottom: 20px;">
+        <!-- 버블 프레임워크 -->
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+            <h4 style="margin-bottom: 12px; color: var(--text-primary);">📊 5-Stage Bubble Framework</h4>
+            <div style="text-align: center; margin-bottom: 12px;">
+                <span class="{bubble_class}" style="font-size: 2rem; font-weight: 700;">{bubble_score:.0f}</span>
+                <span style="font-size: 0.9rem; color: var(--text-muted);">/100</span>
+            </div>
+            <div style="text-align: center; margin-bottom: 12px;">
+                <span class="signal-badge {'bullish' if bubble_score < 40 else 'bearish' if bubble_score > 70 else 'neutral'}">{bubble_stage}</span>
+            </div>
+            {bubble_stages_html}
+        </div>
+
+        <!-- Gap Analysis -->
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+            <h4 style="margin-bottom: 12px; color: var(--text-primary);">📈 Market-Model Gap</h4>
+            <div style="text-align: center; margin-bottom: 12px;">
+                <span class="signal-badge {'bullish' if gap_signal == 'BULLISH' else 'bearish' if gap_signal == 'BEARISH' else 'neutral'}">{gap_signal}</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">{gap_opportunity}</p>
+            {gap_items_html}
+        </div>
+
+        <!-- FOMC Analysis -->
+        <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+            <h4 style="margin-bottom: 12px; color: var(--text-primary);">🏛️ FOMC Dot Plot</h4>
+            <div style="text-align: center; margin-bottom: 12px;">
+                <span class="signal-badge {'bearish' if fomc_stance == 'HAWKISH' else 'bullish' if fomc_stance == 'DOVISH' else 'neutral'}">{fomc_stance}</span>
+            </div>
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; height: 24px; border-radius: 6px; overflow: hidden;">
+                    <div style="background: #c92a2a; width: {hawkish_pct:.0f}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem;">
+                        {hawkish_count}
+                    </div>
+                    <div style="background: #868e96; width: {neutral_pct:.0f}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem;">
+                        {neutral_count}
+                    </div>
+                    <div style="background: #2b8a3e; width: {dovish_pct:.0f}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.75rem;">
+                        {dovish_count}
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">
+                    <span>Hawkish</span>
+                    <span>Neutral</span>
+                    <span>Dovish</span>
+                </div>
+            </div>
+            <div style="background: var(--bg-secondary); padding: 12px; border-radius: 6px;">
+                <p style="font-size: 0.85rem; margin-bottom: 8px;">정책 불확실성 지수</p>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="flex: 1; background: var(--border); height: 8px; border-radius: 4px;">
+                        <div style="background: {'#c92a2a' if fomc_uncertainty > 70 else '#f08c00' if fomc_uncertainty > 40 else '#2b8a3e'}; width: {fomc_uncertainty:.0f}%; height: 100%; border-radius: 4px;"></div>
+                    </div>
+                    <span style="font-weight: 600; width: 40px;">{fomc_uncertainty:.0f}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 종합 해석 -->
+    <div style="background: linear-gradient(135deg, var(--accent-purple-bg), var(--accent-blue-bg)); padding: 20px; border-radius: 10px; border: 1px solid var(--accent-purple);">
+        <h4 style="margin-bottom: 12px; color: var(--accent-purple);">🤖 AI 종합 해석 (Multi-LLM Consensus)</h4>
+        <p style="line-height: 1.8; color: var(--text-primary);">{ai_interpretation}</p>
+    </div>
+</div>'''
+
+    def _generate_ai_synthesis(self, bubble_score: float, bubble_stage: str,
+                                gap_signal: str, gap_opportunity: str,
+                                fomc_stance: str, fomc_uncertainty: float) -> str:
+        """AI 기관 분석 종합 해석 생성"""
+        interpretations = []
+
+        # 버블 해석
+        if bubble_score < 30:
+            interpretations.append(f"버블 프레임워크 점수 {bubble_score:.0f}점으로 **안전 구간**입니다. 현재 시장에 과열 징후는 관찰되지 않습니다.")
+        elif bubble_score < 60:
+            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점({bubble_stage})으로 **초기 형성 단계**입니다. 주의 깊은 모니터링이 필요하나 즉각적 리스크는 제한적입니다.")
+        else:
+            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점으로 **경고 수준**입니다. 포지션 축소 및 방어적 전략을 고려해야 합니다.")
+
+        # Gap 해석
+        if gap_signal == 'BULLISH':
+            interpretations.append("시장-모델 갭 분석에서 시장이 과도하게 비관적이어서 **매수 기회**가 존재합니다.")
+        elif gap_signal == 'BEARISH':
+            interpretations.append(f"시장-모델 갭 분석에서 시장이 과도하게 낙관적입니다. {gap_opportunity}")
+        else:
+            interpretations.append("시장 내재 기대와 모델 예측이 대체로 일치하여 현재 **균형 상태**입니다.")
+
+        # FOMC 해석
+        if fomc_stance == 'HAWKISH':
+            interpretations.append(f"FOMC 위원들이 긴축적 성향(불확실성 {fomc_uncertainty:.0f})을 보여 **금리 인하 기대는 제한적**입니다. 성장주보다 가치주, 배당주가 유리합니다.")
+        elif fomc_stance == 'DOVISH':
+            interpretations.append(f"FOMC가 완화적 성향을 보여 **금리 인하 가능성**이 높습니다. 성장주 및 기술주에 우호적입니다.")
+        else:
+            interpretations.append("FOMC의 정책 방향이 중립적이어서 당분간 현 금리 수준이 유지될 것으로 예상됩니다.")
+
+        # 종합 권고
+        bullish_signals = sum([
+            bubble_score < 40,
+            gap_signal == 'BULLISH',
+            fomc_stance == 'DOVISH'
+        ])
+        bearish_signals = sum([
+            bubble_score > 60,
+            gap_signal == 'BEARISH',
+            fomc_stance == 'HAWKISH'
+        ])
+
+        if bullish_signals >= 2:
+            interpretations.append("**종합 판단: 강세 (BULLISH)** - 복수의 기관 프레임워크가 긍정적 시그널을 보내고 있습니다. 리스크 자산 비중 확대를 고려하십시오.")
+        elif bearish_signals >= 2:
+            interpretations.append("**종합 판단: 약세 (BEARISH)** - 복수의 기관 프레임워크가 경고 시그널을 보내고 있습니다. 방어적 포지셔닝을 권고합니다.")
+        else:
+            interpretations.append("**종합 판단: 중립 (NEUTRAL)** - 혼재된 시그널로 인해 적극적 포지션 변경보다는 현 수준 유지가 적절합니다.")
+
+        return ' '.join(interpretations)
 
     def _generate_school_interpretations(self) -> str:
         """학파별 해석 (NEW)"""
