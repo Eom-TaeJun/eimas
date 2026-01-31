@@ -72,10 +72,32 @@ def convert_md_to_html(md_content, output_path):
     print(f"Saved: {output_path}")
 
 if __name__ == "__main__":
-    input_path = "outputs/integrated_20260128_184114.md"
-    output_path = "outputs/reports/integrated_report_20260128.html"
-    if os.path.exists(input_path):
+    import argparse
+    import glob
+    
+    parser = argparse.ArgumentParser(description='Convert Markdown report to HTML')
+    parser.add_argument('--input', '-i', help='Input Markdown file path')
+    parser.add_argument('--output', '-o', help='Output HTML file path')
+    args = parser.parse_args()
+    
+    input_path = args.input
+    output_path = args.output
+    
+    # If no input specified, find the latest md file in outputs
+    if not input_path:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        outputs_dir = os.path.join(base_dir, "outputs")
+        md_files = glob.glob(os.path.join(outputs_dir, "*.md"))
+        if md_files:
+            input_path = max(md_files, key=os.path.getctime)
+            print(f"Auto-detected latest input: {input_path}")
+    
+    if input_path and os.path.exists(input_path):
+        if not output_path:
+            # Default output name based on input name
+            output_path = input_path.replace('.md', '.html')
+            
         with open(input_path, 'r', encoding='utf-8') as f:
             convert_md_to_html(f.read(), output_path)
     else:
-        print("Input file not found")
+        print("Input file not found or not specified")

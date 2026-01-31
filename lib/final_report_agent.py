@@ -879,50 +879,69 @@ class FinalReportAgent:
 </div>'''
 
     def _generate_change_comparison(self) -> str:
-        """이전 리포트 대비 변화 (NEW)"""
-        # MD에서 변화 정보 추출
-        change_pattern = r'## 📊 이전 리포트 대비 변화.*?### 📈 지표 비교\n(.*?)(?=\n---|\n## )'
-        match = re.search(change_pattern, self.ai_report_content, re.DOTALL)
+        """이전 리포트 대비 변화 - 현재 분석 요약으로 대체"""
+        data = self.integrated_data
 
-        if not match:
-            return ''
+        # 현재 데이터 추출
+        regime = data.get('regime', {})
+        regime_type = regime.get('regime', 'Unknown') if isinstance(regime, dict) else str(regime)
+        trend = regime.get('trend', 'N/A') if isinstance(regime, dict) else 'N/A'
+        volatility = regime.get('volatility', 'N/A') if isinstance(regime, dict) else 'N/A'
+
+        confidence = data.get('confidence', 0)
+        if confidence <= 1:
+            confidence *= 100
+
+        risk_score = data.get('risk_score', 0)
+        recommendation = data.get('final_recommendation', 'N/A')
+
+        # 리스크 레벨 판단
+        if risk_score < 30:
+            risk_level, risk_class = '낮음', 'text-green'
+        elif risk_score < 50:
+            risk_level, risk_class = '중간', 'text-yellow'
+        else:
+            risk_level, risk_class = '높음', 'text-red'
+
+        # 권고 색상
+        if 'BULL' in recommendation.upper():
+            rec_class = 'text-green'
+        elif 'BEAR' in recommendation.upper():
+            rec_class = 'text-red'
+        else:
+            rec_class = 'text-yellow'
 
         return f'''
 <div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--accent-purple);">
     <div class="card-header">
-        <span class="card-title">📊 이전 리포트 대비 변화</span>
-        <span class="metric-badge bg-green">MINOR</span>
+        <span class="card-title">📊 현재 분석 요약</span>
+        <span class="metric-badge bg-blue">실시간</span>
     </div>
     <table>
         <tr>
             <th>항목</th>
-            <th>이전</th>
-            <th>현재</th>
-            <th>변화</th>
+            <th>현재 값</th>
+            <th>상태</th>
         </tr>
         <tr>
-            <td>레짐</td>
-            <td>Bull (Low Vol)</td>
-            <td>Bull (Low Vol)</td>
-            <td class="change-same">➡️ SAME</td>
+            <td>시장 레짐</td>
+            <td><strong>{regime_type}</strong></td>
+            <td>추세: {trend}, 변동성: {volatility}</td>
         </tr>
         <tr>
-            <td>신뢰도</td>
-            <td>75%</td>
-            <td>{self._safe_get(self.integrated_data, 'confidence', default=70):.0f}%</td>
-            <td class="change-down">⬇️ -4%p</td>
+            <td>AI 신뢰도</td>
+            <td><strong>{confidence:.0f}%</strong></td>
+            <td>{'높음' if confidence >= 70 else '중간' if confidence >= 50 else '낮음'}</td>
         </tr>
         <tr>
             <td>리스크 점수</td>
-            <td>10.8</td>
-            <td>{self._safe_get(self.integrated_data, 'risk_score', default=9):.1f}</td>
-            <td class="change-down">⬇️ -1.8</td>
+            <td><strong class="{risk_class}">{risk_score:.1f}</strong></td>
+            <td>{risk_level}</td>
         </tr>
         <tr>
             <td>투자 권고</td>
-            <td>BULLISH</td>
-            <td>{self._safe_get(self.integrated_data, 'final_recommendation', default='BULLISH')}</td>
-            <td class="change-same">➡️</td>
+            <td><strong class="{rec_class}">{recommendation}</strong></td>
+            <td>-</td>
         </tr>
     </table>
 </div>'''
@@ -1244,19 +1263,27 @@ class FinalReportAgent:
 </div>'''
 
     def _generate_technical_indicators(self) -> str:
-        """기술적 지표 (NEW) - RSI, MACD, 이동평균선"""
-        # MD 섹션 3에서 추출
+        """기술적 지표 (NEW) - RSI, MACD, 이동평균선 또는 대체 지표"""
+        data = self.integrated_data
+
+        # JSON에서 직접 추출 (fred_summary, extended_data)
+        extended = data.get('extended_data', {})
+        fred = data.get('fred_summary', {})
+        sentiment = data.get('sentiment_analysis', {})
+        vix_structure = sentiment.get('vix_structure', {})
+
+        # MD 섹션 3에서 추출 (fallback)
         section = self.ai_report_sections.get('section_3', {})
         content = section.get('content', '')
 
-        # 기본값
-        rsi = 53.9
-        macd = 2.42
-        macd_signal = 2.53
-        ma50 = 681.37
-        ma200 = 635.72
-        support = 677.58
-        resistance = 695.49
+        # 기본값 (parsing 실패 시)
+        rsi = None
+        macd = None
+        macd_signal = None
+        ma50 = None
+        ma200 = None
+        support = None
+        resistance = None
 
         # RSI 추출
         rsi_match = re.search(r'RSI.*?(\d+\.?\d*)', content)
@@ -1268,21 +1295,144 @@ class FinalReportAgent:
         if macd_match:
             macd = float(macd_match.group(1))
 
+        macd_sig_match = re.search(r'MACD Signal.*?(\-?\d+\.?\d*)', content)
+        if macd_sig_match:
+            macd_signal = float(macd_sig_match.group(1))
+
+        # MA 추출
+        ma50_match = re.search(r'50일.*?(\d+\.?\d*)', content)
+        if ma50_match:
+            ma50 = float(ma50_match.group(1))
+
+        ma200_match = re.search(r'200일.*?(\d+\.?\d*)', content)
+        if ma200_match:
+            ma200 = float(ma200_match.group(1))
+
+        # Support/Resistance 추출
+        supp_match = re.search(r'지지선.*?(\d+\,?\d*\.?\d*)', content)
+        if supp_match:
+            support = float(supp_match.group(1).replace(',', ''))
+
+        res_match = re.search(r'저항선.*?(\d+\,?\d*\.?\d*)', content)
+        if res_match:
+            resistance = float(res_match.group(1).replace(',', ''))
+
+        # MD에서 추출 실패 시 JSON 데이터로 대체 지표 표시
+        all_none = all(v is None for v in [rsi, macd, ma50, ma200])
+        if all_none:
+            # VIX, Put/Call, Fear & Greed 등 대체 지표 사용
+            vix_spot = vix_structure.get('vix_spot', 0)
+            vix_signal = vix_structure.get('signal', 'N/A')
+            vix_structure_type = vix_structure.get('structure', 'N/A')
+
+            put_call = extended.get('put_call_ratio', {})
+            pc_ratio = put_call.get('ratio', 0)
+            pc_sentiment = put_call.get('sentiment', 'NEUTRAL')
+
+            fear_greed = sentiment.get('fear_greed', {})
+            fg_value = fear_greed.get('value', 50)
+            fg_level = fear_greed.get('level', 'neutral')
+
+            fundamentals = extended.get('fundamentals', {})
+            pe_ratio = fundamentals.get('pe_ratio', 0)
+            earnings_yield = fundamentals.get('earnings_yield', 0)
+
+            # VIX 해석
+            if vix_spot < 15:
+                vix_class, vix_label = 'text-green', '낮음 (안정)'
+            elif vix_spot < 25:
+                vix_class, vix_label = 'text-blue', '보통'
+            elif vix_spot < 35:
+                vix_class, vix_label = 'text-yellow', '높음'
+            else:
+                vix_class, vix_label = 'text-red', '매우 높음 (공포)'
+
+            # Put/Call 해석
+            if pc_ratio < 0.7:
+                pc_class = 'text-green'
+            elif pc_ratio > 1.0:
+                pc_class = 'text-red'
+            else:
+                pc_class = 'text-yellow'
+
+            # Fear & Greed 해석
+            if fg_value < 25:
+                fg_class = 'text-red'
+            elif fg_value > 75:
+                fg_class = 'text-green'
+            else:
+                fg_class = 'text-yellow'
+
+            return f'''
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <span class="card-title">📊 시장 센티먼트 지표</span>
+        <span class="text-muted" style="font-size: 0.85rem;">기술적 지표 대체</span>
+    </div>
+    <div class="grid grid-3" style="margin-bottom: 16px;">
+        <div class="tech-item">
+            <p class="tech-label">VIX (변동성 지수)</p>
+            <p class="tech-value {vix_class}">{vix_spot:.1f}</p>
+            <span class="tech-badge bg-blue">{vix_label}</span>
+            <p class="text-muted" style="font-size: 0.8rem; margin-top: 4px;">{vix_structure_type}</p>
+        </div>
+        <div class="tech-item">
+            <p class="tech-label">Put/Call Ratio</p>
+            <p class="tech-value {pc_class}">{pc_ratio:.2f}</p>
+            <span class="tech-badge {'bg-red' if 'BEAR' in pc_sentiment else 'bg-green' if 'BULL' in pc_sentiment else 'bg-yellow'}">{pc_sentiment}</span>
+        </div>
+        <div class="tech-item">
+            <p class="tech-label">Fear & Greed</p>
+            <p class="tech-value {fg_class}">{fg_value}</p>
+            <span class="tech-badge bg-blue">{fg_level.title()}</span>
+        </div>
+    </div>
+    <div class="grid grid-2" style="margin-bottom: 0;">
+        <div style="text-align: center; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+            <p class="text-muted" style="font-size: 0.85rem;">P/E Ratio (S&P 500)</p>
+            <p style="font-weight: 700; font-size: 1.2rem;">{pe_ratio:.1f}x</p>
+        </div>
+        <div style="text-align: center; padding: 12px; background: var(--bg-tertiary); border-radius: 8px;">
+            <p class="text-muted" style="font-size: 0.85rem;">Earnings Yield</p>
+            <p style="font-weight: 700; font-size: 1.2rem;">{earnings_yield:.2f}%</p>
+        </div>
+    </div>
+</div>'''
+
         # RSI 해석
-        if rsi > 70:
-            rsi_interp, rsi_class = '과매수', 'text-red'
-        elif rsi < 30:
-            rsi_interp, rsi_class = '과매도', 'text-green'
+        if rsi is not None:
+            if rsi > 70:
+                rsi_interp, rsi_class = '과매수', 'text-red'
+            elif rsi < 30:
+                rsi_interp, rsi_class = '과매도', 'text-green'
+            else:
+                rsi_interp, rsi_class = '중립', 'text-blue'
+            rsi_display = f"{rsi:.1f}"
         else:
-            rsi_interp, rsi_class = '중립', 'text-blue'
+            rsi_interp, rsi_class = 'N/A', 'text-muted'
+            rsi_display = "N/A"
+
+        # MACD 해석
+        if macd is not None and macd_signal is not None:
+            macd_badge = '매수 신호' if macd > macd_signal else '매도 신호'
+            macd_bg = 'bg-green' if macd > macd_signal else 'bg-red'
+            macd_display = f"{macd:.2f}"
+        else:
+            macd_badge = 'N/A'
+            macd_bg = 'bg-gray'
+            macd_display = f"{macd:.2f}" if macd is not None else "N/A"
 
         # 이동평균 상태
-        if ma50 > ma200:
-            ma_status = '골든 크로스 (상승 추세)'
-            ma_class = 'bg-green'
+        if ma50 is not None and ma200 is not None:
+            if ma50 > ma200:
+                ma_status = '골든 크로스 (상승 추세)'
+                ma_class = 'bg-green'
+            else:
+                ma_status = '데드 크로스 (하락 추세)'
+                ma_class = 'bg-red'
         else:
-            ma_status = '데드 크로스 (하락 추세)'
-            ma_class = 'bg-red'
+            ma_status = 'N/A'
+            ma_class = 'bg-gray'
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -1292,44 +1442,134 @@ class FinalReportAgent:
     <div class="grid grid-3" style="margin-bottom: 16px;">
         <div class="tech-item">
             <p class="tech-label">RSI (14일)</p>
-            <p class="tech-value {rsi_class}">{rsi:.1f}</p>
+            <p class="tech-value {rsi_class}">{rsi_display}</p>
             <span class="tech-badge bg-blue">{rsi_interp}</span>
         </div>
         <div class="tech-item">
             <p class="tech-label">MACD</p>
-            <p class="tech-value">{macd:.2f}</p>
-            <span class="tech-badge {'bg-green' if macd > macd_signal else 'bg-red'}">{'매수 신호' if macd > macd_signal else '매도 신호'}</span>
+            <p class="tech-value">{macd_display}</p>
+            <span class="tech-badge {macd_bg}">{macd_badge}</span>
         </div>
         <div class="tech-item">
             <p class="tech-label">이동평균 상태</p>
-            <p class="tech-value" style="font-size: 1rem;">50MA > 200MA</p>
+            <p class="tech-value" style="font-size: 1rem;">{ "50MA > 200MA" if ma50 and ma200 and ma50 > ma200 else "N/A" }</p>
             <span class="tech-badge {ma_class}">{ma_status}</span>
         </div>
     </div>
     <div class="grid grid-4" style="margin-bottom: 0;">
         <div style="text-align: center;">
             <p class="text-muted" style="font-size: 0.85rem;">50일 이동평균</p>
-            <p style="font-weight: 700;">${ma50:.2f}</p>
+            <p style="font-weight: 700;">{f"${ma50:.2f}" if ma50 is not None else "N/A"}</p>
         </div>
         <div style="text-align: center;">
             <p class="text-muted" style="font-size: 0.85rem;">200일 이동평균</p>
-            <p style="font-weight: 700;">${ma200:.2f}</p>
+            <p style="font-weight: 700;">{f"${ma200:.2f}" if ma200 is not None else "N/A"}</p>
         </div>
         <div style="text-align: center;">
             <p class="text-muted" style="font-size: 0.85rem;">지지선</p>
-            <p style="font-weight: 700; color: var(--accent-green);">${support:.2f}</p>
+            <p style="font-weight: 700; color: var(--accent-green);">{f"${support:.2f}" if support is not None else "N/A"}</p>
         </div>
         <div style="text-align: center;">
             <p class="text-muted" style="font-size: 0.85rem;">저항선</p>
-            <p style="font-weight: 700; color: var(--accent-red);">${resistance:.2f}</p>
+            <p style="font-weight: 700; color: var(--accent-red);">{f"${resistance:.2f}" if resistance is not None else "N/A"}</p>
         </div>
     </div>
 </div>'''
 
+    def _extract_market_data(self, content: str, key: str) -> tuple:
+        """MD 콘텐츠에서 시장 데이터 추출 (가격, 변화율)"""
+        # Pattern: - **Key**: Price (Change%)
+        # Example: - **Gold**: $4,713.90 (-11.37%)
+        # Example: - **DAX (독일)**: 24,538.81 (+0.94%)
+        
+        # Escape special chars in key if needed (e.g. ^VIX)
+        escaped_key = re.escape(key)
+        
+        # Try finding line starting with - **Key
+        pattern = fr'- \*\*{escaped_key}.*?\*\*:\s*([^\s]+)\s*\((.*?)\)'
+        match = re.search(pattern, content)
+        
+        if match:
+            price = match.group(1)
+            change = match.group(2)
+            
+            # Determine color based on change
+            if '-' in change:
+                color = 'text-red'
+            elif '+' in change:
+                color = 'text-green'
+            else:
+                color = 'text-muted'
+                
+            return price, change, color
+            
+        return 'N/A', 'N/A', 'text-muted'
+
     def _generate_global_markets(self) -> str:
         """국제 시장 분석 (NEW)"""
-        # MD 섹션 4에서 추출
+        data = self.integrated_data
+
+        # JSON에서 직접 추출 시도
+        portfolio_weights = data.get('portfolio_weights', {})
+        fred = data.get('fred_summary', {})
+
+        # MD 섹션 4에서 추출 (fallback)
         section = self.ai_report_sections.get('section_4', {})
+        content = section.get('content', '')
+
+        # Global Indices
+        dax_price, dax_chg, dax_col = self._extract_market_data(content, 'DAX')
+        ftse_price, ftse_chg, ftse_col = self._extract_market_data(content, 'FTSE 100')
+        nikkei_price, nikkei_chg, nikkei_col = self._extract_market_data(content, 'Nikkei 225')
+        shanghai_price, shanghai_chg, shanghai_col = self._extract_market_data(content, 'Shanghai')
+        kospi_price, kospi_chg, kospi_col = self._extract_market_data(content, 'KOSPI')
+
+        # Commodities
+        gold_price, gold_chg, gold_col = self._extract_market_data(content, 'Gold')
+        wti_price, wti_chg, wti_col = self._extract_market_data(content, 'WTI 원유')
+        copper_price, copper_chg, copper_col = self._extract_market_data(content, 'Copper')
+        dxy_price, dxy_chg, dxy_col = self._extract_market_data(content, 'DXY')
+
+        # 모든 데이터가 N/A인지 확인
+        all_na = all(p == 'N/A' for p in [dax_price, ftse_price, nikkei_price, shanghai_price, kospi_price,
+                                           gold_price, wti_price, copper_price, dxy_price])
+
+        if all_na:
+            # JSON에서 사용 가능한 데이터로 대체
+            treasury_2y = fred.get('treasury_2y', 0)
+            treasury_10y = fred.get('treasury_10y', 0)
+            spread = fred.get('yield_spread_10y_2y', 0)
+            fed_funds = fred.get('fed_funds', 0)
+
+            return f'''
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <span class="card-title">🌍 글로벌 금리 및 유동성</span>
+    </div>
+    <div class="grid grid-2" style="margin-bottom: 0;">
+        <div>
+            <h4 style="margin-bottom: 12px; color: var(--text-secondary);">미국 금리 구조</h4>
+            <table>
+                <tr><td>Fed Funds Rate</td><td style="text-align: right; font-weight: 700;">{fed_funds:.2f}%</td></tr>
+                <tr><td>2Y Treasury</td><td style="text-align: right;">{treasury_2y:.2f}%</td></tr>
+                <tr><td>10Y Treasury</td><td style="text-align: right;">{treasury_10y:.2f}%</td></tr>
+                <tr><td>10Y-2Y Spread</td><td style="text-align: right;" class="{'text-red' if spread < 0 else 'text-green'}">{spread:.2f}%</td></tr>
+            </table>
+        </div>
+        <div>
+            <h4 style="margin-bottom: 12px; color: var(--text-secondary);">유동성 지표</h4>
+            <table>
+                <tr><td>Net Liquidity</td><td style="text-align: right; font-weight: 700;">${fred.get('net_liquidity', 0):,.0f}B</td></tr>
+                <tr><td>Fed Balance Sheet</td><td style="text-align: right;">${fred.get('fed_balance_sheet', 0):,.0f}B</td></tr>
+                <tr><td>RRP</td><td style="text-align: right;">${fred.get('rrp', 0):,.0f}B</td></tr>
+                <tr><td>TGA</td><td style="text-align: right;">${fred.get('tga', 0):,.0f}B</td></tr>
+            </table>
+            <p class="text-muted" style="margin-top: 12px; font-size: 0.85rem;">
+                ℹ️ 국제 시장 데이터는 실시간 수집 시 표시됩니다
+            </p>
+        </div>
+    </div>
+</div>'''
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -1340,23 +1580,23 @@ class FinalReportAgent:
         <div>
             <h4 style="margin-bottom: 12px; color: var(--text-secondary);">글로벌 지수</h4>
             <table>
-                <tr><td>DAX (독일)</td><td style="text-align: right;">24,827</td><td class="text-red">-0.27%</td></tr>
-                <tr><td>FTSE 100 (영국)</td><td style="text-align: right;">10,186</td><td class="text-red">-0.21%</td></tr>
-                <tr><td>Nikkei 225 (일본)</td><td style="text-align: right;">53,359</td><td class="text-green">+0.05%</td></tr>
-                <tr><td>Shanghai (중국)</td><td style="text-align: right;">4,151</td><td class="text-green">+0.27%</td></tr>
-                <tr><td>KOSPI (한국)</td><td style="text-align: right;">5,171</td><td class="text-green">+1.69%</td></tr>
+                <tr><td>DAX (독일)</td><td style="text-align: right;">{dax_price}</td><td class="{dax_col}">{dax_chg}</td></tr>
+                <tr><td>FTSE 100 (영국)</td><td style="text-align: right;">{ftse_price}</td><td class="{ftse_col}">{ftse_chg}</td></tr>
+                <tr><td>Nikkei 225 (일본)</td><td style="text-align: right;">{nikkei_price}</td><td class="{nikkei_col}">{nikkei_chg}</td></tr>
+                <tr><td>Shanghai (중국)</td><td style="text-align: right;">{shanghai_price}</td><td class="{shanghai_col}">{shanghai_chg}</td></tr>
+                <tr><td>KOSPI (한국)</td><td style="text-align: right;">{kospi_price}</td><td class="{kospi_col}">{kospi_chg}</td></tr>
             </table>
         </div>
         <div>
             <h4 style="margin-bottom: 12px; color: var(--text-secondary);">원자재</h4>
             <table>
-                <tr><td>Gold</td><td style="text-align: right;">$5,306</td><td class="text-green">+4.44%</td></tr>
-                <tr><td>WTI 원유</td><td style="text-align: right;">$62.27</td><td class="text-red">-0.19%</td></tr>
-                <tr><td>Copper</td><td style="text-align: right;">$5.95</td><td class="text-green">+2.06%</td></tr>
-                <tr><td>DXY (달러)</td><td style="text-align: right;">96.17</td><td class="text-red">-0.06%</td></tr>
+                <tr><td>Gold</td><td style="text-align: right;">{gold_price}</td><td class="{gold_col}">{gold_chg}</td></tr>
+                <tr><td>WTI 원유</td><td style="text-align: right;">{wti_price}</td><td class="{wti_col}">{wti_chg}</td></tr>
+                <tr><td>Copper</td><td style="text-align: right;">{copper_price}</td><td class="{copper_col}">{copper_chg}</td></tr>
+                <tr><td>DXY (달러)</td><td style="text-align: right;">{dxy_price}</td><td class="{dxy_col}">{dxy_chg}</td></tr>
             </table>
             <p class="text-muted" style="margin-top: 12px; font-size: 0.85rem;">
-                ⚠️ 안전자산 선호 증가 (금 급등)
+                ⚠️ 안전자산 선호 및 원자재 시장 변동성 주시
             </p>
         </div>
     </div>
@@ -1756,7 +1996,7 @@ class FinalReportAgent:
 </div>'''
 
     def _generate_proof_of_index(self) -> str:
-        """Proof-of-Index 상세 (NEW)"""
+        """Proof-of-Index 상세 (NEW) - 파이 차트 포함"""
         data = self.integrated_data
         poi = data.get('proof_of_index', {})
 
@@ -1767,15 +2007,33 @@ class FinalReportAgent:
         weights = poi.get('weights', {})
         verification = poi.get('verification', {})
         is_valid = verification.get('is_valid', True)
+        hash_value = poi.get('hash', '')[:16] + '...' if poi.get('hash') else 'N/A'
 
         mean_rev = poi.get('mean_reversion_signal', {})
         z_score = mean_rev.get('z_score', 0)
         signal = mean_rev.get('signal', 'HOLD')
 
-        # 가중치 테이블
-        weight_rows = ''
-        for ticker, weight in weights.items():
-            weight_rows += f'<tr><td>{ticker}</td><td>{weight*100:.1f}%</td></tr>'
+        # 파이 차트 생성 (conic-gradient)
+        colors = ['#1864ab', '#5f3dc4', '#2b8a3e', '#f08c00', '#c92a2a', '#0b7285', '#868e96', '#e64980', '#7048e8', '#20c997']
+        gradients = []
+        legend_items = []
+        cumulative = 0
+
+        # 가중치 정렬 (큰 순서)
+        sorted_weights = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:10]
+        total = sum(w for _, w in sorted_weights) if sorted_weights else 1
+
+        for i, (ticker, weight) in enumerate(sorted_weights):
+            pct = (weight / total * 100) if total > 0 else 0
+            color = colors[i % len(colors)]
+            gradients.append(f"{color} {cumulative}% {cumulative + pct}%")
+            legend_items.append(f'''<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <div style="width: 12px; height: 12px; background: {color}; border-radius: 2px;"></div>
+                <span style="font-size: 0.8rem;">{ticker}: {pct:.1f}%</span>
+            </div>''')
+            cumulative += pct
+
+        gradient_str = ', '.join(gradients) if gradients else '#868e96 0% 100%'
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -1784,20 +2042,28 @@ class FinalReportAgent:
         <span class="metric-badge {'bg-green' if is_valid else 'bg-red'}">{'✅ VERIFIED' if is_valid else '❌ FAILED'}</span>
     </div>
     <div class="grid grid-3" style="margin-bottom: 0;">
-        <div class="tech-item">
-            <p class="tech-label">Index Value</p>
-            <p class="tech-value">{index_value:.2f}</p>
+        <div>
+            <div class="tech-item" style="margin-bottom: 16px;">
+                <p class="tech-label">Index Value</p>
+                <p class="tech-value">{index_value:.2f}</p>
+            </div>
+            <div class="tech-item">
+                <p class="tech-label">Mean Reversion Z-Score</p>
+                <p class="tech-value">{z_score:.2f}</p>
+                <span class="tech-badge bg-blue">{signal}</span>
+            </div>
+            <p class="text-muted" style="margin-top: 12px; font-size: 0.75rem;">Hash: {hash_value}</p>
         </div>
-        <div class="tech-item">
-            <p class="tech-label">Mean Reversion Z-Score</p>
-            <p class="tech-value">{z_score:.2f}</p>
-            <span class="tech-badge bg-blue">{signal}</span>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            <div style="width: 160px; height: 160px; border-radius: 50%; background: conic-gradient({gradient_str}); position: relative;">
+                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: var(--bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
+                    가중치
+                </div>
+            </div>
         </div>
         <div>
-            <p class="tech-label" style="margin-bottom: 8px;">Index 구성 가중치</p>
-            <table style="font-size: 0.85rem;">
-                {weight_rows}
-            </table>
+            <p class="tech-label" style="margin-bottom: 12px;">Index 구성 가중치</p>
+            {''.join(legend_items)}
         </div>
     </div>
 </div>'''
@@ -2095,30 +2361,30 @@ class FinalReportAgent:
     def _generate_ai_synthesis(self, bubble_score: float, bubble_stage: str,
                                 gap_signal: str, gap_opportunity: str,
                                 fomc_stance: str, fomc_uncertainty: float) -> str:
-        """AI 기관 분석 종합 해석 생성"""
+        """AI 기관 분석 종합 해석 생성 (HTML 포맷)"""
         interpretations = []
 
         # 버블 해석
         if bubble_score < 30:
-            interpretations.append(f"버블 프레임워크 점수 {bubble_score:.0f}점으로 **안전 구간**입니다. 현재 시장에 과열 징후는 관찰되지 않습니다.")
+            interpretations.append(f"버블 프레임워크 점수 {bubble_score:.0f}점으로 <strong>안전 구간</strong>입니다. 현재 시장에 과열 징후는 관찰되지 않습니다.")
         elif bubble_score < 60:
-            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점({bubble_stage})으로 **초기 형성 단계**입니다. 주의 깊은 모니터링이 필요하나 즉각적 리스크는 제한적입니다.")
+            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점({bubble_stage})으로 <strong>초기 형성 단계</strong>입니다. 주의 깊은 모니터링이 필요하나 즉각적 리스크는 제한적입니다.")
         else:
-            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점으로 **경고 수준**입니다. 포지션 축소 및 방어적 전략을 고려해야 합니다.")
+            interpretations.append(f"버블 위험 점수 {bubble_score:.0f}점으로 <strong>경고 수준</strong>입니다. 포지션 축소 및 방어적 전략을 고려해야 합니다.")
 
         # Gap 해석
         if gap_signal == 'BULLISH':
-            interpretations.append("시장-모델 갭 분석에서 시장이 과도하게 비관적이어서 **매수 기회**가 존재합니다.")
+            interpretations.append("시장-모델 갭 분석에서 시장이 과도하게 비관적이어서 <strong>매수 기회</strong>가 존재합니다.")
         elif gap_signal == 'BEARISH':
             interpretations.append(f"시장-모델 갭 분석에서 시장이 과도하게 낙관적입니다. {gap_opportunity}")
         else:
-            interpretations.append("시장 내재 기대와 모델 예측이 대체로 일치하여 현재 **균형 상태**입니다.")
+            interpretations.append("시장 내재 기대와 모델 예측이 대체로 일치하여 현재 <strong>균형 상태</strong>입니다.")
 
         # FOMC 해석
         if fomc_stance == 'HAWKISH':
-            interpretations.append(f"FOMC 위원들이 긴축적 성향(불확실성 {fomc_uncertainty:.0f})을 보여 **금리 인하 기대는 제한적**입니다. 성장주보다 가치주, 배당주가 유리합니다.")
+            interpretations.append(f"FOMC 위원들이 긴축적 성향(불확실성 {fomc_uncertainty:.0f})을 보여 <strong>금리 인하 기대는 제한적</strong>입니다. 성장주보다 가치주, 배당주가 유리합니다.")
         elif fomc_stance == 'DOVISH':
-            interpretations.append(f"FOMC가 완화적 성향을 보여 **금리 인하 가능성**이 높습니다. 성장주 및 기술주에 우호적입니다.")
+            interpretations.append(f"FOMC가 완화적 성향을 보여 <strong>금리 인하 가능성</strong>이 높습니다. 성장주 및 기술주에 우호적입니다.")
         else:
             interpretations.append("FOMC의 정책 방향이 중립적이어서 당분간 현 금리 수준이 유지될 것으로 예상됩니다.")
 
@@ -2135,11 +2401,11 @@ class FinalReportAgent:
         ])
 
         if bullish_signals >= 2:
-            interpretations.append("**종합 판단: 강세 (BULLISH)** - 복수의 기관 프레임워크가 긍정적 시그널을 보내고 있습니다. 리스크 자산 비중 확대를 고려하십시오.")
+            interpretations.append("<br><br><strong style='color: var(--accent-green);'>종합 판단: 강세 (BULLISH)</strong> - 복수의 기관 프레임워크가 긍정적 시그널을 보내고 있습니다. 리스크 자산 비중 확대를 고려하십시오.")
         elif bearish_signals >= 2:
-            interpretations.append("**종합 판단: 약세 (BEARISH)** - 복수의 기관 프레임워크가 경고 시그널을 보내고 있습니다. 방어적 포지셔닝을 권고합니다.")
+            interpretations.append("<br><br><strong style='color: var(--accent-red);'>종합 판단: 약세 (BEARISH)</strong> - 복수의 기관 프레임워크가 경고 시그널을 보내고 있습니다. 방어적 포지셔닝을 권고합니다.")
         else:
-            interpretations.append("**종합 판단: 중립 (NEUTRAL)** - 혼재된 시그널로 인해 적극적 포지션 변경보다는 현 수준 유지가 적절합니다.")
+            interpretations.append("<br><br><strong style='color: var(--accent-yellow);'>종합 판단: 중립 (NEUTRAL)</strong> - 혼재된 시그널로 인해 적극적 포지션 변경보다는 현 수준 유지가 적절합니다.")
 
         return ' '.join(interpretations)
 
@@ -2162,7 +2428,7 @@ class FinalReportAgent:
 
             stance_class = 'text-green' if 'BULL' in stance else 'text-red' if 'BEAR' in stance else 'text-yellow'
 
-            reasons_html = ''.join([f'<li>{r[:100]}...</li>' for r in reasoning[:2]])
+            reasons_html = ''.join([f'<li>{r}</li>' for r in reasoning[:3]])
 
             school_html += f'''
             <div class="debate-box {'bullish' if 'BULL' in stance else 'bearish' if 'BEAR' in stance else 'neutral'}">
@@ -2225,7 +2491,16 @@ class FinalReportAgent:
         weights = data.get('portfolio_weights', {})
 
         if not weights:
-            weights = {'기술/AI': 40, '중소형주': 25, '글로벌': 15, '원자재': 10, '현금': 10}
+            # 현재 레짐 기반 기본 포트폴리오 생성
+            recommendation = data.get('final_recommendation', 'NEUTRAL')
+            risk_score = data.get('risk_score', 50)
+
+            if 'BULL' in recommendation.upper() and risk_score < 40:
+                weights = {'주식 (성장)': 45, '주식 (가치)': 25, '채권': 15, '원자재': 10, '현금': 5}
+            elif 'BEAR' in recommendation.upper() or risk_score > 60:
+                weights = {'채권': 35, '현금': 25, '주식 (방어)': 20, '금/원자재': 15, '인버스': 5}
+            else:
+                weights = {'주식 (균형)': 35, '채권': 25, '현금': 20, '원자재': 10, '대안투자': 10}
 
         colors = ['#1864ab', '#5f3dc4', '#2b8a3e', '#f08c00', '#868e96', '#c92a2a', '#0b7285']
         gradients = []
@@ -2370,11 +2645,125 @@ class FinalReportAgent:
     </div>
 </div>'''
 
+    def _extract_watchlist_items(self, content: str) -> list:
+        """MD 주식 목록 파싱"""
+        import re
+        items = []
+        # Split by level 3 header (### Ticker)
+        parts = re.split(r'^### ', content, flags=re.MULTILINE)
+        
+        for part in parts:
+            part = part.strip()
+            if not part or part.startswith('#'): continue
+            
+            lines = part.splitlines()
+            ticker = lines[0].strip()
+            
+            # Basic data
+            item = {'ticker': ticker, '1d': 'N/A', '5d': 'N/A', '20d': 'N/A', 'reason': ''}
+            
+            # Join rest of lines for searching
+            body = '\n'.join(lines[1:])
+            
+            # Extract metrics
+            d1 = re.search(r'- 1일 변화: (.*?)$', body, re.MULTILINE)
+            d5 = re.search(r'- 5일 변화: (.*?)$', body, re.MULTILINE)
+            d20 = re.search(r'- 20일 변화: (.*?)$', body, re.MULTILINE)
+            reason = re.search(r'- \*\*주목 이유\*\*: (.*?)$', body, re.MULTILINE)
+            
+            if d1: item['1d'] = d1.group(1).strip()
+            if d5: item['5d'] = d5.group(1).strip()
+            if d20: item['20d'] = d20.group(1).strip()
+            if reason: item['reason'] = reason.group(1).strip()
+            
+            items.append(item)
+            
+        return items
+
     def _generate_watchlist_section(self) -> str:
-        """주목할 종목 (NEW)"""
-        # MD 섹션 7에서 추출
+        """주목할 종목 (NEW) - ARK 데이터 기반으로 생성"""
+        data = self.integrated_data
+
+        # MD 섹션 7에서 추출 시도
         section = self.ai_report_sections.get('section_7', {})
         content = section.get('content', '')
+
+        items = self._extract_watchlist_items(content)
+
+        # MD에서 추출 실패 시 ARK 데이터 사용
+        if not items:
+            ark = data.get('ark_analysis', {})
+            top_increases = ark.get('top_increases', [])[:3]
+            consensus_buys = ark.get('consensus_buys', [])[:3]
+
+            # ARK 데이터로 watchlist 생성
+            for item in top_increases:
+                ticker = item.get('ticker', '')
+                if ticker:
+                    items.append({
+                        'ticker': ticker,
+                        '1d': f"+{item.get('weight_change_1d', 0):.2f}%p",
+                        '5d': 'N/A',
+                        '20d': 'N/A',
+                        'reason': f"ARK 비중 증가 ({item.get('etf_count', 0)} ETF)"
+                    })
+
+            for ticker in consensus_buys:
+                if ticker and ticker not in [i['ticker'] for i in items]:
+                    items.append({
+                        'ticker': ticker,
+                        '1d': 'N/A',
+                        '5d': 'N/A',
+                        '20d': 'N/A',
+                        'reason': 'ARK Consensus Buy'
+                    })
+
+        html_cards = ""
+
+        if not items:
+            html_cards = "<p class='text-muted'>현재 주목할 종목 데이터가 없습니다. ARK 분석 섹션을 참고하세요.</p>"
+
+        for item in items[:6]:
+            ticker = item['ticker']
+            d1 = item.get('1d', 'N/A')
+            d5 = item.get('5d', 'N/A')
+            d20 = item.get('20d', 'N/A')
+            reason = item.get('reason', '')
+
+            # Determine badge/color
+            badge_text = "중립"
+            badge_class = "bg-blue"
+
+            try:
+                d1_val = float(str(d1).replace('%', '').replace('+', '').replace('p', ''))
+                if d1_val > 2:
+                    badge_text = "강세"
+                    badge_class = "bg-green"
+                elif d1_val < -2:
+                    badge_text = "약세"
+                    badge_class = "bg-red"
+            except:
+                pass
+
+            # Formatting helpers
+            def fmt_cls(val_str):
+                if '-' in str(val_str): return 'text-red'
+                if '+' in str(val_str): return 'text-green'
+                return ''
+
+            html_cards += f'''
+        <div class="signal-card">
+            <div class="signal-header">
+                <span class="signal-ticker">{ticker}</span>
+                <span class="signal-badge {badge_class}">{badge_text}</span>
+            </div>
+            <table style="font-size: 0.9rem;">
+                <tr><td>1D</td><td class="{fmt_cls(d1)}">{d1}</td></tr>
+                <tr><td>5D</td><td class="{fmt_cls(d5)}">{d5}</td></tr>
+                <tr><td>20D</td><td class="{fmt_cls(d20)}">{d20}</td></tr>
+            </table>
+            <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;">{reason}</p>
+        </div>'''
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -2382,42 +2771,7 @@ class FinalReportAgent:
         <span class="card-title">👀 주목할 종목</span>
     </div>
     <div class="grid grid-3">
-        <div class="signal-card alert">
-            <div class="signal-header">
-                <span class="signal-ticker">GLD</span>
-                <span class="signal-badge bg-green">강세</span>
-            </div>
-            <table style="font-size: 0.9rem;">
-                <tr><td>1D</td><td class="text-green">+2.45%</td></tr>
-                <tr><td>5D</td><td class="text-green">+7.33%</td></tr>
-                <tr><td>20D</td><td class="text-green">+19.44%</td></tr>
-            </table>
-            <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;">인플레이션 헤지 수요 증가</p>
-        </div>
-        <div class="signal-card warning">
-            <div class="signal-header">
-                <span class="signal-ticker">^VIX</span>
-                <span class="signal-badge bg-yellow">주의</span>
-            </div>
-            <table style="font-size: 0.9rem;">
-                <tr><td>1D</td><td class="text-red">-0.61%</td></tr>
-                <tr><td>5D</td><td class="text-green">+3.90%</td></tr>
-                <tr><td>20D</td><td class="text-green">+13.40%</td></tr>
-            </table>
-            <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;">변동성 상승 신호 (잠재적 조정)</p>
-        </div>
-        <div class="signal-card">
-            <div class="signal-header">
-                <span class="signal-ticker">ETH-USD</span>
-                <span class="signal-badge bg-blue">중립</span>
-            </div>
-            <table style="font-size: 0.9rem;">
-                <tr><td>1D</td><td class="text-red">-0.57%</td></tr>
-                <tr><td>5D</td><td class="text-green">+1.91%</td></tr>
-                <tr><td>20D</td><td class="text-red">-2.53%</td></tr>
-            </table>
-            <p class="text-muted" style="margin-top: 8px; font-size: 0.85rem;">기술주 강세와 연동 가능</p>
-        </div>
+        {html_cards}
     </div>
 </div>'''
 
@@ -2526,35 +2880,92 @@ class FinalReportAgent:
             return 'Market', 'bg-blue'
 
     def _generate_scenario_section(self) -> str:
-        """시나리오 분석"""
-        return '''
+        """시나리오 분석 - 현재 데이터 기반 동적 생성"""
+        data = self.integrated_data
+
+        # 현재 데이터에서 시나리오 확률 추출
+        regime = data.get('regime', {})
+        regime_type = regime.get('regime', 'Neutral') if isinstance(regime, dict) else str(regime)
+        risk_score = data.get('risk_score', 50)
+        recommendation = data.get('final_recommendation', 'NEUTRAL')
+
+        # AI 리포트에서 시나리오 정보 추출 시도
+        scenarios = data.get('scenarios', {})
+        ai_report = data.get('ai_report', {})
+        if isinstance(ai_report, dict):
+            scenarios = ai_report.get('scenarios', scenarios)
+
+        # 시나리오 확률 계산 (현재 레짐 기반)
+        if 'BULL' in regime_type.upper() or 'BULL' in recommendation.upper():
+            base_prob, bull_prob, bear_prob = 50, 35, 15
+        elif 'BEAR' in regime_type.upper() or 'BEAR' in recommendation.upper():
+            base_prob, bull_prob, bear_prob = 45, 15, 40
+        else:
+            base_prob, bull_prob, bear_prob = 55, 25, 20
+
+        # 리스크 점수에 따른 조정
+        if risk_score > 60:
+            bear_prob += 10
+            bull_prob -= 5
+            base_prob -= 5
+        elif risk_score < 30:
+            bull_prob += 10
+            bear_prob -= 5
+            base_prob -= 5
+
+        # 시나리오별 설명 (현재 데이터 반영)
+        warnings = data.get('warnings', [])
+        events = data.get('events_detected', [])
+
+        # 주요 위험 요소 추출
+        risk_factors = []
+        for w in warnings[:2]:
+            if isinstance(w, str):
+                risk_factors.append(w[:40])
+            elif isinstance(w, dict):
+                risk_factors.append(w.get('message', '')[:40])
+
+        # 긍정 요소 추출
+        positive_factors = []
+        liquidity = data.get('fred_summary', {}).get('liquidity_regime', '')
+        if 'abundant' in str(liquidity).lower():
+            positive_factors.append('풍부한 유동성')
+        if risk_score < 40:
+            positive_factors.append('낮은 리스크 환경')
+
+        # 동적 설명 생성
+        base_desc = f"현재 {regime_type} 레짐 유지, 경제 지표 모니터링"
+        bull_desc = ', '.join(positive_factors[:2]) if positive_factors else "경기 회복 가속화 시"
+        bear_desc = ', '.join(risk_factors[:2]) if risk_factors else "리스크 요인 확대 시"
+
+        return f'''
 <div class="grid grid-3" style="margin-bottom: 24px;">
     <div class="scenario-card base">
         <div class="scenario-header">
             <span class="scenario-title text-blue">📊 Base Case</span>
-            <span class="scenario-prob text-blue">55%</span>
+            <span class="scenario-prob text-blue">{base_prob}%</span>
         </div>
-        <p style="margin-bottom: 8px;">경제 지표 호조 지속, 기업 실적 컨센서스 부합</p>
-        <p style="font-weight: 700;">S&P 500: 7,200~7,400 (+8~12%)</p>
+        <p style="margin-bottom: 8px;">{base_desc}</p>
+        <p style="font-weight: 700;">현재 추세 유지</p>
         <p class="text-muted" style="font-size: 0.85rem;">전략: 현재 포지션 유지, 조정 시 매수</p>
     </div>
     <div class="scenario-card bull">
         <div class="scenario-header">
             <span class="scenario-title text-green">🐂 Bull Case</span>
-            <span class="scenario-prob text-green">30%</span>
+            <span class="scenario-prob text-green">{bull_prob}%</span>
         </div>
-        <p style="margin-bottom: 8px;">인플레 조기 안정, AI 붐 가속화</p>
-        <p style="font-weight: 700;">S&P 500: 7,600~8,000 (+15~20%)</p>
-        <p class="text-muted" style="font-size: 0.85rem;">전략: 주식 비중 최대, 성장주 집중</p>
+        <p style="margin-bottom: 8px;">{bull_desc}</p>
+        <p style="font-weight: 700;">상승 모멘텀 강화</p>
+        <p class="text-muted" style="font-size: 0.85rem;">전략: 주식 비중 확대, 성장주 집중</p>
     </div>
     <div class="scenario-card bear">
         <div class="scenario-header">
             <span class="scenario-title text-red">🐻 Bear Case</span>
-            <span class="scenario-prob text-red">15%</span>
+            <span class="scenario-prob text-red">{bear_prob}%</span>
         </div>
-        <p style="margin-bottom: 8px;">긴축 재개, 지정학적 리스크 확산</p>
-        <p style="font-weight: 700;">S&P 500: 5,800~6,200 (-10~15%)</p>
-        <p class="text-muted" style="font-size: 0.85rem;">전략: 현금/채권 확대, 인버스 헤지</p>
+        <p style="margin-bottom: 8px;">{bear_desc}</p>
+        <p style="font-weight: 700;">하락 리스크 증가</p>
+        <p class="text-muted" style="font-size: 0.85rem;">전략: 현금/채권 확대, 방어적 포지션</p>
     </div>
 </div>'''
 
@@ -2582,6 +2993,46 @@ class FinalReportAgent:
 
         actions_html = ''.join([f'<li>{a}</li>' for a in action_items])
 
+        # 동적 리스크 경고 생성
+        risk_warnings = []
+        warnings = data.get('warnings', [])
+        risk_score = data.get('risk_score', 0)
+        bubble_risk = data.get('bubble_risk', {})
+        market_quality = data.get('market_quality', {})
+
+        # 경고 메시지에서 추출
+        for w in warnings[:2]:
+            if isinstance(w, str):
+                risk_warnings.append(w[:50])
+            elif isinstance(w, dict):
+                risk_warnings.append(w.get('message', '')[:50])
+
+        # 버블 리스크
+        if isinstance(bubble_risk, dict):
+            bubble_status = bubble_risk.get('overall_status', '')
+            if bubble_status and bubble_status not in ['NONE', 'N/A']:
+                risk_warnings.append(f"버블 리스크: {bubble_status}")
+
+        # 리스크 점수 기반
+        if risk_score > 50:
+            risk_warnings.append(f"리스크 점수 상승: {risk_score:.1f}/100")
+
+        # 유동성 리스크
+        if isinstance(market_quality, dict):
+            illiquid = market_quality.get('illiquid_tickers', [])
+            if illiquid:
+                risk_warnings.append(f"유동성 부족 자산: {len(illiquid)}개")
+
+        # 기본 경고 (데이터 없을 경우)
+        if not risk_warnings:
+            risk_warnings = [
+                '시장 변동성 상시 모니터링 필요',
+                '포지션 크기 적정 유지 권고',
+                '손절 라인 사전 설정 권장'
+            ]
+
+        warnings_html = ''.join([f'<li>{w}</li>' for w in risk_warnings[:3]])
+
         return f'''
 <div class="card" style="margin-bottom: 24px; border: 2px solid var(--accent-blue);">
     <div class="card-header">
@@ -2602,9 +3053,7 @@ class FinalReportAgent:
         <div style="background: var(--accent-yellow-bg); padding: 16px; border-radius: 8px;">
             <h4 style="margin-bottom: 8px; color: var(--accent-yellow);">⚠️ 리스크 경고</h4>
             <ul style="margin-left: 20px; font-size: 0.9rem;">
-                <li>저항선 근접 - 돌파 실패 시 조정 가능</li>
-                <li>금 급등 (4.4%) - 안전자산 선호 증가 신호</li>
-                <li>VIX 20일 +13% - 변동성 상승 조짐</li>
+                {warnings_html}
             </ul>
         </div>
     </div>
@@ -2616,17 +3065,50 @@ class FinalReportAgent:
         content = section.get('content', '')
 
         if not content:
-            content = """현재 시장은 **Bull (Low Vol)** 레짐으로, 투자자들에게 가장 우호적인 환경을 제공하고 있습니다.
+            # 현재 데이터 기반 동적 분석 생성
+            data = self.integrated_data
+            regime = data.get('regime', {})
+            regime_type = regime.get('regime', 'Unknown') if isinstance(regime, dict) else str(regime)
+            risk_score = data.get('risk_score', 0)
+            confidence = data.get('confidence', 0)
+            if confidence <= 1:
+                confidence *= 100
+            recommendation = data.get('final_recommendation', 'NEUTRAL')
+
+            # 유동성 정보
+            fred = data.get('fred_summary', {})
+            liquidity_regime = fred.get('liquidity_regime', 'N/A')
+
+            # 리스크 레벨 텍스트
+            if risk_score < 30:
+                risk_text = "매우 낮은 위험도로 적극적 투자 가능"
+            elif risk_score < 50:
+                risk_text = "낮은 위험도로 균형 잡힌 투자 가능"
+            elif risk_score < 70:
+                risk_text = "중간 수준의 리스크, 신중한 접근 권장"
+            else:
+                risk_text = "높은 리스크 환경, 방어적 포지션 권고"
+
+            # 포트폴리오 권고 생성
+            if 'BULL' in recommendation.upper():
+                stock_range, focus = "60-70%", "성장주/소형주 비중 증대"
+            elif 'BEAR' in recommendation.upper():
+                stock_range, focus = "30-40%", "방어주/배당주 중심"
+            else:
+                stock_range, focus = "45-55%", "균형 잡힌 섹터 배분"
+
+            content = f"""현재 시장은 **{regime_type}** 레짐으로 분석됩니다.
 
 ### 핵심 지표 분석
-- **유동성**: 풍부한 시장 유동성으로 자산 가격 상승 동력 확보
-- **리스크 점수**: 매우 낮은 위험도로 공격적 투자 가능
-- **신뢰도**: 높은 신뢰도로 분석 결과의 안정성 확보
+- **시장 레짐**: {regime_type} - 현재 시장 상태 반영
+- **유동성 환경**: {liquidity_regime}
+- **리스크 점수**: {risk_score:.1f}점 - {risk_text}
+- **AI 신뢰도**: {confidence:.0f}% - 분석 결과의 안정성
 
 ### 투자자 유형별 권고
-- **보수적**: 주식 50-60%, 대형주 중심
-- **적극적**: 주식 70-80%, 성장주/소형주 비중 증대
-- **기관**: 전술적 자산배분 조정, 리스크 패리티"""
+- **보수적**: 주식 {int(float(stock_range.split('-')[0])*0.8)}-{int(float(stock_range.split('-')[1].replace('%',''))*0.8)}%, 대형 우량주 중심
+- **적극적**: 주식 {stock_range}, {focus}
+- **기관**: 전술적 자산배분 조정, 리스크 패리티 고려"""
 
         # Markdown to HTML
         html_content = content
