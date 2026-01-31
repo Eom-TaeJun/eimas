@@ -215,6 +215,7 @@ class AIReport:
     ib_report_path: str
     highlights: Dict[str, Any]
     content: str = ""
+    sections: Dict[str, Dict[str, str]] = field(default_factory=dict)  # 전체 MD 섹션
 
     def to_dict(self) -> Dict:
         return asdict(self)

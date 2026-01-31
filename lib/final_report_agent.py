@@ -644,6 +644,84 @@ tr:hover {
 """
 
 
+def generate_svg_pie_chart(data: List[tuple], size: int = 160, hole_size: int = 60, center_text: str = "") -> str:
+    """
+    SVG 기반 파이 차트 생성 (PDF 변환 호환)
+
+    Args:
+        data: [(label, value, color), ...] 형식의 데이터
+        size: 차트 크기 (px)
+        hole_size: 도넛 홀 크기 (px), 0이면 일반 파이
+        center_text: 중앙 텍스트
+
+    Returns:
+        SVG HTML 문자열
+    """
+    import math
+
+    if not data:
+        return '<div style="text-align: center; color: #868e96;">No data</div>'
+
+    total = sum(v for _, v, _ in data)
+    if total == 0:
+        return '<div style="text-align: center; color: #868e96;">No data</div>'
+
+    cx, cy = size / 2, size / 2
+    r = (size - 10) / 2  # 약간의 여백
+
+    paths = []
+    start_angle = -90  # 12시 방향에서 시작
+
+    for label, value, color in data:
+        if value <= 0:
+            continue
+
+        pct = value / total
+        end_angle = start_angle + (pct * 360)
+
+        # 각도를 라디안으로 변환
+        start_rad = math.radians(start_angle)
+        end_rad = math.radians(end_angle)
+
+        # 시작점과 끝점 계산
+        x1 = cx + r * math.cos(start_rad)
+        y1 = cy + r * math.sin(start_rad)
+        x2 = cx + r * math.cos(end_rad)
+        y2 = cy + r * math.sin(end_rad)
+
+        # 큰 호 플래그 (180도 이상이면 1)
+        large_arc = 1 if pct > 0.5 else 0
+
+        # SVG path
+        if hole_size > 0:
+            # 도넛 차트
+            inner_r = hole_size / 2
+            ix1 = cx + inner_r * math.cos(start_rad)
+            iy1 = cy + inner_r * math.sin(start_rad)
+            ix2 = cx + inner_r * math.cos(end_rad)
+            iy2 = cy + inner_r * math.sin(end_rad)
+
+            path = f'M {x1:.2f} {y1:.2f} A {r:.2f} {r:.2f} 0 {large_arc} 1 {x2:.2f} {y2:.2f} L {ix2:.2f} {iy2:.2f} A {inner_r:.2f} {inner_r:.2f} 0 {large_arc} 0 {ix1:.2f} {iy1:.2f} Z'
+        else:
+            # 일반 파이 차트
+            path = f'M {cx:.2f} {cy:.2f} L {x1:.2f} {y1:.2f} A {r:.2f} {r:.2f} 0 {large_arc} 1 {x2:.2f} {y2:.2f} Z'
+
+        paths.append(f'<path d="{path}" fill="{color}" stroke="#fff" stroke-width="1"/>')
+        start_angle = end_angle
+
+    # 중앙 텍스트
+    center_html = ""
+    if center_text and hole_size > 0:
+        center_html = f'<text x="{cx}" y="{cy}" text-anchor="middle" dominant-baseline="middle" font-size="12" font-weight="700" fill="#212529">{center_text}</text>'
+
+    svg = f'''<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" xmlns="http://www.w3.org/2000/svg">
+        {''.join(paths)}
+        {center_html}
+    </svg>'''
+
+    return svg
+
+
 class FinalReportAgent:
     """
     경제/금융 도메인 최종 리포트 생성 에이전트 v2.0
@@ -689,18 +767,23 @@ class FinalReportAgent:
         else:
             print("  [WARN] No eimas_*.json or integrated_*.json found")
 
-        # 2. AI report는 이제 JSON 내부에 있음 (ai_report 필드)
-        if self.integrated_data.get('ai_report'):
-            self.ai_report_sections = self.integrated_data['ai_report']
-            print("  [OK] AI Report from unified JSON")
+        # 2. AI report 섹션 로드 (JSON 우선, MD fallback)
+        ai_report = self.integrated_data.get('ai_report', {})
+        if ai_report.get('sections'):
+            # JSON에 섹션이 있으면 사용 (통합 포맷)
+            self.ai_report_sections = ai_report['sections']
+            print(f"  [OK] AI Report sections from unified JSON ({len(self.ai_report_sections)} sections)")
         else:
-            # Fallback: Load AI report MD (legacy)
+            # Fallback: MD 파일에서 파싱
             ai_md_file = self._get_latest_file("ai_report_*.md")
             if ai_md_file:
                 with open(ai_md_file, 'r', encoding='utf-8') as f:
                     self.ai_report_content = f.read()
                 self.ai_report_sections = self._parse_md_sections(self.ai_report_content)
-                print(f"  [OK] Loaded: {ai_md_file.name}")
+                print(f"  [OK] Loaded: {ai_md_file.name} ({len(self.ai_report_sections)} sections)")
+            else:
+                self.ai_report_sections = {}
+                print("  [WARN] No AI Report sections found")
 
         # 3. Load IB memo MD (legacy)
         ib_file = self._get_latest_file("ib_memorandum_*.md")
@@ -2033,7 +2116,10 @@ class FinalReportAgent:
             </div>''')
             cumulative += pct
 
-        gradient_str = ', '.join(gradients) if gradients else '#868e96 0% 100%'
+        # SVG 파이 차트 데이터 준비
+        pie_data = [(ticker, weight / total * 100, colors[i % len(colors)])
+                    for i, (ticker, weight) in enumerate(sorted_weights)]
+        svg_chart = generate_svg_pie_chart(pie_data, size=160, hole_size=70, center_text="가중치")
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -2055,11 +2141,7 @@ class FinalReportAgent:
             <p class="text-muted" style="margin-top: 12px; font-size: 0.75rem;">Hash: {hash_value}</p>
         </div>
         <div style="display: flex; justify-content: center; align-items: center;">
-            <div style="width: 160px; height: 160px; border-radius: 50%; background: conic-gradient({gradient_str}); position: relative;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80px; height: 80px; background: var(--bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;">
-                    가중치
-                </div>
-            </div>
+            {svg_chart}
         </div>
         <div>
             <p class="tech-label" style="margin-bottom: 12px;">Index 구성 가중치</p>
@@ -2503,24 +2585,23 @@ class FinalReportAgent:
                 weights = {'주식 (균형)': 35, '채권': 25, '현금': 20, '원자재': 10, '대안투자': 10}
 
         colors = ['#1864ab', '#5f3dc4', '#2b8a3e', '#f08c00', '#868e96', '#c92a2a', '#0b7285']
-        gradients = []
         legend_items = []
-        cumulative = 0
 
         items = list(weights.items())[:7]
         total = sum(v for _, v in items)
 
+        # SVG 파이 차트 데이터 준비
+        pie_data = []
         for i, (label, value) in enumerate(items):
             pct = (value / total * 100) if total > 0 else 0
             color = colors[i % len(colors)]
-            gradients.append(f"{color} {cumulative}% {cumulative + pct}%")
+            pie_data.append((label, pct, color))
             legend_items.append(f'''<div class="legend-item">
                 <div class="legend-color" style="background: {color};"></div>
                 <span>{label} ({pct:.0f}%)</span>
             </div>''')
-            cumulative += pct
 
-        gradient_str = ', '.join(gradients)
+        svg_chart = generate_svg_pie_chart(pie_data, size=180, hole_size=80, center_text="배분")
 
         return f'''
 <div class="card" style="margin-bottom: 24px;">
@@ -2528,8 +2609,8 @@ class FinalReportAgent:
         <span class="card-title">💼 추천 포트폴리오</span>
     </div>
     <div class="pie-container">
-        <div class="pie-chart" style="background: conic-gradient({gradient_str});">
-            <div class="pie-hole">배분</div>
+        <div style="display: flex; justify-content: center; align-items: center;">
+            {svg_chart}
         </div>
         <div class="pie-legend">
             {''.join(legend_items)}

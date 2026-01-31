@@ -23,12 +23,64 @@ Example:
 """
 
 import asyncio
+import re
 from typing import Dict, Any, Optional
+from pathlib import Path
 import pandas as pd
 from datetime import datetime
 
 # EIMAS 라이브러리
 from lib.ai_report_generator import AIReportGenerator
+
+
+def _parse_md_sections(md_path: str) -> Dict[str, Dict[str, str]]:
+    """MD 파일에서 ## N. Section 패턴으로 섹션 추출 (단조 증가하는 top-level만)"""
+    sections = {}
+    try:
+        with open(md_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # top-level 섹션만 매칭: 섹션 번호가 단조 증가해야 함
+        # Claude 내부의 ## 1. 등 (번호 역행)은 내용으로 처리
+        lines = content.split('\n')
+        current_section = 0  # 마지막으로 파싱된 섹션 번호
+        current_title = ""
+        current_body = []
+
+        for line in lines:
+            # section header: "## N. Title"
+            match = re.match(r'^## (\d{1,2})\. (.+)$', line)
+            if match:
+                num = int(match.group(1))
+                # 단조 증가하는 경우만 새 섹션으로 인식 (번호가 이전보다 커야 함)
+                if num > current_section:
+                    # 이전 섹션 저장
+                    if current_section > 0:
+                        sections[f"section_{current_section}"] = {
+                            "title": current_title,
+                            "content": '\n'.join(current_body).strip()
+                        }
+                    current_section = num
+                    current_title = match.group(2).strip()
+                    current_body = []
+                    continue
+                # else: 번호가 같거나 작으면 내부 섹션으로 간주 → 내용에 포함
+
+            # 현재 섹션에 내용 추가
+            if current_section > 0:
+                current_body.append(line)
+
+        # 마지막 섹션 저장
+        if current_section > 0:
+            sections[f"section_{current_section}"] = {
+                "title": current_title,
+                "content": '\n'.join(current_body).strip()
+            }
+
+    except Exception as e:
+        print(f"      ⚠️ Section parsing error: {e}")
+
+    return sections
 from lib.whitening_engine import WhiteningEngine
 from lib.autonomous_agent import AutonomousFactChecker
 from pipeline.schemas import EIMASResult, AIReport
@@ -37,7 +89,7 @@ from pipeline.exceptions import get_logger, log_error
 logger = get_logger("report")
 
 async def generate_ai_report(result: EIMASResult, market_data: Dict[str, pd.DataFrame]) -> AIReport:
-    """AI 투자 제안서 및 리포트 생성"""
+    """AI 투자 제안서 및 리포트 생성 - 통합 JSON에 모든 섹션 포함"""
     print("\n" + "=" * 50)
     print("PHASE 6: AI REPORT GENERATION")
     print("=" * 50)
@@ -57,12 +109,17 @@ async def generate_ai_report(result: EIMASResult, market_data: Dict[str, pd.Data
         ib_report_path = await generator.save_ib_report(ib_report_content)
         print(f"      ✓ IB Memorandum saved: {ib_report_path}")
 
+        # [NEW] MD 파일에서 섹션 파싱하여 JSON에 포함
+        print("\n[6.4] Parsing report sections for unified JSON...")
+        sections = _parse_md_sections(str(report_path))
+        print(f"      ✓ Parsed {len(sections)} sections")
+
         highlights = {
             'notable_stocks': [
-                {'ticker': s.ticker, 'reason': s.notable_reason} 
-                for s in getattr(report, 'notable_stocks', [])[:3]
+                {'ticker': s.ticker, 'reason': s.notable_reason}
+                for s in getattr(report, 'notable_stocks', [])[:5]
             ],
-            'final_recommendation': getattr(report, 'final_recommendation', "")[:200] + "..."
+            'final_recommendation': getattr(report, 'final_recommendation', "")
         }
 
         return AIReport(
@@ -70,7 +127,8 @@ async def generate_ai_report(result: EIMASResult, market_data: Dict[str, pd.Data
             report_path=str(report_path),
             ib_report_path=str(ib_report_path),
             highlights=highlights,
-            content=getattr(report, 'final_recommendation', "")
+            content=getattr(report, 'final_recommendation', ""),
+            sections=sections  # 전체 섹션 포함
         )
 
     except Exception as e:
