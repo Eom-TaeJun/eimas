@@ -2422,23 +2422,79 @@ class FinalReportAgent:
 </div>'''
 
     def _generate_news_section(self) -> str:
-        """주요 시장 뉴스"""
-        # MD 섹션 8에서 추출
-        section = self.ai_report_sections.get('section_8', {})
-        content = section.get('content', '')
+        """주요 시장 뉴스 - 실시간 데이터 사용"""
+        news_items = []
 
-        # 뉴스 항목 추출 시도
-        news_items = [
-            {'tag': 'Macro', 'tag_class': 'bg-blue', 'title': '미국 증시 사상 최고치 경신',
-             'content': 'S&P 500 6990pt 돌파. 기술주 강세 지속, 나스닥 1% 상승 마감.'},
-            {'tag': 'Fed', 'tag_class': 'bg-purple', 'title': 'FOMC 금리 동결 전망 90%+',
-             'content': '파월 의장 메시지에 주목. CPI 2.7%, 실업률 4.4% 상황에서 인내심 유지 예상.'},
-            {'tag': 'Tech', 'tag_class': 'bg-green', 'title': '빅테크 4Q 실적 발표 대기',
-             'content': '마이크로소프트, 애플 등 메가캡 기업 실적 주간. AI 투자 지속 여부 확인.'}
-        ]
+        # 1. Perplexity 뉴스 (ai_report.section_8)
+        section = self.ai_report_sections.get('section_8', {})
+        perplexity_content = section.get('content', '')
+
+        if perplexity_content and len(perplexity_content) > 50:
+            # Perplexity 응답을 뉴스 항목으로 파싱
+            lines = perplexity_content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and len(line) > 20 and not line.startswith('#'):
+                    # 태그 추론
+                    tag, tag_class = self._infer_news_tag(line)
+                    news_items.append({
+                        'tag': tag,
+                        'tag_class': tag_class,
+                        'title': line[:80] + ('...' if len(line) > 80 else ''),
+                        'content': line[80:160] if len(line) > 80 else ''
+                    })
+                    if len(news_items) >= 5:
+                        break
+
+        # 2. yfinance 뉴스 실시간 수집 (Perplexity 없으면)
+        if len(news_items) < 3:
+            try:
+                import yfinance as yf
+                from dateutil import parser as date_parser
+
+                spy = yf.Ticker('SPY')
+                yf_news = spy.news[:5] if spy.news else []
+
+                for item in yf_news:
+                    content = item.get('content', {})
+                    title = content.get('title', '') if content else item.get('title', '')
+                    summary = content.get('summary', '')[:100] if content else ''
+
+                    if title:
+                        tag, tag_class = self._infer_news_tag(title)
+                        news_items.append({
+                            'tag': tag,
+                            'tag_class': tag_class,
+                            'title': title[:80] + ('...' if len(title) > 80 else ''),
+                            'content': summary
+                        })
+                        if len(news_items) >= 5:
+                            break
+            except Exception as e:
+                pass
+
+        # 3. CNBC RSS (extended_data.news_sentiment)
+        if len(news_items) < 3:
+            ext = self.integrated_data.get('extended_data', {})
+            news_sent = ext.get('news_sentiment', {})
+            headline = news_sent.get('top_headline', '')
+            if headline:
+                tag, tag_class = self._infer_news_tag(headline)
+                news_items.append({
+                    'tag': tag,
+                    'tag_class': tag_class,
+                    'title': headline[:80] + ('...' if len(headline) > 80 else ''),
+                    'content': f"Sentiment: {news_sent.get('label', 'Neutral')}"
+                })
+
+        # 4. 폴백: 기본 뉴스 (데이터 없을 때)
+        if not news_items:
+            news_items = [
+                {'tag': 'Market', 'tag_class': 'bg-blue', 'title': '실시간 뉴스 수집 중...', 'content': 'Perplexity/yfinance API 연동 확인 필요'}
+            ]
 
         news_html = ''
-        for item in news_items:
+        for item in news_items[:5]:
             news_html += f'''<div class="news-card">
                 <span class="news-tag {item['tag_class']}">{item['tag']}</span>
                 <p class="news-title">{item['title']}</p>
@@ -2448,10 +2504,26 @@ class FinalReportAgent:
         return f'''
 <div class="card" style="margin-bottom: 24px;">
     <div class="card-header">
-        <span class="card-title">📰 주요 시장 뉴스</span>
+        <span class="card-title">📰 주요 시장 뉴스 (실시간)</span>
     </div>
     {news_html}
 </div>'''
+
+    def _infer_news_tag(self, text: str) -> tuple:
+        """뉴스 텍스트에서 태그 추론"""
+        text_lower = text.lower()
+        if any(w in text_lower for w in ['fed', 'fomc', 'rate', 'powell', '금리', '연준']):
+            return 'Fed', 'bg-purple'
+        elif any(w in text_lower for w in ['tech', 'ai', 'nvidia', 'apple', 'microsoft', '기술']):
+            return 'Tech', 'bg-green'
+        elif any(w in text_lower for w in ['crypto', 'bitcoin', 'btc', 'eth', '비트코인']):
+            return 'Crypto', 'bg-yellow'
+        elif any(w in text_lower for w in ['oil', 'gold', 'commodity', '원유', '금']):
+            return 'Commodity', 'bg-orange'
+        elif any(w in text_lower for w in ['china', 'trade', 'tariff', '중국', '관세']):
+            return 'Trade', 'bg-red'
+        else:
+            return 'Market', 'bg-blue'
 
     def _generate_scenario_section(self) -> str:
         """시나리오 분석"""

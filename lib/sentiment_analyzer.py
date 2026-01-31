@@ -269,6 +269,7 @@ class SentimentAnalyzer:
     def fetch_news_sentiment(self, ticker: str = 'SPY') -> List[NewsSentiment]:
         """뉴스 센티먼트 수집 (yfinance 뉴스)"""
         import yfinance as yf
+        from dateutil import parser as date_parser
 
         news_items = []
 
@@ -277,20 +278,40 @@ class SentimentAnalyzer:
             news = stock.news
 
             for item in news[:10]:
-                title = item.get('title', '')
+                # yfinance 1.1.0+ 새 구조: content 내부에 데이터
+                content = item.get('content', {})
+                if content:
+                    title = content.get('title', '')
+                    publisher = content.get('provider', {}).get('displayName', 'Unknown')
+                    pub_date = content.get('pubDate', '')
+
+                    # ISO 날짜 파싱
+                    try:
+                        timestamp = date_parser.parse(pub_date) if pub_date else datetime.now()
+                    except:
+                        timestamp = datetime.now()
+                else:
+                    # 이전 버전 호환
+                    title = item.get('title', '')
+                    publisher = item.get('publisher', 'Unknown')
+                    timestamp = datetime.fromtimestamp(item.get('providerPublishTime', 0))
+
+                if not title:
+                    continue
+
                 score, sentiment, keywords = self.analyze_text_sentiment(title)
 
                 news_items.append(NewsSentiment(
                     headline=title,
-                    source=item.get('publisher', 'Unknown'),
+                    source=publisher,
                     sentiment_score=score,
                     sentiment=sentiment,
                     keywords=keywords,
-                    timestamp=datetime.fromtimestamp(item.get('providerPublishTime', 0)),
+                    timestamp=timestamp,
                 ))
 
         except Exception as e:
-            print(f"News fetch error: {e}")
+            print(f"News fetch error for {ticker}: {e}")
 
         return news_items
 
