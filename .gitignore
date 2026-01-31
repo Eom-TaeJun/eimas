@@ -92,3 +92,4 @@ htmlcov/
 
 # Tool specific
 .claude/settings.local.json
+docx2/
