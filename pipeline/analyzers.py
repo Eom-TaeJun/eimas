@@ -236,44 +236,92 @@ def generate_explanation(market_data: Dict[str, pd.DataFrame]) -> Dict:
 # ============================================================================
 
 def analyze_genius_act() -> GeniusActResult:
-    """Genius Act (스테이블코인 유동성) 분석"""
+    """Genius Act (스테이블코인 유동성) 분석 - 간소화 버전"""
     print("\n[2.7] Genius Act Macro analysis...")
     try:
-        strategy = GeniusActMacroStrategy()
-        signals = strategy.analyze_stablecoin_issuance()
-        m2 = strategy.calculate_digital_m2()
-        
-        regime = "NEUTRAL"
-        if signals:
-            regime = signals[-1].get('regime', 'NEUTRAL')
-            
-        print(f"      ✓ Digital M2: ${m2:,.0f}")
+        import asyncio
+        from lib.extended_data_sources import ExtendedDataCollector
+
+        collector = ExtendedDataCollector()
+
+        # async 함수를 동기적으로 실행
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 이미 실행 중인 이벤트 루프가 있으면 nest_asyncio 사용 또는 직접 호출
+                import nest_asyncio
+                nest_asyncio.apply()
+                stablecoin_data = loop.run_until_complete(collector.get_stablecoin_mcap())
+            else:
+                stablecoin_data = asyncio.run(collector.get_stablecoin_mcap())
+        except RuntimeError:
+            stablecoin_data = asyncio.run(collector.get_stablecoin_mcap())
+
+        mcap = stablecoin_data.get('total_mcap', 0) if stablecoin_data else 0
+
+        # 간단한 레짐 판단 (스테이블코인 시총 기준)
+        if mcap > 300e9:
+            regime = "EXPANSION"
+        elif mcap > 150e9:
+            regime = "NEUTRAL"
+        else:
+            regime = "CONTRACTION"
+
+        signals = [{'type': 'stablecoin_mcap', 'value': mcap, 'regime': regime}]
+
+        print(f"      ✓ Stablecoin Mcap: ${mcap/1e9:,.1f}B")
         print(f"      ✓ Regime: {regime}")
-        
+
         return GeniusActResult(
             regime=regime,
             signals=signals,
-            digital_m2=m2,
-            details={'signals_count': len(signals)}
+            digital_m2=mcap,
+            details={'stablecoin_mcap': mcap}
         )
     except Exception as e:
         log_error(logger, "Genius Act analysis failed", e)
         return GeniusActResult(regime="N/A", signals=[], digital_m2=0.0, details={})
 
 def analyze_theme_etf() -> ThemeETFResult:
-    """테마 ETF 분석"""
+    """테마 ETF 분석 - 간소화 버전"""
     print("\n[2.8] Theme ETF analysis...")
     try:
-        builder = CustomETFBuilder()
-        result = builder.build_theme_etf("AI & Semiconductor")
-        
-        print(f"      ✓ Theme: {result.get('theme', 'Unknown')}")
-        
+        # CustomETFBuilder.analyze_risk_concentration()은 ThemeETF 객체가 필요함
+        # 간소화: 기본 AI/반도체 섹터 ETF 분석
+        import yfinance as yf
+
+        theme = "AI & Semiconductor"
+        sector_etfs = ['SMH', 'SOXX', 'NVDA', 'AMD', 'AVGO']
+
+        # 간단한 성과 분석
+        performance = {}
+        for ticker in sector_etfs[:3]:  # 상위 3개만
+            try:
+                data = yf.Ticker(ticker).history(period='1mo')
+                if not data.empty:
+                    ret = (data['Close'].iloc[-1] / data['Close'].iloc[0] - 1) * 100
+                    performance[ticker] = ret
+            except:
+                pass
+
+        # 가장 강한 성과
+        if performance:
+            best_ticker = max(performance, key=performance.get)
+            score = performance[best_ticker]
+        else:
+            best_ticker = 'N/A'
+            score = 0.0
+
+        constituents = list(performance.keys())
+
+        print(f"      ✓ Theme: {theme}")
+        print(f"      ✓ Best Performer: {best_ticker} ({score:+.1f}%)")
+
         return ThemeETFResult(
-            theme=result.get('theme', 'Unknown'),
-            score=result.get('score', 0.0),
-            constituents=result.get('constituents', []),
-            details=result
+            theme=theme,
+            score=score,
+            constituents=constituents,
+            details={'performance': performance}
         )
     except Exception as e:
         log_error(logger, "Theme ETF analysis failed", e)
@@ -289,20 +337,35 @@ def analyze_shock_propagation(market_data: Dict[str, pd.DataFrame]) -> ShockAnal
             if not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
-        
+
+        if len(returns_df.columns) < 3:
+            raise ValueError("Need at least 3 assets for shock propagation analysis")
+
         graph = ShockPropagationGraph()
-        graph.build_from_returns(returns_df)
-        
-        # SPY 충격 시뮬레이션
-        impact = graph.simulate_shock('SPY', shock_size=-0.05)
-        
-        print(f"      ✓ SPY Shock Impact: {len(impact.get('affected_nodes', []))} nodes affected")
-        
+        graph.build_from_data(returns_df)
+
+        # find_all_critical_paths() 사용 (simulate_shock 대신)
+        critical_paths = graph.find_all_critical_paths(top_n=3)
+
+        if critical_paths:
+            top_path = critical_paths[0]
+            impact_score = top_path.total_propagation_time if hasattr(top_path, 'total_propagation_time') else len(top_path.nodes)
+            contagion_path = top_path.nodes if hasattr(top_path, 'nodes') else []
+            vulnerable_assets = contagion_path[-3:] if len(contagion_path) >= 3 else contagion_path
+        else:
+            impact_score = 0.0
+            contagion_path = []
+            vulnerable_assets = []
+
+        print(f"      ✓ Critical Paths Found: {len(critical_paths)}")
+        if contagion_path:
+            print(f"      ✓ Top Path: {' → '.join(contagion_path[:5])}")
+
         return ShockAnalysisResult(
-            impact_score=impact.get('total_impact', 0.0),
-            contagion_path=impact.get('propagation_path', []),
-            vulnerable_assets=impact.get('vulnerable_assets', []),
-            details=impact
+            impact_score=impact_score,
+            contagion_path=contagion_path,
+            vulnerable_assets=vulnerable_assets,
+            details={'paths_found': len(critical_paths), 'graph_nodes': len(graph.graph.nodes())}
         )
     except Exception as e:
         log_error(logger, "Shock propagation analysis failed", e)
@@ -312,24 +375,40 @@ def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioRes
     """GC-HRP 및 MST 기반 포트폴리오 최적화"""
     print("\n[2.10] Graph-Clustered Portfolio optimization...")
     try:
+        # returns DataFrame 생성
+        returns_df = pd.DataFrame()
+        for ticker, df in market_data.items():
+            if not df.empty and 'Close' in df.columns:
+                returns_df[ticker] = df['Close'].pct_change()
+        returns_df = returns_df.dropna()
+
+        if len(returns_df.columns) < 3:
+            raise ValueError("Need at least 3 assets for portfolio optimization")
+
         optimizer = GraphClusteredPortfolio()
-        result = optimizer.optimize(market_data)
-        
-        weights = result.get('weights', {})
-        mst_info = result.get('mst_info', {})
-        
+        allocation = optimizer.fit(returns_df)
+
+        weights = allocation.weights
+        mst_info = {}
+        if allocation.mst_analysis:
+            # MSTAnalysisResult 속성 안전하게 접근
+            systemic_nodes = getattr(allocation.mst_analysis, 'systemic_risk_nodes', [])
+            mst_info = {
+                'hubs': [getattr(n, 'ticker', str(n)) for n in systemic_nodes] if systemic_nodes else [],
+            }
+
         top_weights = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:3]
         top_str = ", ".join([f"{t}:{w:.0%}" for t, w in top_weights])
-        
+
         print(f"      ✓ Top Allocation: {top_str}")
-        print(f"      ✓ Diversification Ratio: {result.get('diversification_ratio', 0):.2f}")
-        
+        print(f"      ✓ Diversification Ratio: {allocation.diversification_ratio:.2f}")
+
         return PortfolioResult(
             weights=weights,
-            risk_contribution=result.get('risk_contribution', {}),
-            diversification_ratio=result.get('diversification_ratio', 0.0),
+            risk_contribution=allocation.risk_contributions,
+            diversification_ratio=allocation.diversification_ratio,
             mst_hubs=mst_info.get('hubs', []),
-            details=result
+            details={'effective_n': allocation.effective_n, 'methodology': allocation.methodology}
         )
     except Exception as e:
         log_error(logger, "Portfolio optimization failed", e)
@@ -344,9 +423,31 @@ def analyze_volume_anomalies(market_data: Dict[str, pd.DataFrame]) -> List[Dict]
     print("\n[2.11] Volume anomaly detection...")
     try:
         analyzer = VolumeAnalyzer()
-        anomalies = analyzer.detect_anomalies(market_data)
-        print(f"      ✓ Anomalies: {len(anomalies)} detected")
-        return anomalies
+        result = analyzer.detect_anomalies(market_data)
+
+        # VolumeAnalysisResult 객체에서 정보 추출
+        anomaly_count = getattr(result, 'anomalies_detected', 0)
+        anomalies_list = getattr(result, 'anomalies', [])
+        total_tickers = getattr(result, 'total_tickers_analyzed', 'N/A')
+
+        print(f"      ✓ Anomalies: {anomaly_count} detected")
+        print(f"      ✓ Tickers analyzed: {total_tickers}")
+
+        # Dict 리스트로 변환 (severity 속성 안전하게 접근)
+        output = []
+        for a in anomalies_list:
+            severity_val = getattr(a, 'severity', 'UNKNOWN')
+            # Enum이면 .value, 아니면 str로 변환
+            if hasattr(severity_val, 'value'):
+                severity_str = severity_val.value
+            else:
+                severity_str = str(severity_val)
+            output.append({
+                'ticker': getattr(a, 'ticker', 'N/A'),
+                'severity': severity_str,
+                'description': getattr(a, 'description', '')
+            })
+        return output
     except Exception as e:
         log_error(logger, "Volume anomaly detection failed", e)
         return []
@@ -967,13 +1068,17 @@ def analyze_bubble_risk(market_data: Dict[str, pd.DataFrame]) -> Dict[str, Any]:
                 df = market_data[ticker]
                 if 'Close' in df.columns:
                     try:
-                        detection = detector.detect(ticker, price_data=df['Close'])
+                        # analyze()는 DataFrame을 기대함 (Close 컬럼 포함)
+                        detection = detector.analyze(ticker, price_data=df)
                         if detection.bubble_warning_level.value != "NONE":
+                            runup_val = 0.0
+                            if detection.runup and hasattr(detection.runup, 'cumulative_return'):
+                                runup_val = detection.runup.cumulative_return
                             risk_tickers.append({
                                 'ticker': ticker,
                                 'warning_level': detection.bubble_warning_level.value,
                                 'risk_score': detection.risk_score,
-                                'runup': detection.runup.cumulative_return
+                                'runup': runup_val
                             })
                             if detection.risk_score > highest_score:
                                 highest_score = detection.risk_score

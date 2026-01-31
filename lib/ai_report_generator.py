@@ -2118,17 +2118,18 @@ class AIReportGenerator:
             ivp_result = analyzer.calculate_iv_percentile("SPY")
             if ivp_result:
                 options_data['iv_percentile'] = {
-                    'percentile': ivp_result.percentile,
+                    'percentile': ivp_result.iv_percentile,  # 올바른 속성명: iv_percentile
                     'current_iv': ivp_result.current_iv,
-                    'level': ivp_result.level
+                    'level': ivp_result.signal  # 올바른 속성명: signal
                 }
 
             # Fear & Greed Index
             full_analysis = analyzer.analyze()
-            if full_analysis:
+            if full_analysis and full_analysis.composite:
+                fg = full_analysis.composite.fear_greed
                 sentiment_data['fear_greed_index'] = {
-                    'value': full_analysis.fear_greed_value,
-                    'classification': full_analysis.fear_greed_label
+                    'value': fg.value if fg else 50,
+                    'classification': fg.level.value if fg else 'neutral'
                 }
 
         except Exception as e:

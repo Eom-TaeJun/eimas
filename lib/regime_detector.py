@@ -447,7 +447,7 @@ class RegimeDetector:
             data['Returns'] = df['Close'].pct_change()
             
             # VIX 인덱스 맞추기
-            data['VIX'] = vix.reindex(data.index).fillna(method='ffill')
+            data['VIX'] = vix.reindex(data.index).ffill()
             
             data = data.dropna()
             
