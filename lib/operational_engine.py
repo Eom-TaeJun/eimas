@@ -118,40 +118,302 @@ class TriggerType(Enum):
 
 
 # =============================================================================
-# Score Definitions
+# Score Definitions (Unified Risk Scoring)
 # =============================================================================
+
+# Risk level thresholds (fixed scale 0-100)
+RISK_THRESHOLD_LOW = 30.0      # 0-30: LOW risk
+RISK_THRESHOLD_HIGH = 70.0     # 70-100: HIGH risk
+                               # 30-70: MEDIUM risk
+
+
+@dataclass
+class AuxiliaryRiskMetric:
+    """
+    보조 리스크 지표 (auxiliary, not used for decisions)
+
+    이 지표들은 정보 제공 목적으로만 사용되며,
+    의사결정에는 canonical_risk_score만 사용됨.
+    """
+    name: str                  # 지표 이름
+    value: float               # 지표 값
+    unit: str                  # 단위 (points, %, bps 등)
+    source: str                # 출처 모듈
+    description: str           # 설명
+
+    def to_dict(self) -> Dict:
+        return {
+            'name': self.name,
+            'value': self.value,
+            'unit': self.unit,
+            'source': self.source,
+            'description': self.description,
+        }
+
 
 @dataclass
 class ScoreDefinitions:
     """
-    리스크 점수 정의 (단일 공식 점수 + 서브스코어)
+    통합 리스크 점수 정의 (Unified Risk Scoring)
 
-    Canonical Risk Score = Base + Microstructure Adj + Bubble Adj + Extended Adj
+    ============================================================================
+    CANONICAL RISK SCORE (의사결정용 공식 점수)
+    ============================================================================
+
+    Scale: 0 - 100 (고정)
+    Formula: canonical = base + microstructure_adj + bubble_adj + extended_adj
+    Clamping: min(100, max(0, canonical))
+
+    Interpretation Bands:
+    ---------------------
+    | Range   | Level  | Action Guidance                              |
+    |---------|--------|----------------------------------------------|
+    | 0-30    | LOW    | 공격적 포지션 허용                           |
+    | 30-70   | MEDIUM | 표준 리스크 관리 적용                        |
+    | 70-100  | HIGH   | 방어적 스탠스, 포지션 축소 고려              |
+
+    Decision Rule Usage:
+    --------------------
+    - RULE_4 (High Risk Override): canonical_risk_score >= 70 → 방어적 스탠스
+    - resolve_final_decision(): canonical_risk_score만 참조
+
+    ============================================================================
+    AUXILIARY SUB-SCORES (정보 제공용, 의사결정에 미사용)
+    ============================================================================
+
+    | Sub-Score                | Range   | Source                    |
+    |--------------------------|---------|---------------------------|
+    | base_risk_score          | 0-100   | CriticalPathAggregator    |
+    | microstructure_adjustment| ±10     | DailyMicrostructureAnalyzer|
+    | bubble_risk_adjustment   | +0~15   | BubbleDetector            |
+    | extended_data_adjustment | ±15     | PCR/Sentiment/Credit      |
+
+    Note: Sub-scores are ONLY for transparency and audit.
+          All decision logic uses canonical_risk_score exclusively.
     """
-    # Canonical (공식) Risk Score
-    canonical_risk_score: float = 0.0
 
-    # Sub-scores (명시적으로 문서화)
-    base_risk_score: float = 0.0           # CriticalPathAggregator 기본 점수
-    microstructure_adjustment: float = 0.0  # 시장 미세구조 조정 (±10)
-    bubble_risk_adjustment: float = 0.0     # 버블 리스크 가산 (+0~15)
-    extended_data_adjustment: float = 0.0   # PCR/Sentiment/Credit 조정 (±15)
+    # =========================================================================
+    # CANONICAL RISK SCORE (의사결정용 - 이 값만 decision rules에서 사용)
+    # =========================================================================
+    canonical_risk_score: float = 50.0     # Scale: 0-100, clamped
 
-    # Score interpretation
-    risk_level: str = "MEDIUM"             # LOW/MEDIUM/HIGH
+    # =========================================================================
+    # INTERPRETATION (canonical_risk_score 기반)
+    # =========================================================================
+    risk_level: str = "MEDIUM"             # LOW (0-30) / MEDIUM (30-70) / HIGH (70-100)
+    risk_level_threshold_low: float = field(default=RISK_THRESHOLD_LOW, repr=False)
+    risk_level_threshold_high: float = field(default=RISK_THRESHOLD_HIGH, repr=False)
+
+    # =========================================================================
+    # AUXILIARY SUB-SCORES (정보 제공용 - 의사결정에 사용 금지)
+    # =========================================================================
+    # Note: These are labeled "auxiliary" to emphasize they are not for decisions
+
+    # Base score from CriticalPathAggregator
+    aux_base_risk_score: float = 50.0
+    aux_base_source: str = "CriticalPathAggregator"
+
+    # Microstructure adjustment (market quality)
+    aux_microstructure_adjustment: float = 0.0
+    aux_microstructure_source: str = "DailyMicrostructureAnalyzer"
+
+    # Bubble risk overlay
+    aux_bubble_risk_adjustment: float = 0.0
+    aux_bubble_source: str = "BubbleDetector"
+
+    # Extended data adjustment (PCR, sentiment, credit)
+    aux_extended_data_adjustment: float = 0.0
+    aux_extended_source: str = "ExtendedDataCollector"
+
+    # =========================================================================
+    # OPTIONAL: Additional auxiliary metrics (for information only)
+    # =========================================================================
+    auxiliary_metrics: List[AuxiliaryRiskMetric] = field(default_factory=list)
+
+    def __post_init__(self):
+        """Calculate risk_level from canonical_risk_score"""
+        self.risk_level = self._interpret_risk_level(self.canonical_risk_score)
+
+    def _interpret_risk_level(self, score: float) -> str:
+        """
+        Interpret canonical risk score into risk level.
+
+        Fixed bands (not configurable to ensure consistency):
+        - LOW: 0-30
+        - MEDIUM: 30-70
+        - HIGH: 70-100
+        """
+        if score < self.risk_level_threshold_low:
+            return "LOW"
+        elif score >= self.risk_level_threshold_high:
+            return "HIGH"
+        else:
+            return "MEDIUM"
+
+    @classmethod
+    def from_components(
+        cls,
+        base_risk_score: float,
+        microstructure_adjustment: float = 0.0,
+        bubble_risk_adjustment: float = 0.0,
+        extended_data_adjustment: float = 0.0,
+        auxiliary_metrics: List[AuxiliaryRiskMetric] = None
+    ) -> 'ScoreDefinitions':
+        """
+        Create ScoreDefinitions from component scores.
+
+        Computes canonical_risk_score = base + micro + bubble + extended,
+        clamped to [0, 100].
+        """
+        canonical = base_risk_score + microstructure_adjustment + bubble_risk_adjustment + extended_data_adjustment
+        canonical = max(0.0, min(100.0, canonical))
+
+        return cls(
+            canonical_risk_score=canonical,
+            aux_base_risk_score=base_risk_score,
+            aux_microstructure_adjustment=microstructure_adjustment,
+            aux_bubble_risk_adjustment=bubble_risk_adjustment,
+            aux_extended_data_adjustment=extended_data_adjustment,
+            auxiliary_metrics=auxiliary_metrics or [],
+        )
 
     def to_dict(self) -> Dict:
+        """Export as dictionary for JSON serialization"""
         return {
+            # Canonical score (for decisions)
             'canonical_risk_score': self.canonical_risk_score,
-            'sub_scores': {
-                'base_risk_score': self.base_risk_score,
-                'microstructure_adjustment': self.microstructure_adjustment,
-                'bubble_risk_adjustment': self.bubble_risk_adjustment,
-                'extended_data_adjustment': self.extended_data_adjustment,
+            'risk_level': self.risk_level,
+            'scale': {
+                'min': 0,
+                'max': 100,
+                'interpretation': {
+                    'LOW': f'0 - {self.risk_level_threshold_low}',
+                    'MEDIUM': f'{self.risk_level_threshold_low} - {self.risk_level_threshold_high}',
+                    'HIGH': f'{self.risk_level_threshold_high} - 100',
+                }
+            },
+            # Auxiliary sub-scores (for transparency only)
+            'auxiliary_sub_scores': {
+                'base_risk_score': {
+                    'value': self.aux_base_risk_score,
+                    'source': self.aux_base_source,
+                    'note': 'AUXILIARY - not used for decisions'
+                },
+                'microstructure_adjustment': {
+                    'value': self.aux_microstructure_adjustment,
+                    'source': self.aux_microstructure_source,
+                    'note': 'AUXILIARY - not used for decisions'
+                },
+                'bubble_risk_adjustment': {
+                    'value': self.aux_bubble_risk_adjustment,
+                    'source': self.aux_bubble_source,
+                    'note': 'AUXILIARY - not used for decisions'
+                },
+                'extended_data_adjustment': {
+                    'value': self.aux_extended_data_adjustment,
+                    'source': self.aux_extended_source,
+                    'note': 'AUXILIARY - not used for decisions'
+                },
             },
             'formula': 'canonical = base + microstructure_adj + bubble_adj + extended_adj',
-            'risk_level': self.risk_level,
+            'additional_auxiliary_metrics': [m.to_dict() for m in self.auxiliary_metrics],
         }
+
+    def to_markdown(self) -> str:
+        """
+        Generate score_definitions section for report.
+
+        This section documents the unified risk scoring system.
+        """
+        lines = []
+        lines.append("## score_definitions")
+        lines.append("")
+
+        # Canonical Score
+        lines.append("### Canonical Risk Score")
+        lines.append("")
+        lines.append(f"**Score: {self.canonical_risk_score:.1f} / 100**")
+        lines.append(f"**Level: {self.risk_level}**")
+        lines.append("")
+
+        # Scale interpretation
+        lines.append("### Scale Interpretation")
+        lines.append("")
+        lines.append("| Range | Level | Description |")
+        lines.append("|-------|-------|-------------|")
+        lines.append(f"| 0 - {self.risk_level_threshold_low:.0f} | LOW | 공격적 포지션 허용 |")
+        lines.append(f"| {self.risk_level_threshold_low:.0f} - {self.risk_level_threshold_high:.0f} | MEDIUM | 표준 리스크 관리 |")
+        lines.append(f"| {self.risk_level_threshold_high:.0f} - 100 | HIGH | 방어적 스탠스 권고 |")
+        lines.append("")
+
+        # Formula
+        lines.append("### Formula")
+        lines.append("")
+        lines.append("```")
+        lines.append("canonical_risk_score = base + microstructure_adj + bubble_adj + extended_adj")
+        lines.append(f"                     = {self.aux_base_risk_score:.1f} + ({self.aux_microstructure_adjustment:+.1f}) + ({self.aux_bubble_risk_adjustment:+.1f}) + ({self.aux_extended_data_adjustment:+.1f})")
+        lines.append(f"                     = {self.canonical_risk_score:.1f}")
+        lines.append("```")
+        lines.append("")
+
+        # Auxiliary sub-scores
+        lines.append("### Auxiliary Sub-Scores")
+        lines.append("")
+        lines.append("**Note:** These sub-scores are for transparency only. Decision rules use ONLY `canonical_risk_score`.")
+        lines.append("")
+        lines.append("| Sub-Score | Value | Source | Purpose |")
+        lines.append("|-----------|-------|--------|---------|")
+        lines.append(f"| base_risk_score | {self.aux_base_risk_score:.1f} | {self.aux_base_source} | 기본 리스크 |")
+        lines.append(f"| microstructure_adj | {self.aux_microstructure_adjustment:+.1f} | {self.aux_microstructure_source} | 시장 미세구조 |")
+        lines.append(f"| bubble_risk_adj | {self.aux_bubble_risk_adjustment:+.1f} | {self.aux_bubble_source} | 버블 리스크 |")
+        lines.append(f"| extended_data_adj | {self.aux_extended_data_adjustment:+.1f} | {self.aux_extended_source} | PCR/감성/신용 |")
+        lines.append("")
+
+        # Additional auxiliary metrics
+        if self.auxiliary_metrics:
+            lines.append("### Additional Auxiliary Metrics")
+            lines.append("")
+            lines.append("| Metric | Value | Unit | Source |")
+            lines.append("|--------|-------|------|--------|")
+            for m in self.auxiliary_metrics:
+                lines.append(f"| {m.name} | {m.value:.2f} | {m.unit} | {m.source} |")
+            lines.append("")
+
+        # Decision usage note
+        lines.append("### Usage in Decision Rules")
+        lines.append("")
+        lines.append("```")
+        lines.append("RULE_4 (High Risk Override):")
+        lines.append(f"  IF canonical_risk_score >= {self.risk_level_threshold_high:.0f}")
+        lines.append("  THEN apply defensive stance")
+        lines.append("")
+        lines.append("All other rules reference canonical_risk_score exclusively.")
+        lines.append("Sub-scores are NEVER used in decision logic.")
+        lines.append("```")
+        lines.append("")
+
+        return "\n".join(lines)
+
+    # Backward compatibility aliases
+    @property
+    def base_risk_score(self) -> float:
+        """Alias for aux_base_risk_score (backward compatibility)"""
+        return self.aux_base_risk_score
+
+    @property
+    def microstructure_adjustment(self) -> float:
+        """Alias for aux_microstructure_adjustment (backward compatibility)"""
+        return self.aux_microstructure_adjustment
+
+    @property
+    def bubble_risk_adjustment(self) -> float:
+        """Alias for aux_bubble_risk_adjustment (backward compatibility)"""
+        return self.aux_bubble_risk_adjustment
+
+    @property
+    def extended_data_adjustment(self) -> float:
+        """Alias for aux_extended_data_adjustment (backward compatibility)"""
+        return self.aux_extended_data_adjustment
 
 
 # =============================================================================
@@ -1256,23 +1518,8 @@ class OperationalReport:
             md.append(f"| {log['rule']} | {log['condition']} | {log['input']} | {log['result']} |")
         md.append("")
 
-        # 2. Score Definitions
-        md.append("## 2. Score Definitions")
-        sd = self.score_definitions
-        md.append(f"### Canonical Risk Score: **{sd.canonical_risk_score:.1f}** ({sd.risk_level})")
-        md.append("")
-        md.append("#### Sub-Scores")
-        md.append(f"- Base Risk Score: {sd.base_risk_score:.1f}")
-        md.append(f"- Microstructure Adjustment: {sd.microstructure_adjustment:+.1f}")
-        md.append(f"- Bubble Risk Adjustment: {sd.bubble_risk_adjustment:+.1f}")
-        md.append(f"- Extended Data Adjustment: {sd.extended_data_adjustment:+.1f}")
-        md.append("")
-        md.append("#### Formula")
-        md.append("```")
-        md.append("canonical = base + microstructure_adj + bubble_adj + extended_adj")
-        md.append(f"         = {sd.base_risk_score:.1f} + ({sd.microstructure_adjustment:+.1f}) + ({sd.bubble_risk_adjustment:+.1f}) + ({sd.extended_data_adjustment:+.1f})")
-        md.append(f"         = {sd.canonical_risk_score:.1f}")
-        md.append("```")
+        # 2. Score Definitions (use unified score_definitions.to_markdown())
+        md.append(self.score_definitions.to_markdown())
         md.append("")
 
         # 3. Allocation
@@ -1412,29 +1659,59 @@ class OperationalEngine:
         )
 
     def _extract_scores(self, data: Dict) -> ScoreDefinitions:
-        """리스크 점수 추출"""
+        """
+        리스크 점수 추출 (Unified Risk Scoring)
+
+        Uses ScoreDefinitions.from_components() to ensure:
+        - canonical_risk_score is computed consistently
+        - risk_level is derived from canonical score
+        - sub-scores are labeled as auxiliary
+        """
         base = data.get('base_risk_score', data.get('risk_score', 50.0))
         micro_adj = data.get('microstructure_adjustment', 0.0)
         bubble_adj = data.get('bubble_risk_adjustment', 0.0)
         ext_adj = data.get('extended_data_adjustment', 0.0)
 
-        canonical = base + micro_adj + bubble_adj + ext_adj
-        canonical = max(0, min(100, canonical))
+        # Extract any additional auxiliary metrics
+        auxiliary_metrics = []
 
-        if canonical < 30:
-            risk_level = "LOW"
-        elif canonical < 70:
-            risk_level = "MEDIUM"
-        else:
-            risk_level = "HIGH"
+        # Add volatility if available
+        if 'volatility_score' in data:
+            auxiliary_metrics.append(AuxiliaryRiskMetric(
+                name='volatility_score',
+                value=data['volatility_score'],
+                unit='points',
+                source='RegimeDetector',
+                description='시장 변동성 지표 (auxiliary)'
+            ))
 
-        return ScoreDefinitions(
-            canonical_risk_score=canonical,
+        # Add liquidity score if available
+        market_quality = data.get('market_quality', {})
+        if isinstance(market_quality, dict) and 'avg_liquidity_score' in market_quality:
+            auxiliary_metrics.append(AuxiliaryRiskMetric(
+                name='liquidity_score',
+                value=market_quality['avg_liquidity_score'],
+                unit='points',
+                source='DailyMicrostructureAnalyzer',
+                description='시장 유동성 지표 (auxiliary)'
+            ))
+
+        # Add credit spread if available
+        if 'credit_spread' in data:
+            auxiliary_metrics.append(AuxiliaryRiskMetric(
+                name='credit_spread',
+                value=data['credit_spread'],
+                unit='bps',
+                source='CreditAnalyzer',
+                description='신용 스프레드 (auxiliary)'
+            ))
+
+        return ScoreDefinitions.from_components(
             base_risk_score=base,
             microstructure_adjustment=micro_adj,
             bubble_risk_adjustment=bubble_adj,
             extended_data_adjustment=ext_adj,
-            risk_level=risk_level,
+            auxiliary_metrics=auxiliary_metrics,
         )
 
     def _extract_allocation(self, data: Dict) -> Dict[str, float]:
