@@ -374,7 +374,7 @@ eimas/
 |   |-- signal_action.py # 시그널 액션
 |   |-- logging_config.py
 |   +-- health_check.py
-|-- lib/                 # 기능 모듈 (80개 파일)
+|-- lib/                 # 기능 모듈 (52개 활성 파일)
 |   |-- fred_collector.py
 |   |-- data_collector.py
 |   |-- data_loader.py           # RWA 자산 (NEW)
@@ -385,7 +385,6 @@ eimas/
 |   |-- critical_path.py
 |   |-- etf_flow_analyzer.py
 |   |-- graph_clustered_portfolio.py  # GC-HRP
-|   |-- integrated_strategy.py        # 통합 전략
 |   |-- shock_propagation_graph.py
 |   |-- causality_graph.py       # 인과관계 Narrative (NEW)
 |   |-- genius_act_macro.py
@@ -397,7 +396,8 @@ eimas/
 |   |-- microstructure.py
 |   |-- realtime_pipeline.py
 |   |-- dual_mode_analyzer.py
-|   +-- ... (기타 77개)
+|   |-- deprecated/         # 미사용 모듈 (25개, 2026-02-02)
+|   +-- ... (기타 30개)
 |-- api/                 # FastAPI 서버
 |   |-- server.py
 |   |-- main.py
@@ -436,7 +436,6 @@ eimas/
 |   |-- run_backtest.py
 |   +-- scheduler.py
 |-- tests/               # 테스트
-|   |-- test_integration.py
 |   |-- test_lasso_forecast.py
 |   |-- test_api_connection.py
 |   |-- test_signal_action.py
@@ -444,6 +443,8 @@ eimas/
 |-- data/                # 데이터베이스
 |   |-- cache.py
 |   +-- pipeline.py
+|-- archive/             # 아카이브 (2026-02-02)
+|   +-- future_experimental/  # 실험적 모듈 (28개)
 |-- outputs/             # 결과 JSON
 +-- configs/             # YAML 설정
 ```
@@ -472,6 +473,25 @@ eimas/
 5. **EIMASResult에 필요한 필드 추가** (line 100-146)
 6. **Summary 출력에 결과 추가** (line 958-1014)
 7. 이 파일(CLAUDE.md) 업데이트
+
+## 변경 후 검증 절차 (REQUIRED)
+
+> **중요**: 리팩토링, 모듈 이동, 의존성 변경 시 **반드시 FULL 모드로 검증**해야 합니다.
+
+```bash
+# 1. FULL 파이프라인 테스트 (REQUIRED - ~4분 소요)
+python main.py
+
+# 2. 결과 확인
+ls -la outputs/eimas_*.json | tail -1  # 최신 JSON 생성 확인
+
+# 3. (선택) API 서버 테스트
+uvicorn api.main:app --port 8000 &
+curl http://localhost:8000/health
+pkill -f "uvicorn api.main"
+```
+
+**주의**: `--quick` 모드는 Phase 2.3-2.10을 스킵하므로 의존성 오류를 놓칠 수 있습니다.
 
 ## API 키 (환경변수)
 
@@ -894,4 +914,32 @@ pip list | grep -E "fastapi|uvicorn|yfinance|anthropic"
   ```
 
 ---
-*마지막 업데이트: 2026-01-28 14:40 KST*
+### v2.2.1 (2026-02-02) - Codebase Cleanup
+
+**리팩토링: 코드베이스 정리 (~27,000줄 감소)**
+
+- **Phase 1: 중복 파일 삭제**
+  - `lib/future/regime_history.py` (lib/regime_history.py 중복)
+  - `lib/future/sentiment_analyzer.py` (97% 중복)
+  - `tests/test_integration.py` (빈 파일)
+
+- **Phase 2: lib/future/ 아카이브 (28개 → archive/future_experimental/)**
+  - 실험적/미구현 모듈들 보존 이동
+
+- **Phase 3: 미사용 모듈 deprecated로 이동 (25개 → lib/deprecated/)**
+  - 5개 파일 의존성 발견 후 복원:
+    - `causal_network.py` (liquidity_analysis.py 사용)
+    - `xai_explainer.py` (explanation_generator.py 사용)
+    - `news_correlator.py` (event_tracker.py 사용)
+    - `lasso_model.py` (forecast_agent.py 사용)
+    - `portfolio_optimizer.py` (strategy_agent.py 사용)
+
+- **결과**:
+  - lib/ 파일: 77개 → 52개 (-25)
+  - archive/future_experimental/: 28개
+  - lib/deprecated/: 25개
+
+- **검증**: `python main.py` FULL 모드 통과 (278초)
+
+---
+*마지막 업데이트: 2026-02-02 22:10 KST*
