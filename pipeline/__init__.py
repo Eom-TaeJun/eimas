@@ -27,7 +27,10 @@ from .analyzers import (
     # NEW: 2026-01-29 통합
     analyze_bubble_risk,
     analyze_sentiment,
-    run_ai_validation
+    run_ai_validation,
+    # NEW: 2026-02-02 비중 산출 & 리밸런싱
+    run_allocation_engine,
+    run_rebalancing_policy
 )
 from .debate import (
     run_dual_mode_debate,
@@ -92,7 +95,9 @@ __all__ = [
     'analyze_bubble_risk',
     'analyze_sentiment',
     'run_ai_validation',
-    
+    'run_allocation_engine',
+    'run_rebalancing_policy',
+
     # Debate
     'run_dual_mode_debate',
     'extract_consensus',

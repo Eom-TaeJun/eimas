@@ -392,6 +392,12 @@ class EIMASResult:
     # NEW: AI Report 통합 (2026-01-29)
     ai_report: Optional[Dict] = None  # FinalReport.to_dict()
 
+    # NEW: Allocation & Rebalancing Engine (2026-02-02)
+    allocation_result: Dict = field(default_factory=dict)      # AllocationResult.to_dict()
+    rebalance_decision: Dict = field(default_factory=dict)     # RebalanceDecision.to_dict()
+    allocation_strategy: str = "risk_parity"                   # 사용된 배분 전략
+    allocation_config: Dict = field(default_factory=dict)      # 배분 설정 (bounds, cost model)
+
     def to_dict(self) -> Dict:
         return asdict(self)
 

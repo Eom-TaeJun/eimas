@@ -100,6 +100,7 @@ from pipeline import (
     analyze_shock_propagation, optimize_portfolio_mst, analyze_volume_anomalies,
     track_events_with_news, run_adaptive_portfolio,
     analyze_bubble_risk, analyze_sentiment,  # NEW: 2026-01-29
+    run_allocation_engine, run_rebalancing_policy,  # NEW: 2026-02-02
     # Phase 3: Debate
     run_dual_mode_debate,
     # Phase 4: Realtime
@@ -190,6 +191,38 @@ def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
         _safe_call(lambda: setattr(result, 'shock_propagation', analyze_shock_propagation(market_data).to_dict()), "Shock")
         _safe_call(lambda: setattr(result, 'portfolio_weights', optimize_portfolio_mst(market_data).weights), "Portfolio")
         _safe_call(lambda: setattr(result, 'volume_anomalies', analyze_volume_anomalies(market_data)), "Volume")
+        # NEW: 비중 산출 엔진 (2026-02-02)
+        _safe_call(lambda: _set_allocation_result(result, market_data), "Allocation Engine")
+
+
+def _set_allocation_result(result: EIMASResult, market_data: Dict):
+    """[Phase 2.11-2.12] 비중 산출 및 리밸런싱 정책 평가"""
+    # 기존 portfolio_weights를 current_weights로 사용
+    current_weights = result.portfolio_weights if result.portfolio_weights else None
+
+    alloc_result = run_allocation_engine(
+        market_data=market_data,
+        strategy="risk_parity",  # 기본 Risk Parity 전략
+        current_weights=current_weights
+    )
+
+    result.allocation_result = alloc_result.get('allocation_result', {})
+    result.allocation_strategy = alloc_result.get('allocation_strategy', 'risk_parity')
+    result.allocation_config = alloc_result.get('allocation_config', {})
+
+    # 리밸런싱 결정
+    if alloc_result.get('rebalance_decision'):
+        result.rebalance_decision = alloc_result['rebalance_decision']
+    elif current_weights and alloc_result.get('allocation_result', {}).get('weights'):
+        # 리밸런싱 평가 별도 실행
+        result.rebalance_decision = run_rebalancing_policy(
+            current_weights=current_weights,
+            target_weights=alloc_result['allocation_result']['weights']
+        )
+
+    # 경고 추가
+    if alloc_result.get('warnings'):
+        result.warnings.extend(alloc_result['warnings'])
 
 
 def _set_liquidity(result):

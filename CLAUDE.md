@@ -914,6 +914,48 @@ pip list | grep -E "fastapi|uvicorn|yfinance|anthropic"
   ```
 
 ---
+### v2.2.2 (2026-02-02) - Allocation Engine & Rebalancing
+
+**비중 산출 엔진 및 리밸런싱 정책 추가**
+
+- **`lib/allocation_engine.py`** (~700 lines)
+  - MVO (Mean-Variance Optimization) - 샤프 최대화, 최소 분산
+  - Risk Parity - 동일 리스크 기여도 배분
+  - HRP (Hierarchical Risk Parity)
+  - Equal Weight, Inverse Volatility
+  - Black-Litterman (views 기반)
+  - `AllocationConstraints`: min/max weight, turnover cap, asset limits
+
+- **`lib/rebalancing_policy.py`** (~550 lines)
+  - Periodic (Calendar-based): Daily, Weekly, Monthly, Quarterly
+  - Threshold (Drift-based): 편차 임계값 초과 시
+  - Hybrid: 정기 + 임계값 결합
+  - `TradingCostModel`: 선형 비용 (수수료 + 스프레드 + 시장 충격)
+  - `AssetClassBounds`: equity/bond/cash/crypto min/max 제약
+  - Turnover Cap 적용 (기본 30%)
+
+- **`lib/allocation_report_agent.py`** (~450 lines)
+  - 자산배분팀 리서치 리포트 에이전트
+  - 입력: EIMAS JSON 결과
+  - 출력: 4개 섹션 한국어 리포트
+    1. 현재 시장 및 레짐 요약
+    2. 핵심 근거 3가지
+    3. 리스크 및 반증 조건 3가지
+    4. 운용 관점의 액션 아이템
+  - **제약**: 새 숫자/비중 생성 금지, JSON 값만 인용
+  - 데이터 신뢰도 저하/신호 충돌 시 기본 HOLD
+
+- **EIMASResult 신규 필드**
+  - `allocation_result`: 배분 결과 (weights, sharpe, expected_vol)
+  - `rebalance_decision`: 리밸런싱 결정 (should_rebalance, action, turnover)
+  - `allocation_strategy`: 사용된 전략 (risk_parity 등)
+  - `allocation_config`: 배분 설정 (bounds, cost model)
+
+- **통합 위치**: Phase 2.11-2.12 (Portfolio 최적화 후)
+- **검증**: `python main.py` FULL 모드 통과 (266초)
+
+---
+
 ### v2.2.1 (2026-02-02) - Codebase Cleanup
 
 **리팩토링: 코드베이스 정리 (~27,000줄 감소)**
