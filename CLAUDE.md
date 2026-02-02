@@ -166,8 +166,8 @@ npm run dev
 
 ```bash
 # 실행 명령어 (v2.1.0 Real-World Agent Edition)
-python main.py                    # 전체 파이프라인 (~40초)
-python main.py --quick            # 빠른 분석 (~16초, Phase 2.3-2.10 스킵)
+python main.py                    # 전체 파이프라인 (~5분, AI 리포트 제외)
+python main.py --quick            # 빠른 분석 (~30초, Phase 2.3-2.10 스킵)
 python main.py --report           # AI 리포트 포함
 python main.py --realtime         # 실시간 스트리밍 포함
 python main.py --realtime --duration 60  # 60초 스트리밍
@@ -186,6 +186,22 @@ python -m lib.final_report_agent                    # 기본 실행
 python -m lib.final_report_agent --user "엄태준"    # 사용자 이름 지정
 python -m lib.final_report_agent --output ./reports # 출력 경로 지정
 ```
+
+### 검증 시 주의사항 (Claude Code용)
+
+**IMPORTANT**: 파이프라인 변경 후 검증 시 반드시 `full` 모드로 테스트해야 함.
+
+```bash
+# 검증 명령어 (10분 타임아웃 필수)
+timeout 600 python main.py 2>&1
+
+# --quick 모드로는 Phase 2.3-2.10 스킵되어 전체 검증 불가
+# 예상 실행 시간: ~5분 (AI 리포트 없이), ~8분 (AI 리포트 포함)
+```
+
+**절대 금지사항:**
+- `--quick` 모드만으로 검증 완료 선언 금지
+- 2분 미만 타임아웃으로 전체 파이프라인 테스트 금지
 
 ## main.py 파이프라인 구조
 
