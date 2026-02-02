@@ -29,6 +29,7 @@ class EIMASMarkdownConverter:
             self._executive_summary(),
             self._macro_indicators(),
             self._market_regime(),
+            self._portfolio_allocation(),  # NEW: 포트폴리오 배분
             self._ai_debate_results(),
             self._ark_analysis(),
             self._technical_analysis(),
@@ -117,6 +118,76 @@ class EIMASMarkdownConverter:
 **신뢰도:** {regime.get('confidence', 0) * 100:.0f}%  
 
 **투자 전략:** {regime.get('strategy', 'N/A')}"""
+
+    def _portfolio_allocation(self) -> str:
+        """포트폴리오 배분 섹션 (JSON 값만 사용)"""
+        alloc = self.data.get('allocation_result', {})
+        rebal = self.data.get('rebalance_decision', {})
+        weights = self.data.get('portfolio_weights', {})
+
+        if not alloc and not weights:
+            return ""
+
+        lines = ["## 📊 포트폴리오 배분"]
+
+        # 배분 전략 정보
+        strategy = self.data.get('allocation_strategy', 'N/A')
+        lines.append(f"\n**배분 전략:** {strategy}")
+
+        # 배분 결과
+        if alloc:
+            lines.append(f"\n### 배분 결과")
+            lines.append(f"- **기대 수익률:** {alloc.get('expected_return', 0) * 100:.2f}%")
+            lines.append(f"- **기대 변동성:** {alloc.get('expected_volatility', 0) * 100:.2f}%")
+            lines.append(f"- **샤프 비율:** {alloc.get('sharpe_ratio', 0):.2f}")
+            lines.append(f"- **분산화 비율:** {alloc.get('diversification_ratio', 0):.2f}")
+            lines.append(f"- **실효 자산 수:** {alloc.get('effective_n', 0):.1f}")
+
+            # 비중 테이블
+            alloc_weights = alloc.get('weights', {})
+            if alloc_weights:
+                lines.append("\n### 자산별 비중")
+                lines.append("| 자산 | 비중 |")
+                lines.append("|------|------|")
+                sorted_weights = sorted(alloc_weights.items(), key=lambda x: x[1], reverse=True)
+                for ticker, weight in sorted_weights[:10]:  # 상위 10개만
+                    lines.append(f"| {ticker} | {weight * 100:.1f}% |")
+                if len(sorted_weights) > 10:
+                    lines.append(f"| ... | ({len(sorted_weights) - 10}개 생략) |")
+
+        # 기존 portfolio_weights (allocation_result가 없는 경우)
+        elif weights:
+            lines.append("\n### 포트폴리오 비중")
+            lines.append("| 자산 | 비중 |")
+            lines.append("|------|------|")
+            sorted_weights = sorted(weights.items(), key=lambda x: x[1], reverse=True)
+            for ticker, weight in sorted_weights[:10]:
+                lines.append(f"| {ticker} | {weight * 100:.1f}% |")
+
+        # 리밸런싱 결정
+        if rebal:
+            lines.append("\n### 리밸런싱 결정")
+            should_rebal = rebal.get('should_rebalance', False)
+            action = rebal.get('action', 'HOLD')
+            reason = rebal.get('reason', 'N/A')
+            turnover = rebal.get('turnover', 0)
+            cost = rebal.get('estimated_cost', 0)
+
+            lines.append(f"- **액션:** {action}")
+            lines.append(f"- **리밸런싱 필요:** {'예' if should_rebal else '아니오'}")
+            lines.append(f"- **사유:** {reason}")
+            if should_rebal:
+                lines.append(f"- **Turnover:** {turnover * 100:.1f}%")
+                lines.append(f"- **예상 비용:** {cost:.4f}")
+
+            # 경고
+            warnings = rebal.get('warnings', [])
+            if warnings:
+                lines.append("\n#### ⚠️ 경고")
+                for w in warnings:
+                    lines.append(f"- {w}")
+
+        return "\n".join(lines)
 
     def _ai_debate_results(self) -> str:
         debate = self.data.get('debate_consensus', {})

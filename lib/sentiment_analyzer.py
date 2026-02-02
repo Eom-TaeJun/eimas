@@ -323,11 +323,8 @@ class SentimentAnalyzer:
         fg_score = self.fear_greed.value if self.fear_greed else 50
 
         # Fear & Greed를 -1~1 스케일로 변환
-        normalized = (fg_score - 50) / 50
-
-        # 약간의 랜덤 노이즈 추가
-        noise = np.random.uniform(-0.1, 0.1)
-        sentiment_score = max(-1, min(1, normalized + noise))
+        # (랜덤 노이즈 제거 - 2026-02-02: JSON 결과의 재현성 보장)
+        sentiment_score = max(-1, min(1, (fg_score - 50) / 50))
 
         bullish_pct = (sentiment_score + 1) / 2 * 100
         bearish_pct = 100 - bullish_pct
