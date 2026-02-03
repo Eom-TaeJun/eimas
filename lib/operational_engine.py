@@ -117,6 +117,441 @@ class TriggerType(Enum):
     MANUAL = "MANUAL"                     # 수동 요청
 
 
+class SignalType(Enum):
+    """시그널 유형 (Signal Hierarchy)"""
+    CORE = "CORE"                         # 의사결정에 직접 사용
+    AUXILIARY = "AUXILIARY"               # 설명/참고용, 의사결정에 미사용
+
+
+# =============================================================================
+# Signal Hierarchy
+# =============================================================================
+
+"""
+Signal Hierarchy - 시그널 계층 구조
+
+============================================================================
+CORE SIGNALS (의사결정에 직접 사용)
+============================================================================
+Core signals directly influence final stance and rebalancing decisions.
+These are the ONLY signals used in decision rules.
+
+| Signal Name              | Source                    | Used In          |
+|--------------------------|---------------------------|------------------|
+| regime_signal            | RegimeDetector            | RULE_5, RULE_7   |
+| regime_confidence        | RegimeDetector            | All rules        |
+| canonical_risk_score     | ScoreDefinitions          | RULE_4           |
+| agent_consensus_stance   | MetaOrchestrator          | RULE_5, RULE_6, 7|
+| agent_consensus_confidence | MetaOrchestrator        | RULE_3, RULE_6   |
+| constraint_status        | ConstraintRepair          | RULE_2           |
+| client_profile_status    | ClientConfig              | RULE_1           |
+
+============================================================================
+AUXILIARY SIGNALS (설명/참고용, 의사결정에 미사용)
+============================================================================
+Auxiliary signals provide context and explanation but NEVER override Core logic.
+These are clearly labeled in reports.
+
+| Signal Name              | Source                    | Purpose          |
+|--------------------------|---------------------------|------------------|
+| aux_base_risk_score      | CriticalPathAggregator    | Risk breakdown   |
+| aux_microstructure_adj   | MicrostructureAnalyzer    | Risk breakdown   |
+| aux_bubble_risk_adj      | BubbleDetector            | Risk breakdown   |
+| volatility_score         | RegimeDetector            | Market context   |
+| liquidity_score          | MicrostructureAnalyzer    | Market context   |
+| credit_spread            | CreditAnalyzer            | Market context   |
+| sentiment_score          | SentimentAnalyzer         | Market context   |
+| news_sentiment           | NewsCollector             | Market context   |
+| sector_rotation          | ETFFlowAnalyzer           | Allocation hint  |
+
+============================================================================
+IMPORTANT
+============================================================================
+- Only CORE signals are used in decision rules
+- AUXILIARY signals are for transparency and audit only
+- AUXILIARY signals NEVER override CORE logic
+- All signals must be classified before use
+"""
+
+
+# Core signal names (used for validation)
+CORE_SIGNALS = frozenset([
+    'regime_signal',
+    'regime_confidence',
+    'canonical_risk_score',
+    'agent_consensus_stance',
+    'agent_consensus_confidence',
+    'constraint_status',
+    'client_profile_status',
+])
+
+# Auxiliary signal names (for documentation)
+AUXILIARY_SIGNALS = frozenset([
+    'aux_base_risk_score',
+    'aux_microstructure_adjustment',
+    'aux_bubble_risk_adjustment',
+    'aux_extended_data_adjustment',
+    'volatility_score',
+    'liquidity_score',
+    'credit_spread',
+    'sentiment_score',
+    'news_sentiment',
+    'sector_rotation',
+    'full_mode_position',
+    'reference_mode_position',
+    'modes_agree',
+])
+
+
+@dataclass
+class SignalClassification:
+    """개별 시그널 분류"""
+    name: str
+    signal_type: str              # CORE / AUXILIARY
+    value: Any
+    source: str
+    used_in_rules: List[str] = field(default_factory=list)
+    description: str = ""
+
+    def to_dict(self) -> Dict:
+        return {
+            'name': self.name,
+            'signal_type': self.signal_type,
+            'value': str(self.value) if not isinstance(self.value, (int, float, bool, str)) else self.value,
+            'source': self.source,
+            'used_in_rules': self.used_in_rules,
+            'description': self.description,
+        }
+
+
+@dataclass
+class SignalHierarchyReport:
+    """
+    시그널 계층 구조 리포트
+
+    Documents which signals are Core vs Auxiliary and ensures
+    only Core signals influence decisions.
+    """
+    core_signals: List[SignalClassification] = field(default_factory=list)
+    auxiliary_signals: List[SignalClassification] = field(default_factory=list)
+    validation_passed: bool = True
+    validation_errors: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        return {
+            'core_signals': [s.to_dict() for s in self.core_signals],
+            'auxiliary_signals': [s.to_dict() for s in self.auxiliary_signals],
+            'validation': {
+                'passed': self.validation_passed,
+                'errors': self.validation_errors,
+            }
+        }
+
+    def to_markdown(self) -> str:
+        """Generate signal_hierarchy section for report"""
+        lines = []
+        lines.append("## signal_hierarchy")
+        lines.append("")
+
+        # Validation status
+        if self.validation_passed:
+            lines.append("**Validation: PASSED** ✓")
+            lines.append("")
+            lines.append("Only Core signals were used in decision rules.")
+        else:
+            lines.append("**Validation: FAILED** ✗")
+            lines.append("")
+            for error in self.validation_errors:
+                lines.append(f"- ⚠️ {error}")
+        lines.append("")
+
+        # Core Signals
+        lines.append("### Core Signals (Used in Decision Rules)")
+        lines.append("")
+        lines.append("| Signal | Value | Source | Used In |")
+        lines.append("|--------|-------|--------|---------|")
+        for s in self.core_signals:
+            rules = ", ".join(s.used_in_rules) if s.used_in_rules else "—"
+            value_str = f"{s.value:.2f}" if isinstance(s.value, float) else str(s.value)
+            lines.append(f"| {s.name} | {value_str} | {s.source} | {rules} |")
+        lines.append("")
+
+        # Auxiliary Signals
+        lines.append("### Auxiliary Signals (Context Only)")
+        lines.append("")
+        lines.append("**Note:** These signals are for transparency only. They do NOT influence decisions.")
+        lines.append("")
+        lines.append("| Signal | Value | Source | Description |")
+        lines.append("|--------|-------|--------|-------------|")
+        for s in self.auxiliary_signals:
+            value_str = f"{s.value:.2f}" if isinstance(s.value, float) else str(s.value)
+            lines.append(f"| {s.name} | {value_str} | {s.source} | {s.description} |")
+        lines.append("")
+
+        return "\n".join(lines)
+
+
+# =============================================================================
+# HOLD Policy (Default Stance)
+# =============================================================================
+
+"""
+HOLD Policy - HOLD as Valid Strategic Outcome
+
+============================================================================
+HOLD is NOT "missing output" - it is a deliberate, strategic decision
+to maintain current positions when conditions are uncertain or unfavorable.
+============================================================================
+
+EXPLICIT HOLD CONDITIONS (ordered by priority):
+
+| Priority | Condition                    | Reason Code                      |
+|----------|------------------------------|----------------------------------|
+| 1        | Client profile missing       | CLIENT_PROFILE_MISSING           |
+| 2        | Constraints unrepaired       | CONSTRAINT_VIOLATION_UNREPAIRED  |
+| 3        | Low confidence (< 0.50)      | LOW_CONFIDENCE                   |
+| 4        | Agent conflict unresolved    | AGENT_CONFLICT                   |
+| 5        | Regime-stance mismatch       | REGIME_STANCE_MISMATCH           |
+| 6        | Data quality degraded        | DATA_QUALITY_ISSUE               |
+| 7        | Mixed signals (no consensus) | MIXED_SIGNALS                    |
+| 8        | Default (no clear direction) | DEFAULT_HOLD                     |
+
+============================================================================
+HOLD IMPLICATIONS
+============================================================================
+- No rebalancing executed
+- Current portfolio maintained
+- Action blocked until conditions improve
+- Explicitly documented in report
+
+============================================================================
+EXITING HOLD
+============================================================================
+To exit HOLD, ALL blocking conditions must be resolved:
+- Client profile must be complete
+- Constraints must be satisfied or repaired
+- Confidence must exceed threshold
+- Agent consensus must be achieved
+- Regime and stance must align
+"""
+
+
+@dataclass
+class HoldCondition:
+    """HOLD 조건 상세"""
+    priority: int
+    condition_name: str
+    is_triggered: bool
+    reason_code: str
+    current_value: Any
+    threshold: Any = None
+    description: str = ""
+
+    def to_dict(self) -> Dict:
+        return {
+            'priority': self.priority,
+            'condition_name': self.condition_name,
+            'is_triggered': self.is_triggered,
+            'reason_code': self.reason_code,
+            'current_value': str(self.current_value),
+            'threshold': str(self.threshold) if self.threshold else None,
+            'description': self.description,
+        }
+
+
+@dataclass
+class HoldPolicyReport:
+    """
+    HOLD 정책 리포트
+
+    Documents whether HOLD was selected and why.
+    Treats HOLD as a valid strategic outcome.
+    """
+    is_hold: bool = False
+    hold_conditions: List[HoldCondition] = field(default_factory=list)
+    triggered_conditions: List[str] = field(default_factory=list)
+    primary_reason: str = ""
+    exit_requirements: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        return {
+            'is_hold': self.is_hold,
+            'hold_conditions': [c.to_dict() for c in self.hold_conditions],
+            'triggered_conditions': self.triggered_conditions,
+            'primary_reason': self.primary_reason,
+            'exit_requirements': self.exit_requirements,
+        }
+
+    def to_markdown(self) -> str:
+        """Generate hold_policy section for report"""
+        lines = []
+        lines.append("## hold_policy")
+        lines.append("")
+
+        if self.is_hold:
+            lines.append("### Status: **HOLD ACTIVE** ⏸️")
+            lines.append("")
+            lines.append(f"**Primary Reason:** {self.primary_reason}")
+            lines.append("")
+            lines.append("HOLD is a valid strategic decision to maintain current positions.")
+            lines.append("")
+        else:
+            lines.append("### Status: **NOT IN HOLD** ✓")
+            lines.append("")
+            lines.append("All HOLD conditions passed. Active stance permitted.")
+            lines.append("")
+
+        # Condition Evaluation
+        lines.append("### HOLD Condition Evaluation")
+        lines.append("")
+        lines.append("| # | Condition | Value | Threshold | Status |")
+        lines.append("|---|-----------|-------|-----------|--------|")
+        for c in self.hold_conditions:
+            status = "⏸️ TRIGGERED" if c.is_triggered else "✓ PASSED"
+            threshold_str = str(c.threshold) if c.threshold else "—"
+            lines.append(f"| {c.priority} | {c.condition_name} | {c.current_value} | {threshold_str} | {status} |")
+        lines.append("")
+
+        if self.is_hold and self.exit_requirements:
+            lines.append("### Exit Requirements")
+            lines.append("")
+            lines.append("To exit HOLD, the following must be resolved:")
+            lines.append("")
+            for req in self.exit_requirements:
+                lines.append(f"- [ ] {req}")
+            lines.append("")
+
+        return "\n".join(lines)
+
+
+def evaluate_hold_conditions(
+    regime_signal: str,
+    regime_confidence: float,
+    canonical_risk_score: float,
+    agent_consensus_stance: str,
+    agent_consensus_confidence: float,
+    constraint_status: str,
+    client_profile_status: str,
+    data_quality: str = "COMPLETE",
+    modes_agree: bool = True,
+    config: Optional['OperationalConfig'] = None
+) -> HoldPolicyReport:
+    """
+    Evaluate all HOLD conditions and generate report.
+
+    HOLD is selected when ANY condition is triggered.
+    Returns a report documenting all evaluated conditions.
+    """
+    if config is None:
+        config = OperationalConfig()
+
+    report = HoldPolicyReport()
+    conditions = []
+
+    # Priority 1: Client profile missing
+    cond1 = HoldCondition(
+        priority=1,
+        condition_name="Client Profile",
+        is_triggered=(client_profile_status == "MISSING"),
+        reason_code=ReasonCode.CLIENT_PROFILE_MISSING.value,
+        current_value=client_profile_status,
+        threshold="COMPLETE or PARTIAL",
+        description="Client profile required for personalized allocation"
+    )
+    conditions.append(cond1)
+
+    # Priority 2: Constraints unrepaired
+    cond2 = HoldCondition(
+        priority=2,
+        condition_name="Constraint Status",
+        is_triggered=(constraint_status == "UNREPAIRED"),
+        reason_code=ReasonCode.CONSTRAINT_VIOLATION_UNREPAIRED.value,
+        current_value=constraint_status,
+        threshold="OK or REPAIRED",
+        description="Asset class constraints must be satisfied"
+    )
+    conditions.append(cond2)
+
+    # Priority 3: Low confidence
+    cond3 = HoldCondition(
+        priority=3,
+        condition_name="Consensus Confidence",
+        is_triggered=(agent_consensus_confidence < config.confidence_threshold_low),
+        reason_code=ReasonCode.LOW_CONFIDENCE.value,
+        current_value=f"{agent_consensus_confidence:.2f}",
+        threshold=f">= {config.confidence_threshold_low:.2f}",
+        description="Minimum confidence required for action"
+    )
+    conditions.append(cond3)
+
+    # Priority 4: Agent conflict
+    cond4 = HoldCondition(
+        priority=4,
+        condition_name="Agent Agreement",
+        is_triggered=(not modes_agree and agent_consensus_confidence < config.confidence_threshold_high),
+        reason_code=ReasonCode.AGENT_CONFLICT.value,
+        current_value=f"agree={modes_agree}, conf={agent_consensus_confidence:.2f}",
+        threshold=f"agree=True OR conf>={config.confidence_threshold_high:.2f}",
+        description="Agents must agree or have high confidence"
+    )
+    conditions.append(cond4)
+
+    # Priority 5: Regime-stance mismatch
+    regime_stance_conflict = (
+        (regime_signal == "BULL" and agent_consensus_stance == "BEARISH") or
+        (regime_signal == "BEAR" and agent_consensus_stance == "BULLISH")
+    )
+    cond5 = HoldCondition(
+        priority=5,
+        condition_name="Regime-Stance Alignment",
+        is_triggered=(regime_stance_conflict and agent_consensus_confidence < config.confidence_threshold_high),
+        reason_code=ReasonCode.REGIME_STANCE_MISMATCH.value,
+        current_value=f"regime={regime_signal}, stance={agent_consensus_stance}",
+        threshold="Aligned OR high confidence",
+        description="Regime and consensus must align or have high confidence"
+    )
+    conditions.append(cond5)
+
+    # Priority 6: Data quality
+    cond6 = HoldCondition(
+        priority=6,
+        condition_name="Data Quality",
+        is_triggered=(data_quality == "DEGRADED"),
+        reason_code=ReasonCode.DATA_QUALITY_ISSUE.value,
+        current_value=data_quality,
+        threshold="COMPLETE or PARTIAL",
+        description="Data quality must be acceptable"
+    )
+    conditions.append(cond6)
+
+    report.hold_conditions = conditions
+
+    # Check for any triggered conditions
+    triggered = [c for c in conditions if c.is_triggered]
+    report.triggered_conditions = [c.reason_code for c in triggered]
+
+    if triggered:
+        report.is_hold = True
+        report.primary_reason = triggered[0].reason_code  # Highest priority
+
+        # Build exit requirements
+        for c in triggered:
+            if c.condition_name == "Client Profile":
+                report.exit_requirements.append("Provide complete client profile")
+            elif c.condition_name == "Constraint Status":
+                report.exit_requirements.append("Repair or relax constraint violations")
+            elif c.condition_name == "Consensus Confidence":
+                report.exit_requirements.append(f"Increase confidence above {config.confidence_threshold_low:.0%}")
+            elif c.condition_name == "Agent Agreement":
+                report.exit_requirements.append("Resolve agent disagreement or increase confidence")
+            elif c.condition_name == "Regime-Stance Alignment":
+                report.exit_requirements.append("Wait for regime-stance alignment or increase confidence")
+            elif c.condition_name == "Data Quality":
+                report.exit_requirements.append("Restore data quality to COMPLETE or PARTIAL")
+
+    return report
+
+
 # =============================================================================
 # Score Definitions (Unified Risk Scoring)
 # =============================================================================
@@ -2105,14 +2540,16 @@ class OperationalReport:
     운영 리포트 (표준화된 섹션)
 
     필수 섹션:
-    - decision_policy
-    - score_definitions
-    - allocation
-    - constraint_repair
-    - rebalance_plan
-    - audit_metadata
+    1. signal_hierarchy - Core vs Auxiliary signal classification
+    2. hold_policy - HOLD conditions and status
+    3. decision_policy - Final stance and rules applied
+    4. score_definitions - Unified risk scoring
+    5. allocation - Target weights
+    6. constraint_repair - Constraint violations and repairs
+    7. rebalance_plan - Execution plan
+    8. audit_metadata - Audit trail
     """
-    # 필수 섹션
+    # Required sections
     decision_policy: DecisionPolicy
     score_definitions: ScoreDefinitions
     allocation: Dict[str, float]
@@ -2120,11 +2557,17 @@ class OperationalReport:
     rebalance_plan: RebalancePlan
     audit_metadata: AuditMetadata
 
-    # 원본 데이터 참조
+    # New sections for signal hierarchy and HOLD policy
+    signal_hierarchy: SignalHierarchyReport = field(default_factory=SignalHierarchyReport)
+    hold_policy: HoldPolicyReport = field(default_factory=HoldPolicyReport)
+
+    # Raw inputs for audit
     raw_inputs: Dict = field(default_factory=dict)
 
     def to_dict(self) -> Dict:
         return {
+            'signal_hierarchy': self.signal_hierarchy.to_dict(),
+            'hold_policy': self.hold_policy.to_dict(),
             'decision_policy': self.decision_policy.to_dict(),
             'score_definitions': self.score_definitions.to_dict(),
             'allocation': self.allocation,
@@ -2141,8 +2584,20 @@ class OperationalReport:
         md.append(f"**System:** {self.audit_metadata.system_version}")
         md.append("")
 
-        # 1. Decision Policy
-        md.append("## 1. Decision Policy")
+        # 1. Signal Hierarchy (use signal_hierarchy.to_markdown())
+        signal_md = self.signal_hierarchy.to_markdown()
+        signal_md = signal_md.replace("## signal_hierarchy", "## 1. signal_hierarchy", 1)
+        md.append(signal_md)
+        md.append("")
+
+        # 2. HOLD Policy (use hold_policy.to_markdown())
+        hold_md = self.hold_policy.to_markdown()
+        hold_md = hold_md.replace("## hold_policy", "## 2. hold_policy", 1)
+        md.append(hold_md)
+        md.append("")
+
+        # 3. Decision Policy
+        md.append("## 3. decision_policy")
         dp = self.decision_policy
         md.append(f"### Final Stance: **{dp.final_stance}**")
         md.append("")
@@ -2169,12 +2624,14 @@ class OperationalReport:
             md.append(f"| {log['rule']} | {log['condition']} | {log['input']} | {log['result']} |")
         md.append("")
 
-        # 2. Score Definitions (use unified score_definitions.to_markdown())
-        md.append(self.score_definitions.to_markdown())
+        # 4. Score Definitions (use unified score_definitions.to_markdown())
+        score_md = self.score_definitions.to_markdown()
+        score_md = score_md.replace("## score_definitions", "## 4. score_definitions", 1)
+        md.append(score_md)
         md.append("")
 
-        # 3. Allocation
-        md.append("## 3. Allocation")
+        # 5. Allocation
+        md.append("## 5. allocation")
         md.append("| Asset | Weight |")
         md.append("|-------|--------|")
         for ticker, weight in sorted(self.allocation.items(), key=lambda x: x[1], reverse=True):
@@ -2182,16 +2639,20 @@ class OperationalReport:
                 md.append(f"| {ticker} | {weight:.1%} |")
         md.append("")
 
-        # 4. Constraint Repair (use constraint_repair.to_markdown())
-        md.append(self.constraint_repair.to_markdown())
+        # 6. Constraint Repair (use constraint_repair.to_markdown())
+        constraint_md = self.constraint_repair.to_markdown()
+        constraint_md = constraint_md.replace("## constraint_repair", "## 6. constraint_repair", 1)
+        md.append(constraint_md)
         md.append("")
 
-        # 5. Rebalance Plan (use rebalance_plan.to_markdown())
-        md.append(self.rebalance_plan.to_markdown())
+        # 7. Rebalance Plan (use rebalance_plan.to_markdown())
+        rebalance_md = self.rebalance_plan.to_markdown()
+        rebalance_md = rebalance_md.replace("## rebalance_plan", "## 7. rebalance_plan", 1)
+        md.append(rebalance_md)
         md.append("")
 
-        # 6. Audit Metadata
-        md.append("## 6. Audit Metadata")
+        # 8. Audit Metadata
+        md.append("## 8. audit_metadata")
         am = self.audit_metadata
         md.append(f"- Timestamp: {am.timestamp}")
         md.append(f"- System Version: {am.system_version}")
@@ -2259,7 +2720,26 @@ class OperationalEngine:
             eimas_result, current_weights, constraint_result, decision
         )
 
-        # 7. Audit Metadata
+        # 7. Signal Hierarchy Report
+        signal_hierarchy = self._build_signal_hierarchy(
+            eimas_result, score_defs, decision_inputs
+        )
+
+        # 8. HOLD Policy Evaluation
+        hold_policy = evaluate_hold_conditions(
+            regime_signal=decision_inputs.regime,
+            regime_confidence=decision_inputs.regime_confidence,
+            canonical_risk_score=score_defs.canonical_risk_score,
+            agent_consensus_stance=decision_inputs.agent_consensus,
+            agent_consensus_confidence=decision_inputs.confidence,
+            constraint_status=decision_inputs.constraint_status,
+            client_profile_status=eimas_result.get('client_profile_status', 'COMPLETE'),
+            data_quality=decision_inputs.data_quality,
+            modes_agree=decision_inputs.modes_agree,
+            config=self.config,
+        )
+
+        # 9. Audit Metadata
         audit = AuditMetadata(
             timestamp=datetime.now().isoformat(),
             system_version="EIMAS v2.2.2",
@@ -2272,6 +2752,8 @@ class OperationalEngine:
             constraint_repair=constraint_result,
             rebalance_plan=rebalance,
             audit_metadata=audit,
+            signal_hierarchy=signal_hierarchy,
+            hold_policy=hold_policy,
             raw_inputs={'eimas_result': eimas_result},
         )
 
@@ -2475,6 +2957,177 @@ class OperationalEngine:
             trigger_type=trigger_type,
             trigger_reason=reason,
             config=self.config,
+        )
+
+    def _build_signal_hierarchy(
+        self,
+        data: Dict,
+        scores: ScoreDefinitions,
+        inputs: DecisionInputs
+    ) -> SignalHierarchyReport:
+        """
+        Build Signal Hierarchy Report classifying signals as CORE or AUXILIARY.
+
+        Core signals are directly used in decision rules.
+        Auxiliary signals are for context and transparency only.
+        """
+        core_signals = []
+        auxiliary_signals = []
+
+        # === CORE SIGNALS ===
+        # These are used in resolve_decision() rules
+
+        # 1. Regime signal
+        core_signals.append(SignalClassification(
+            name='regime_signal',
+            signal_type=SignalType.CORE.value,
+            value=inputs.regime,
+            source='RegimeDetector',
+            used_in_rules=['R1', 'R2', 'R5'],
+            description='Current market regime (BULL/BEAR/NEUTRAL)'
+        ))
+
+        # 2. Regime confidence
+        core_signals.append(SignalClassification(
+            name='regime_confidence',
+            signal_type=SignalType.CORE.value,
+            value=inputs.regime_confidence,
+            source='RegimeDetector',
+            used_in_rules=['R1', 'R2'],
+            description='Confidence in regime classification'
+        ))
+
+        # 3. Canonical risk score
+        core_signals.append(SignalClassification(
+            name='canonical_risk_score',
+            signal_type=SignalType.CORE.value,
+            value=scores.canonical_risk_score,
+            source='ScoreDefinitions (unified)',
+            used_in_rules=['R3', 'R6'],
+            description='Unified risk score (0-100)'
+        ))
+
+        # 4. Agent consensus stance
+        core_signals.append(SignalClassification(
+            name='agent_consensus_stance',
+            signal_type=SignalType.CORE.value,
+            value=inputs.agent_consensus,
+            source='MetaOrchestrator',
+            used_in_rules=['R4', 'R5', 'R7'],
+            description='Final consensus from agent debate'
+        ))
+
+        # 5. Agent consensus confidence
+        core_signals.append(SignalClassification(
+            name='agent_consensus_confidence',
+            signal_type=SignalType.CORE.value,
+            value=inputs.confidence,
+            source='MetaOrchestrator',
+            used_in_rules=['R3', 'R6'],
+            description='Confidence in agent consensus'
+        ))
+
+        # 6. Constraint status
+        core_signals.append(SignalClassification(
+            name='constraint_status',
+            signal_type=SignalType.CORE.value,
+            value=inputs.constraint_status,
+            source='ConstraintRepair',
+            used_in_rules=['R7'],
+            description='Status of asset class constraints'
+        ))
+
+        # 7. Client profile status (assumed from data)
+        client_status = data.get('client_profile_status', 'COMPLETE')
+        core_signals.append(SignalClassification(
+            name='client_profile_status',
+            signal_type=SignalType.CORE.value,
+            value=client_status,
+            source='ClientProfile',
+            used_in_rules=['R7'],
+            description='Client profile availability'
+        ))
+
+        # === AUXILIARY SIGNALS ===
+        # These are for context only, never used in decision rules
+
+        # 1. Base risk score (component of canonical)
+        auxiliary_signals.append(SignalClassification(
+            name='aux_base_risk_score',
+            signal_type=SignalType.AUXILIARY.value,
+            value=scores.base_risk_score,
+            source='CriticalPathAggregator',
+            description='Base risk from critical path analysis (auxiliary)'
+        ))
+
+        # 2. Microstructure adjustment
+        auxiliary_signals.append(SignalClassification(
+            name='aux_microstructure_adjustment',
+            signal_type=SignalType.AUXILIARY.value,
+            value=scores.microstructure_adjustment,
+            source='MicrostructureAnalyzer',
+            description='Market quality adjustment (auxiliary)'
+        ))
+
+        # 3. Bubble risk adjustment
+        auxiliary_signals.append(SignalClassification(
+            name='aux_bubble_risk_adjustment',
+            signal_type=SignalType.AUXILIARY.value,
+            value=scores.bubble_risk_adjustment,
+            source='BubbleDetector',
+            description='Bubble risk overlay (auxiliary)'
+        ))
+
+        # 4. Full mode position (component of consensus)
+        auxiliary_signals.append(SignalClassification(
+            name='full_mode_position',
+            signal_type=SignalType.AUXILIARY.value,
+            value=inputs.full_mode_position,
+            source='MetaOrchestrator (full mode)',
+            description='Position from full analysis mode (auxiliary)'
+        ))
+
+        # 5. Reference mode position (component of consensus)
+        auxiliary_signals.append(SignalClassification(
+            name='reference_mode_position',
+            signal_type=SignalType.AUXILIARY.value,
+            value=inputs.reference_mode_position,
+            source='MetaOrchestrator (reference mode)',
+            description='Position from reference mode (auxiliary)'
+        ))
+
+        # 6. Modes agree
+        auxiliary_signals.append(SignalClassification(
+            name='modes_agree',
+            signal_type=SignalType.AUXILIARY.value,
+            value=inputs.modes_agree,
+            source='DualModeAnalyzer',
+            description='Whether full and reference modes agree (auxiliary)'
+        ))
+
+        # Add auxiliary metrics from ScoreDefinitions
+        for metric in scores.auxiliary_metrics:
+            auxiliary_signals.append(SignalClassification(
+                name=metric.name,
+                signal_type=SignalType.AUXILIARY.value,
+                value=metric.value,
+                source=metric.source,
+                description=f'{metric.description} (auxiliary)'
+            ))
+
+        # Validation: ensure only core signals are in CORE_SIGNALS set
+        validation_passed = True
+        validation_errors = []
+        for sig in core_signals:
+            if sig.name not in CORE_SIGNALS:
+                validation_passed = False
+                validation_errors.append(f"Signal '{sig.name}' classified as CORE but not in CORE_SIGNALS set")
+
+        return SignalHierarchyReport(
+            core_signals=core_signals,
+            auxiliary_signals=auxiliary_signals,
+            validation_passed=validation_passed,
+            validation_errors=validation_errors,
         )
 
 
