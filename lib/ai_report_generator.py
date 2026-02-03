@@ -935,7 +935,7 @@ class AIReportGenerator:
         # 13. 백테스팅 섹션 (유사 레짐 분석)
         self._log("Generating backtest section (similar regime analysis)...")
         try:
-            from lib.regime_history import RegimeHistoryAnalyzer, add_backtest_section_to_report
+            from lib.deprecated.regime_history import RegimeHistoryAnalyzer, add_backtest_section_to_report
             report.backtest_section = add_backtest_section_to_report(report.to_dict())
             self._log("Backtest section generated successfully")
         except Exception as e:
