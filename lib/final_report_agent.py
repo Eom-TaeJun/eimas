@@ -768,8 +768,8 @@ class FinalReportAgent:
             print("  [WARN] No eimas_*.json or integrated_*.json found")
 
         # 2. AI report 섹션 로드 (JSON 우선, MD fallback)
-        ai_report = self.integrated_data.get('ai_report', {})
-        if ai_report.get('sections'):
+        ai_report = self.integrated_data.get('ai_report') or {}
+        if ai_report and ai_report.get('sections'):
             # JSON에 섹션이 있으면 사용 (통합 포맷)
             self.ai_report_sections = ai_report['sections']
             print(f"  [OK] AI Report sections from unified JSON ({len(self.ai_report_sections)} sections)")
@@ -855,6 +855,7 @@ class FinalReportAgent:
             self._generate_news_section(),
             self._generate_scenario_section(),
             self._generate_final_proposal(),          # NEW: 최종 제안
+            self._generate_operational_decision(),    # NEW: 운용 의사결정 시스템
             self._generate_ai_analysis_section(),
             self._generate_footer(),
             '</div>',
@@ -3207,6 +3208,371 @@ class FinalReportAgent:
     </div>
     <div class="ai-analysis">
         {html_content}
+    </div>
+</div>'''
+
+    def _generate_operational_decision(self) -> str:
+        """운용 의사결정 시스템 섹션 - Operational Engine 결과 시각화 (상세 버전)"""
+        op_report = self._safe_get(self.integrated_data, 'operational_report', default={})
+
+        if not op_report:
+            return '''
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <span class="card-title">🎯 운용 의사결정 시스템</span>
+        <span class="badge neutral">데이터 없음</span>
+    </div>
+    <p style="color: var(--text-secondary);">Operational Engine 결과가 없습니다. <code>python main.py</code>를 실행하세요.</p>
+</div>'''
+
+        # =============================================
+        # 1. HOLD POLICY (홀드 판단 과정)
+        # =============================================
+        hold_policy = op_report.get('hold_policy', {})
+        is_hold = hold_policy.get('is_hold', False)
+        hold_conditions = hold_policy.get('hold_conditions', [])
+
+        hold_conditions_html = ''
+        triggered_hold_html = ''
+        for cond in hold_conditions:
+            triggered = cond.get('is_triggered', False)
+            if isinstance(triggered, str):
+                triggered = triggered.lower() == 'true'
+            status_icon = '🔴' if triggered else '🟢'
+            status_class = 'accent-red' if triggered else 'accent-green'
+            hold_conditions_html += f'''
+            <tr>
+                <td>{cond.get('priority', '-')}</td>
+                <td>{cond.get('condition_name', 'N/A')}</td>
+                <td style="color: var(--{status_class}); font-weight: 600;">{status_icon} {'TRIGGERED' if triggered else 'PASS'}</td>
+                <td><code>{cond.get('current_value', 'N/A')}</code></td>
+                <td>{cond.get('threshold', 'N/A')}</td>
+            </tr>'''
+            if triggered:
+                triggered_hold_html += f'''
+                <div style="background: var(--accent-red-bg); padding: 12px; border-radius: 6px; margin-bottom: 8px; border-left: 4px solid var(--accent-red);">
+                    <strong>{cond.get('condition_name')}</strong>: {cond.get('description', '')}
+                    <div style="font-size: 0.85rem; margin-top: 4px;">
+                        현재: <code>{cond.get('current_value')}</code> → 필요: <code>{cond.get('threshold')}</code>
+                    </div>
+                </div>'''
+
+        # =============================================
+        # 2. DECISION POLICY (의사결정 규칙)
+        # =============================================
+        policy = op_report.get('decision_policy', {})
+        final_stance = policy.get('final_stance', 'N/A')
+        stance_class = 'bullish' if final_stance == 'BULLISH' else ('bearish' if final_stance == 'BEARISH' else 'neutral')
+        constraint_status = policy.get('constraint_status_input', policy.get('constraints_ok', 'OK'))
+        constraints_ok = constraint_status in ('OK', 'REPAIRED', True)
+        client_profile = policy.get('client_profile_status_input', policy.get('client_profile', 'N/A'))
+        applied_rules = policy.get('applied_rules', [])
+        reason_codes = policy.get('reason_codes', [])
+        rule_evaluation_log = policy.get('rule_evaluation_log', [])
+
+        # Rule Evaluation Log HTML
+        rule_eval_html = ''
+        for rule in rule_evaluation_log:
+            result = rule.get('result', '')
+            is_passed = 'PASSED' in result or 'NOT_TRIGGERED' in result
+            result_class = 'accent-green' if is_passed else 'accent-red'
+            result_icon = '✅' if is_passed else '⛔'
+            rule_eval_html += f'''
+            <tr>
+                <td><code>{rule.get('rule', 'N/A')}</code></td>
+                <td style="font-size: 0.8rem;">{rule.get('condition', 'N/A')}</td>
+                <td><code>{rule.get('input', 'N/A')}</code></td>
+                <td style="color: var(--{result_class}); font-weight: 600;">{result_icon} {result}</td>
+            </tr>'''
+
+        # Applied Rules HTML
+        rules_html = ''
+        for rule in applied_rules[:5]:
+            if isinstance(rule, dict):
+                rule_name = rule.get('rule', '')
+            else:
+                rule_name = str(rule)
+            result_class = 'accent-green' if 'BULLISH' in rule_name else ('accent-red' if 'HOLD' in rule_name or 'BEARISH' in rule_name else 'accent-blue')
+            rules_html += f'<div style="padding: 6px 0; border-bottom: 1px solid var(--border);"><span style="color: var(--{result_class}); font-weight: 600;">{rule_name}</span></div>'
+
+        reason_html = ', '.join([f'<code>{c}</code>' for c in reason_codes]) if reason_codes else '<span style="color: var(--text-muted);">없음</span>'
+
+        # =============================================
+        # 3. SCORE DEFINITIONS (단일 Canonical 점수)
+        # =============================================
+        scores = op_report.get('score_definitions', {})
+        canonical_risk = scores.get('canonical_risk_score', 0)
+        risk_level = scores.get('risk_level', 'MEDIUM')
+        risk_level_class = 'accent-green' if risk_level == 'LOW' else ('accent-red' if risk_level == 'HIGH' else 'accent-yellow')
+
+        aux_sub = scores.get('auxiliary_sub_scores', {})
+        aux_scores = {}
+        aux_sources = {}
+        for key, val in aux_sub.items():
+            if isinstance(val, dict):
+                aux_scores[key] = val.get('value', 0)
+                aux_sources[key] = val.get('source', 'N/A')
+            else:
+                aux_scores[key] = val
+                aux_sources[key] = 'N/A'
+
+        aux_html = ''
+        for key in ['base_risk_score', 'microstructure_adjustment', 'bubble_risk_adjustment', 'extended_data_adjustment']:
+            val = aux_scores.get(key, 0)
+            source = aux_sources.get(key, 'N/A')
+            val_str = f"{val:+.1f}" if 'adjustment' in key else f"{val:.1f}"
+            aux_html += f'''
+            <tr>
+                <td>{key}</td>
+                <td style="font-weight: 600;">{val_str}</td>
+                <td style="font-size: 0.8rem; color: var(--text-secondary);">{source}</td>
+            </tr>'''
+
+        # Calculate formula
+        base = aux_scores.get('base_risk_score', 0)
+        micro = aux_scores.get('microstructure_adjustment', 0)
+        bubble = aux_scores.get('bubble_risk_adjustment', 0)
+        extended = aux_scores.get('extended_data_adjustment', 0)
+
+        # =============================================
+        # 4. CONSTRAINT REPAIR (제약조건 수리)
+        # =============================================
+        repair = op_report.get('constraint_repair', {})
+        repair_ok = repair.get('constraints_satisfied', repair.get('constraints_ok', True))
+        force_hold = repair.get('force_hold', False)
+        force_hold_reason = repair.get('force_hold_reason', '')
+        violations = repair.get('violations_found', repair.get('violations', []))
+        repair_actions = repair.get('repair_actions', [])
+        asset_class_comparison = repair.get('asset_class_comparison', [])
+
+        violations_html = ''
+        for v in violations:
+            current = v.get('current_value', v.get('current_weight', 0))
+            limit_val = v.get('limit_value', v.get('limit', 0))
+            violations_html += f'''
+            <tr>
+                <td>{v.get('asset_class', 'N/A')}</td>
+                <td style="color: var(--accent-red);">{v.get('violation_type', 'N/A')}</td>
+                <td>{current:.1%}</td>
+                <td>{limit_val:.1%}</td>
+            </tr>'''
+
+        comparison_html = ''
+        for c in asset_class_comparison:
+            status = c.get('status', 'OK')
+            status_icon = '✅' if status == 'OK' else '⚠️'
+            comparison_html += f'''
+            <tr>
+                <td>{c.get('asset_class', 'N/A')}</td>
+                <td>{c.get('original_weight', 0):.1%}</td>
+                <td>{c.get('repaired_weight', 0):.1%}</td>
+                <td style="color: var(--{'accent-green' if c.get('delta', 0) >= 0 else 'accent-red'});">{c.get('delta', 0):+.1%}</td>
+                <td>{status_icon} {status}</td>
+            </tr>'''
+
+        # =============================================
+        # 5. REBALANCE PLAN (리밸런싱 계획)
+        # =============================================
+        rebalance = op_report.get('rebalance_plan', {})
+        execution = rebalance.get('execution', {})
+        should_execute = execution.get('should_execute', rebalance.get('should_execute', False))
+        not_executed_reason = execution.get('not_executed_reason', rebalance.get('not_executed_reason', ''))
+
+        trigger = rebalance.get('trigger', {})
+        trigger_type = trigger.get('type', rebalance.get('trigger_type', 'MANUAL'))
+
+        summary = rebalance.get('summary', {})
+        turnover = summary.get('total_turnover', rebalance.get('turnover', 0))
+        buy_count = summary.get('buy_count', 0)
+        sell_count = summary.get('sell_count', 0)
+
+        cost_breakdown = rebalance.get('cost_breakdown', {})
+        commission = cost_breakdown.get('commission', 0)
+        spread = cost_breakdown.get('spread', 0)
+        market_impact = cost_breakdown.get('market_impact', 0)
+        total_cost = cost_breakdown.get('total', rebalance.get('est_total_cost', 0))
+
+        approval = rebalance.get('approval', {})
+        requires_approval = approval.get('requires_human_approval', rebalance.get('requires_approval', False))
+        approval_reason = approval.get('approval_reason', '')
+
+        trades = rebalance.get('trades', [])
+        trades_html = ''
+        for i, t in enumerate(trades[:10], 1):
+            action = t.get('action', 'HOLD')
+            action_class = 'accent-green' if action == 'BUY' else ('accent-red' if action == 'SELL' else 'text-secondary')
+            trades_html += f'''
+            <tr>
+                <td>{i}</td>
+                <td>{t.get('ticker', 'N/A')}</td>
+                <td style="color: var(--{action_class}); font-weight: 600;">{action}</td>
+                <td>{t.get('current_weight', 0):.2%}</td>
+                <td>{t.get('target_weight', 0):.2%}</td>
+                <td style="color: var(--{'accent-green' if t.get('delta_weight', t.get('delta', 0)) >= 0 else 'accent-red'});">{t.get('delta_weight', t.get('delta', 0)):+.2%}</td>
+                <td>{t.get('estimated_cost', t.get('est_cost', 0)):.4f}</td>
+            </tr>'''
+
+        # =============================================
+        # BUILD FINAL HTML
+        # =============================================
+        return f'''
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <span class="card-title">🎯 운용 의사결정 시스템 (Operational Engine)</span>
+        <span class="status-badge {stance_class}">{final_stance}</span>
+    </div>
+
+    <!-- SECTION 1: HOLD POLICY -->
+    <div style="background: var(--{'accent-red-bg' if is_hold else 'accent-green-bg'}); padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 2px solid var(--{'accent-red' if is_hold else 'accent-green'});">
+        <h4 style="margin-bottom: 12px; color: var(--{'accent-red' if is_hold else 'accent-green'});">
+            {'⛔ HOLD TRIGGERED - 거래 중단' if is_hold else '✅ HOLD 조건 통과 - 거래 진행 가능'}
+        </h4>
+
+        <table class="table" style="width: 100%; margin-bottom: 12px;">
+            <thead>
+                <tr><th>Priority</th><th>Condition</th><th>Status</th><th>Current</th><th>Required</th></tr>
+            </thead>
+            <tbody>{hold_conditions_html}</tbody>
+        </table>
+
+        {f'<div style="margin-top: 12px;"><strong>🚨 Triggered Conditions (Conflict Resolution):</strong>{triggered_hold_html}</div>' if triggered_hold_html else ''}
+    </div>
+
+    <!-- SECTION 2: DECISION POLICY -->
+    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <h4 style="margin-bottom: 12px; color: var(--accent-blue);">📋 Decision Policy (규칙 기반 의사결정)</h4>
+
+        <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="flex: 1; min-width: 200px;">
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                    <span>final_stance:</span>
+                    <span class="status-badge {stance_class}" style="padding: 4px 12px; font-size: 0.85rem; margin-left: 8px;">{final_stance}</span>
+                </div>
+                <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                    <span>constraints_ok:</span>
+                    <span style="color: var(--{'accent-green' if constraints_ok else 'accent-red'}); font-weight: 600; margin-left: 8px;">{'✓ OK' if constraints_ok else '✗ VIOLATED'}</span>
+                </div>
+                <div style="padding: 8px 0;">
+                    <span>client_profile:</span>
+                    <span style="font-weight: 600; margin-left: 8px;">{client_profile}</span>
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 200px;">
+                <div style="padding: 8px 0;"><strong>reason_codes:</strong> {reason_html}</div>
+            </div>
+        </div>
+
+        <details style="margin-top: 12px;">
+            <summary style="cursor: pointer; font-weight: 600; color: var(--accent-blue);">📜 Rule Evaluation Log (클릭하여 펼치기)</summary>
+            <div style="margin-top: 12px; overflow-x: auto;">
+                <table class="table" style="width: 100%;">
+                    <thead><tr><th>Rule</th><th>Condition</th><th>Input</th><th>Result</th></tr></thead>
+                    <tbody>{rule_eval_html}</tbody>
+                </table>
+            </div>
+        </details>
+
+        <div style="margin-top: 12px;">
+            <strong>Applied Rules:</strong>
+            {rules_html if rules_html else '<span style="color: var(--text-muted);">없음</span>'}
+        </div>
+    </div>
+
+    <!-- SECTION 3: SCORE DEFINITIONS (Canonical Only) -->
+    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <h4 style="margin-bottom: 12px; color: var(--accent-purple);">📊 Score Definitions (단일 Canonical 점수)</h4>
+
+        <div style="background: var(--accent-purple-bg); padding: 16px; border-radius: 8px; text-align: center; margin-bottom: 16px;">
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">의사결정에 사용되는 유일한 점수</div>
+            <div style="font-size: 2rem; font-weight: 700; color: var(--accent-purple);">{canonical_risk:.1f} / 100</div>
+            <div style="font-size: 1rem; color: var(--{risk_level_class}); font-weight: 600;">{risk_level}</div>
+        </div>
+
+        <div style="background: var(--bg-secondary); padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+            <strong>⚠️ Important:</strong> 다른 점수들은 <strong>참고용</strong>입니다. 모든 규칙은 canonical_risk_score만 사용합니다.
+        </div>
+
+        <details>
+            <summary style="cursor: pointer; font-weight: 600;">🔍 Auxiliary Sub-Scores (참고용)</summary>
+            <table class="table" style="width: 100%; margin-top: 12px;">
+                <thead><tr><th>Component</th><th>Value</th><th>Source</th></tr></thead>
+                <tbody>{aux_html}</tbody>
+            </table>
+            <div style="margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: 6px; font-family: monospace; font-size: 0.85rem;">
+                <strong>Formula:</strong><br>
+                canonical = {base:.1f} + ({micro:+.1f}) + ({bubble:+.1f}) + ({extended:+.1f}) = <strong>{canonical_risk:.1f}</strong>
+            </div>
+        </details>
+    </div>
+
+    <!-- SECTION 4: CONSTRAINT REPAIR -->
+    <div style="background: var(--{'accent-red-bg' if force_hold else ('accent-green-bg' if repair_ok else 'accent-yellow-bg')}); padding: 16px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--{'accent-red' if force_hold else ('accent-green' if repair_ok else 'accent-yellow')});">
+        <h4 style="margin-bottom: 12px; color: var(--{'accent-red' if force_hold else ('accent-green' if repair_ok else 'accent-yellow')});">
+            🔧 Constraint Repair {'⛔ FORCE HOLD' if force_hold else ('✅ SATISFIED' if repair_ok else '🔄 REPAIRED')}
+        </h4>
+
+        {f'<div style="background: var(--accent-red-bg); padding: 12px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid var(--accent-red);"><strong>Force HOLD Reason:</strong> {force_hold_reason}</div>' if force_hold else ''}
+
+        {f'''
+        <details open>
+            <summary style="cursor: pointer; font-weight: 600;">Violations Detected</summary>
+            <table class="table" style="width: 100%; margin-top: 12px;">
+                <thead><tr><th>Asset Class</th><th>Type</th><th>Current</th><th>Limit</th></tr></thead>
+                <tbody>{violations_html}</tbody>
+            </table>
+        </details>
+        ''' if violations_html else ''}
+
+        {f'''
+        <details style="margin-top: 12px;">
+            <summary style="cursor: pointer; font-weight: 600;">before_weights vs after_weights</summary>
+            <table class="table" style="width: 100%; margin-top: 12px;">
+                <thead><tr><th>Asset Class</th><th>Before</th><th>After</th><th>Delta</th><th>Status</th></tr></thead>
+                <tbody>{comparison_html}</tbody>
+            </table>
+        </details>
+        ''' if comparison_html else ''}
+    </div>
+
+    <!-- SECTION 5: REBALANCE PLAN -->
+    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <h4 style="margin-bottom: 12px; color: var(--accent-cyan);">
+            💰 Rebalance Plan {'✅ EXECUTE' if should_execute else '⏸️ NOT EXECUTED'}
+        </h4>
+
+        {f'<div style="background: var(--accent-yellow-bg); padding: 12px; border-radius: 6px; margin-bottom: 12px;">ℹ️ {not_executed_reason}</div>' if not should_execute else ''}
+
+        <div class="grid grid-2" style="margin-bottom: 16px;">
+            <div>
+                <table class="table" style="width: 100%;">
+                    <tr><td><strong>turnover</strong></td><td>{turnover:.2%}</td></tr>
+                    <tr><td><strong>trigger_type</strong></td><td>{trigger_type}</td></tr>
+                    <tr><td><strong>requires_approval</strong></td><td style="color: var(--{'accent-red' if requires_approval else 'accent-green'});">{'⚠️ YES' if requires_approval else '✅ NO'}</td></tr>
+                    <tr><td>Buy Orders</td><td>{buy_count}</td></tr>
+                    <tr><td>Sell Orders</td><td>{sell_count}</td></tr>
+                </table>
+            </div>
+            <div>
+                <table class="table" style="width: 100%;">
+                    <tr><td>Commission</td><td>{commission:.4f}</td></tr>
+                    <tr><td>Spread</td><td>{spread:.4f}</td></tr>
+                    <tr><td>Market Impact</td><td>{market_impact:.4f}</td></tr>
+                    <tr><td><strong>est_total_cost</strong></td><td><strong>{total_cost:.4f}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+
+        {f'<div style="background: var(--accent-red-bg); padding: 12px; border-radius: 6px; margin-bottom: 12px;">⚠️ <strong>Human Approval Required:</strong> {approval_reason}</div>' if requires_approval else ''}
+
+        {f'''
+        <details>
+            <summary style="cursor: pointer; font-weight: 600;">📝 Trade List ({len(trades)} trades)</summary>
+            <table class="table" style="width: 100%; margin-top: 12px;">
+                <thead><tr><th>#</th><th>Ticker</th><th>Action</th><th>Current</th><th>Target</th><th>Delta</th><th>Cost</th></tr></thead>
+                <tbody>{trades_html}</tbody>
+            </table>
+        </details>
+        ''' if trades_html else ''}
     </div>
 </div>'''
 

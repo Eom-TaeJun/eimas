@@ -265,6 +265,7 @@ class PortfolioResult:
 class EIMASResult:
     """통합 실행 결과"""
     timestamp: str
+    schema_version: str = "1.0.0"  # Schema version for forward compatibility
 
     # 데이터 수집
     fred_summary: Dict = field(default_factory=dict)

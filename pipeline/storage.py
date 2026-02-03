@@ -56,8 +56,18 @@ def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
         print(f"      ✗ JSON save error: {e}")
         return ""
 
-def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
-    """결과를 Markdown 파일로 저장 (JSON 전체 내용 변환)"""
+def save_result_md(result: EIMASResult, output_dir: Path = None, use_schema_renderer: bool = False) -> str:
+    """
+    결과를 Markdown 파일로 저장
+
+    Args:
+        result: EIMASResult 객체
+        output_dir: 출력 디렉토리
+        use_schema_renderer: True면 스키마 기반 렌더러 사용 (v2)
+
+    Returns:
+        저장된 파일 경로
+    """
     print("\n[5.4] Saving full Markdown (JSON to MD conversion)...")
 
     if output_dir is None:
@@ -69,15 +79,41 @@ def save_result_md(result: EIMASResult, output_dir: Path = None) -> str:
     output_file = output_dir / f"eimas_{timestamp_str}.md"
 
     try:
-        # JSON 전체 내용을 MD로 변환 (요약 없이)
-        md_content = _json_to_full_markdown(result.to_dict())
+        json_data = result.to_dict()
+
+        if use_schema_renderer:
+            # New schema-driven renderer (v2)
+            from pipeline.schema_renderer import render_json_to_md
+            md_content = render_json_to_md(json_data)
+            print("      (using schema-driven renderer v2)")
+        else:
+            # Legacy renderer
+            md_content = _json_to_full_markdown(json_data)
+
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(md_content)
         print(f"      ✓ Saved: {output_file}")
         return str(output_file)
     except Exception as e:
         print(f"      ✗ Markdown save error: {e}")
+        import traceback
+        traceback.print_exc()
         return ""
+
+
+def save_result_md_v2(result: EIMASResult, output_dir: Path = None) -> str:
+    """
+    Schema-driven Markdown 저장 (v2)
+
+    Features:
+    - 스키마 기반 렌더링
+    - 새 키 자동 처리
+    - 일관성 검증
+
+    Usage:
+        path = save_result_md_v2(result)
+    """
+    return save_result_md(result, output_dir, use_schema_renderer=True)
 
 
 def _json_to_full_markdown(data: dict, level: int = 1) -> str:
@@ -89,49 +125,120 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         lines.append(f"**Generated**: {data.get('timestamp', 'N/A')}")
         lines.append("")
 
-    # 섹션 순서 정의
+    # 섹션 순서 정의 (전체 JSON 키 포함)
     section_order = [
+        # ============ PHASE 1: DATA COLLECTION ============
+        ('timestamp', None),  # 헤더에서 이미 처리
         ('fred_summary', '1. FRED Economic Data'),
+        ('market_data_count', None),  # 1번에 포함
+        ('crypto_data_count', None),  # 1번에 포함
+
+        # ============ PHASE 2: ANALYSIS ============
         ('regime', '2. Market Regime'),
+        ('genius_act_regime', None),  # 2번에 포함
+
         ('risk_score', '3. Risk Assessment'),
         ('base_risk_score', None),
         ('microstructure_adjustment', None),
         ('bubble_risk_adjustment', None),
         ('extended_data_adjustment', None),
+
         ('bubble_risk', '4. Bubble Risk'),
-        ('market_quality', '5. Market Quality'),
-        ('events_detected', '6. Events Detected'),
-        ('debate_consensus', '7. Multi-Agent Debate'),
-        ('full_mode_position', None),
-        ('reference_mode_position', None),
-        ('modes_agree', None),
-        ('reasoning_chain', '8. Reasoning Chain'),
-        ('portfolio_weights', '9. Portfolio Weights'),
-        ('ark_analysis', '10. ARK Invest Analysis'),
+        ('bubble_framework', '5. Bubble Framework'),
+        ('market_quality', '6. Market Quality'),
+
+        ('events_detected', '7. Events Detected'),
+        ('event_tracking', None),
+        ('event_predictions', None),
+        ('event_attributions', None),
+        ('tracked_events', None),
+
+        ('liquidity_analysis', '8. Liquidity Analysis'),
+        ('liquidity_signal', None),
+
+        ('shock_propagation', '9. Shock Propagation'),
+        ('critical_path_monitoring', None),
+
+        ('volume_anomalies', '10. Volume Anomalies'),
+        ('volume_analysis_summary', None),
+
+        # ============ PHASE 2: TECHNICAL ANALYSIS ============
         ('hft_microstructure', '11. HFT Microstructure'),
         ('garch_volatility', '12. GARCH Volatility'),
         ('information_flow', '13. Information Flow'),
-        ('dtw_similarity', '14. DTW Similarity'),
-        ('dbscan_outliers', '15. DBSCAN Outliers'),
-        ('proof_of_index', '16. Proof of Index'),
-        ('shock_propagation', '17. Shock Propagation'),
-        ('volume_anomalies', '18. Volume Anomalies'),
-        ('liquidity_analysis', '19. Liquidity Analysis'),
-        ('genius_act_signals', '20. Genius Act Signals'),
-        ('extended_data', '21. Extended Data'),
-        ('sentiment_analysis', '22. Sentiment Analysis'),
-        ('fomc_analysis', '23. FOMC Analysis'),
-        ('bubble_framework', '24. Bubble Framework'),
-        ('gap_analysis', '25. Gap Analysis'),
-        ('institutional_analysis', '26. Institutional Analysis'),
-        ('validation_loop_result', '27. Validation Results'),
-        # Operational Report Sections (required by rubric)
-        ('operational_report', 'OPERATIONAL_REPORT'),  # Special handling
-        ('final_recommendation', '32. Final Recommendation'),
+        ('proof_of_index', '14. Proof of Index'),
+
+        ('dtw_similarity', '15. DTW Similarity'),
+        ('dbscan_outliers', '16. DBSCAN Outliers'),
+        ('correlation_matrix', None),
+        ('correlation_tickers', None),
+
+        # ============ PHASE 2: PORTFOLIO ============
+        ('portfolio_weights', '17. Portfolio Weights'),
+        ('allocation_strategy', None),
+        ('allocation_config', None),
+        ('allocation_result', None),
+        ('adaptive_portfolios', None),
+        ('hrp_allocation_rationale', None),
+        ('rebalance_decision', None),
+
+        # ============ PHASE 2: EXTERNAL DATA ============
+        ('ark_analysis', '18. ARK Invest Analysis'),
+        ('genius_act_signals', '19. Genius Act Signals'),
+        ('extended_data', '20. Extended Data'),
+        ('sentiment_analysis', '21. Sentiment Analysis'),
+        ('fomc_analysis', '22. FOMC Analysis'),
+
+        ('gap_analysis', '23. Gap Analysis'),
+        ('institutional_analysis', '24. Institutional Analysis'),
+
+        # ============ PHASE 2: CRYPTO ============
+        ('crypto_monitoring', '25. Crypto Monitoring'),
+        ('crypto_stress_test', None),
+        ('onchain_risk_signals', None),
+        ('defi_tvl', None),
+
+        # ============ PHASE 2: GLOBAL MARKETS ============
+        ('mena_markets', '26. Global Markets'),
+        ('intraday_summary', None),
+
+        # ============ PHASE 3: MULTI-AGENT DEBATE ============
+        ('debate_consensus', '27. Multi-Agent Debate'),
+        ('debate_results', None),
+        ('full_mode_position', None),
+        ('reference_mode_position', None),
+        ('modes_agree', None),
+        ('has_strong_dissent', None),
+        ('dissent_records', None),
+        ('devils_advocate_arguments', None),
+        ('agent_outputs', None),
+
+        ('reasoning_chain', '28. Reasoning Chain'),
+        ('validation_loop_result', '29. Validation Results'),
+        ('verification', None),
+
+        # ============ PHASE 4.5: OPERATIONAL ENGINE ============
+        ('operational_report', 'OPERATIONAL_REPORT'),  # 30-34: hold, decision, score, repair, rebalance
+
+        # ============ PHASE 5: FINAL OUTPUT ============
+        ('final_recommendation', '35. Final Recommendation'),
         ('confidence', None),
         ('risk_level', None),
-        ('warnings', '33. Warnings'),
-        ('ai_report', '34. AI Report'),
+        ('warnings', '36. Warnings'),
+
+        # ============ PHASE 6: AI REPORT ============
+        ('ai_report', '37. AI Report'),
+        ('whitening_summary', None),
+        ('fact_check_grade', None),
+        ('news_correlations', None),
+
+        # ============ PHASE 4: REALTIME ============
+        ('realtime_signals', '38. Realtime Signals'),
+        ('trading_db_status', None),
+
+        # ============ BACKTEST ============
+        ('event_backtest_results', '39. Backtest Results'),
+        ('integrated_signals', None),
     ]
 
     # 섹션별로 처리
@@ -166,20 +273,61 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
 
 def _format_operational_report(op_data: dict) -> list:
     """
-    Operational Report를 rubric 형식으로 포맷
+    Operational Report를 상세 rubric 형식으로 포맷
 
-    Required sections:
-    - decision_policy
-    - score_definitions
-    - rebalance_plan
-    - constraint_repair
+    Sections:
+    - 30. hold_policy (HOLD 판단 과정)
+    - 31. decision_policy (의사결정 규칙 실행 과정)
+    - 32. score_definitions (단일 Canonical 리스크 점수)
+    - 33. constraint_repair (제약조건 수리 과정)
+    - 34. rebalance_plan (리밸런싱 실행 계획)
     """
     lines = []
 
     # ========================================
-    # 28. decision_policy (required)
+    # 30. hold_policy (HOLD 판단 과정)
     # ========================================
-    lines.append("\n## 28. decision_policy")
+    lines.append("\n## 30. hold_policy")
+    hp = op_data.get('hold_policy', {})
+
+    is_hold = hp.get('is_hold', False)
+    hold_conditions = hp.get('hold_conditions', [])
+
+    lines.append(f"### HOLD Decision: **{'YES - HOLD TRIGGERED' if is_hold else 'NO - PROCEED'}**")
+    lines.append("")
+
+    if is_hold:
+        lines.append("> ⚠️ **HOLD가 발동되어 모든 거래가 중단됩니다.**")
+        lines.append("")
+
+    lines.append("#### Hold Condition Evaluation (Priority Order)")
+    lines.append("| Priority | Condition | Triggered | Current Value | Threshold | Reason Code |")
+    lines.append("|----------|-----------|-----------|---------------|-----------|-------------|")
+
+    for cond in hold_conditions:
+        triggered = cond.get('is_triggered', False)
+        triggered_str = "**YES**" if triggered else "NO"
+        lines.append(f"| {cond.get('priority', '-')} | {cond.get('condition_name', 'N/A')} | {triggered_str} | {cond.get('current_value', 'N/A')} | {cond.get('threshold', 'N/A')} | `{cond.get('reason_code', '')}` |")
+    lines.append("")
+
+    # Triggered conditions detail
+    triggered_conds = [c for c in hold_conditions if c.get('is_triggered')]
+    if triggered_conds:
+        lines.append("#### Triggered Hold Conditions (Conflict Resolution)")
+        for cond in triggered_conds:
+            lines.append(f"- **{cond.get('condition_name')}**: {cond.get('description', '')}")
+            lines.append(f"  - Current: `{cond.get('current_value')}`")
+            lines.append(f"  - Required: `{cond.get('threshold')}`")
+            lines.append(f"  - Resolution: Force HOLD until condition is resolved")
+        lines.append("")
+    else:
+        lines.append("*All hold conditions passed. Proceeding with decision rules.*")
+        lines.append("")
+
+    # ========================================
+    # 28. decision_policy (의사결정 규칙 실행 과정)
+    # ========================================
+    lines.append("\n## 31. decision_policy")
     dp = op_data.get('decision_policy', {})
 
     # Required fields
@@ -194,14 +342,34 @@ def _format_operational_report(op_data: dict) -> list:
     lines.append(f"- **client_profile**: {client_profile}")
     lines.append("")
 
-    lines.append("#### Inputs")
-    lines.append(f"- Regime: {dp.get('regime_input', 'NEUTRAL')}")
-    lines.append(f"- Risk Score: {dp.get('risk_score_input', 50.0):.1f}")
-    lines.append(f"- Confidence: {dp.get('confidence_input', 0.5):.2f}")
-    lines.append(f"- Agent Consensus: {dp.get('agent_consensus_input', 'NEUTRAL')}")
-    lines.append(f"- Modes Agree: {dp.get('modes_agree_input', True)}")
-    lines.append(f"- Constraint Status: {constraint_status}")
+    lines.append("#### Decision Inputs")
+    lines.append("| Input | Value | Description |")
+    lines.append("|-------|-------|-------------|")
+    lines.append(f"| Regime | {dp.get('regime_input', 'NEUTRAL')} | Current market regime |")
+    lines.append(f"| Risk Score (Canonical) | {dp.get('risk_score_input', 50.0):.1f} | Single source of truth |")
+    lines.append(f"| Confidence | {dp.get('confidence_input', 0.5):.2%} | Agent consensus confidence |")
+    lines.append(f"| Agent Consensus | {dp.get('agent_consensus_input', 'NEUTRAL')} | Multi-agent vote result |")
+    lines.append(f"| Modes Agree | {dp.get('modes_agree_input', True)} | FULL vs REFERENCE mode |")
+    lines.append(f"| Constraint Status | {constraint_status} | Asset class constraints |")
+    lines.append(f"| Client Profile | {client_profile} | Profile completeness |")
     lines.append("")
+
+    # Rule Evaluation Log (상세 과정)
+    rule_log = dp.get('rule_evaluation_log', [])
+    if rule_log:
+        lines.append("#### Rule Evaluation Process (Sequential, Early-Exit)")
+        lines.append("")
+        lines.append("```")
+        lines.append("Rules are evaluated in order. First triggered rule determines outcome.")
+        lines.append("```")
+        lines.append("")
+        lines.append("| Rule | Condition | Input | Result |")
+        lines.append("|------|-----------|-------|--------|")
+        for rule in rule_log:
+            result = rule.get('result', '')
+            result_fmt = f"**{result}**" if 'TRIGGERED' in result or 'HOLD' in result.upper() else result
+            lines.append(f"| {rule.get('rule', 'N/A')} | {rule.get('condition', 'N/A')} | {rule.get('input', 'N/A')} | {result_fmt} |")
+        lines.append("")
 
     lines.append("#### applied_rules")
     for rule in dp.get('applied_rules', []):
@@ -214,102 +382,222 @@ def _format_operational_report(op_data: dict) -> list:
     lines.append("")
 
     # ========================================
-    # 29. score_definitions (required)
+    # 29. score_definitions (단일 Canonical 리스크 점수)
     # ========================================
-    lines.append("\n## 29. score_definitions")
-    sd = op_data.get('score_definitions', {})
+    lines.append("\n## 32. score_definitions")
+    lines.append("")
+    lines.append("> **Important**: 의사결정에는 오직 `canonical_risk_score` 하나만 사용됩니다.")
+    lines.append("> 다른 점수들(base, micro, bubble 등)은 **참고용 보조 지표**입니다.")
+    lines.append("")
 
+    sd = op_data.get('score_definitions', {})
     canonical = sd.get('canonical_risk_score', 50.0)
     risk_level = sd.get('risk_level', 'MEDIUM')
 
-    lines.append("### Canonical Risk Score")
+    lines.append("### Canonical Risk Score (THE ONLY SCORE FOR DECISIONS)")
     lines.append("")
-    lines.append(f"**Score: {canonical:.1f} / 100**")
-    lines.append(f"**Level: {risk_level}**")
+    lines.append(f"## **{canonical:.1f} / 100** ({risk_level})")
     lines.append("")
 
-    lines.append("### Scale (0-100)")
-    lines.append("| Range | Level | Description |")
-    lines.append("|-------|-------|-------------|")
+    lines.append("### Scale Interpretation")
+    lines.append("| Range | Level | Action |")
+    lines.append("|-------|-------|--------|")
     lines.append("| 0 - 30 | LOW | Aggressive positions allowed |")
     lines.append("| 30 - 70 | MEDIUM | Standard risk management |")
-    lines.append("| 70 - 100 | HIGH | Defensive stance required |")
+    lines.append("| 70 - 100 | HIGH | Defensive stance, RULE_4 triggers |")
     lines.append("")
 
-    lines.append("### Auxiliary Sub-Scores (NOT used in decision rules)")
-    lines.append(f"- base_risk_score: {sd.get('base_risk_score', 0):.1f}")
-    lines.append(f"- microstructure_adj: {sd.get('microstructure_adjustment', 0):+.1f}")
-    lines.append(f"- bubble_risk_adj: {sd.get('bubble_risk_adjustment', 0):+.1f}")
+    lines.append("### Auxiliary Sub-Scores (REFERENCE ONLY - NOT for decisions)")
+    lines.append("")
+    lines.append("These scores are provided for **transparency and debugging only**.")
+    lines.append("They are **NOT** used in any decision rules.")
+    lines.append("")
+
+    # Extract from nested auxiliary_sub_scores structure
+    aux_scores = sd.get('auxiliary_sub_scores', {})
+    base_risk = aux_scores.get('base_risk_score', {}).get('value', 0) if isinstance(aux_scores.get('base_risk_score'), dict) else sd.get('base_risk_score', 0)
+    base_source = aux_scores.get('base_risk_score', {}).get('source', 'CriticalPathAggregator') if isinstance(aux_scores.get('base_risk_score'), dict) else 'N/A'
+    micro_adj = aux_scores.get('microstructure_adjustment', {}).get('value', 0) if isinstance(aux_scores.get('microstructure_adjustment'), dict) else sd.get('microstructure_adjustment', 0)
+    micro_source = aux_scores.get('microstructure_adjustment', {}).get('source', 'DailyMicrostructureAnalyzer') if isinstance(aux_scores.get('microstructure_adjustment'), dict) else 'N/A'
+    bubble_adj = aux_scores.get('bubble_risk_adjustment', {}).get('value', 0) if isinstance(aux_scores.get('bubble_risk_adjustment'), dict) else sd.get('bubble_risk_adjustment', 0)
+    bubble_source = aux_scores.get('bubble_risk_adjustment', {}).get('source', 'BubbleDetector') if isinstance(aux_scores.get('bubble_risk_adjustment'), dict) else 'N/A'
+    extended_adj = aux_scores.get('extended_data_adjustment', {}).get('value', 0) if isinstance(aux_scores.get('extended_data_adjustment'), dict) else sd.get('extended_data_adjustment', 0)
+    extended_source = aux_scores.get('extended_data_adjustment', {}).get('source', 'ExtendedDataCollector') if isinstance(aux_scores.get('extended_data_adjustment'), dict) else 'N/A'
+
+    lines.append("| Component | Value | Source | Note |")
+    lines.append("|-----------|-------|--------|------|")
+    lines.append(f"| base_risk_score | {base_risk:.1f} | {base_source} | Base from CriticalPath |")
+    lines.append(f"| microstructure_adj | {micro_adj:+.1f} | {micro_source} | Liquidity/toxicity adjustment |")
+    lines.append(f"| bubble_risk_adj | {bubble_adj:+.1f} | {bubble_source} | Bubble overlay |")
+    lines.append(f"| extended_data_adj | {extended_adj:+.1f} | {extended_source} | External data factors |")
+    lines.append("")
+
+    lines.append("### Calculation Formula")
+    lines.append("```")
+    lines.append(f"canonical_risk_score = base + micro_adj + bubble_adj + extended_adj")
+    lines.append(f"                     = {base_risk:.1f} + ({micro_adj:+.1f}) + ({bubble_adj:+.1f}) + ({extended_adj:+.1f})")
+    lines.append(f"                     = {canonical:.1f}")
+    lines.append("```")
     lines.append("")
 
     # ========================================
-    # 30. constraint_repair (required)
+    # 30. constraint_repair (제약조건 수리 과정)
     # ========================================
-    lines.append("\n## 30. constraint_repair")
+    lines.append("\n## 33. constraint_repair")
     cr = op_data.get('constraint_repair', {})
 
     constraints_satisfied = cr.get('constraints_satisfied', True)
-    lines.append(f"- **constraints_ok**: {constraints_satisfied}")
-    lines.append("")
+    force_hold = cr.get('force_hold', False)
+    force_hold_reason = cr.get('force_hold_reason', '')
 
-    if constraints_satisfied:
-        lines.append("### Status: **REPAIRED** ✓")
+    if force_hold:
+        lines.append(f"### Status: **FORCE HOLD** ⛔")
+        lines.append("")
+        lines.append(f"> ⚠️ Constraint repair failed. Reason: `{force_hold_reason}`")
+        lines.append("> All trades are blocked until constraints can be satisfied.")
+    elif constraints_satisfied:
+        lines.append("### Status: **SATISFIED** ✅")
     else:
-        lines.append("### Status: **VIOLATED** ✗ (force HOLD)")
+        lines.append("### Status: **REPAIRED** 🔧")
     lines.append("")
 
-    # violations
+    lines.append(f"- **constraints_ok**: {constraints_satisfied}")
+    lines.append(f"- **force_hold**: {force_hold}")
+    lines.append("")
+
+    # violations found
     violations = cr.get('violations_found', [])
     if violations:
-        lines.append("### violations")
-        lines.append("| Asset Class | Type | Current | Limit |")
-        lines.append("|-------------|------|---------|-------|")
+        lines.append("### Violations Detected")
+        lines.append("| Asset Class | Violation Type | Current Weight | Limit | Excess |")
+        lines.append("|-------------|----------------|----------------|-------|--------|")
         for v in violations:
-            lines.append(f"| {v.get('asset_class', 'N/A')} | {v.get('violation_type', 'N/A')} | {v.get('current_value', 0):.1%} | {v.get('limit_value', 0):.1%} |")
+            current = v.get('current_value', v.get('current_weight', 0))
+            limit = v.get('limit_value', v.get('limit', 0))
+            excess = current - limit if v.get('violation_type') == 'ABOVE_MAX' else limit - current
+            lines.append(f"| {v.get('asset_class', 'N/A')} | {v.get('violation_type', 'N/A')} | {current:.1%} | {limit:.1%} | {excess:+.1%} |")
         lines.append("")
 
-    # before_weights / after_weights
+    # repair actions
+    repair_actions = cr.get('repair_actions', [])
+    if repair_actions:
+        lines.append("### Repair Actions Taken")
+        for action in repair_actions:
+            lines.append(f"- {action}")
+        lines.append("")
+
+    # before_weights / after_weights comparison
     comparison = cr.get('asset_class_comparison', [])
     if comparison:
-        lines.append("### before_weights / after_weights")
-        lines.append("| Asset Class | before_weights | after_weights | Change |")
-        lines.append("|-------------|----------------|---------------|--------|")
+        lines.append("### before_weights vs after_weights")
+        lines.append("")
+        lines.append("| Asset Class | before_weights | after_weights | Delta | Min | Max | Status |")
+        lines.append("|-------------|----------------|---------------|-------|-----|-----|--------|")
         for c in comparison:
-            lines.append(f"| {c.get('asset_class', 'N/A')} | {c.get('original_weight', 0):.1%} | {c.get('repaired_weight', 0):.1%} | {c.get('delta', 0):+.1%} |")
+            status = c.get('status', 'OK')
+            status_icon = "✅" if status == 'OK' else "⚠️"
+            lines.append(f"| {c.get('asset_class', 'N/A')} | {c.get('original_weight', 0):.1%} | {c.get('repaired_weight', 0):.1%} | {c.get('delta', 0):+.1%} | {c.get('min_bound', 0):.0%} | {c.get('max_bound', 1):.0%} | {status_icon} {status} |")
+        lines.append("")
+
+    # original vs repaired weights (if available)
+    original_weights = cr.get('original_weights', {})
+    repaired_weights = cr.get('repaired_weights', {})
+    if original_weights and repaired_weights:
+        lines.append("### Individual Asset Weight Changes")
+        lines.append("| Asset | Before | After | Change |")
+        lines.append("|-------|--------|-------|--------|")
+        all_assets = set(original_weights.keys()) | set(repaired_weights.keys())
+        for asset in sorted(all_assets)[:15]:  # Limit to 15
+            before = original_weights.get(asset, 0)
+            after = repaired_weights.get(asset, 0)
+            if before != after:
+                lines.append(f"| {asset} | {before:.2%} | {after:.2%} | {after - before:+.2%} |")
         lines.append("")
 
     # ========================================
-    # 31. rebalance_plan (required)
+    # 31. rebalance_plan (리밸런싱 실행 계획)
     # ========================================
-    lines.append("\n## 31. rebalance_plan")
+    lines.append("\n## 34. rebalance_plan")
     rp = op_data.get('rebalance_plan', {})
 
-    should_execute = rp.get('should_execute', False)
-    trigger_type = rp.get('trigger_type', 'MANUAL')
-    turnover = rp.get('total_turnover', 0.0)
-    est_cost = rp.get('total_estimated_cost', 0.0)
-    requires_approval = rp.get('requires_human_approval', False)
+    # Handle nested structure
+    execution = rp.get('execution', {})
+    should_execute = execution.get('should_execute', rp.get('should_execute', False))
+    not_executed_reason = execution.get('not_executed_reason', rp.get('not_executed_reason', ''))
 
-    lines.append(f"### Status: {'EXECUTE' if should_execute else 'NOT EXECUTED'}")
-    lines.append("")
-    lines.append(f"- **turnover**: {turnover:.2%}")
-    lines.append(f"- **est_total_cost**: {est_cost:.4f}")
-    lines.append(f"- **trigger_type**: {trigger_type}")
-    lines.append(f"- **requires_approval**: {requires_approval}")
+    trigger = rp.get('trigger', {})
+    trigger_type = trigger.get('type', rp.get('trigger_type', 'MANUAL'))
+    trigger_reason = trigger.get('reason', '')
+
+    summary = rp.get('summary', {})
+    turnover = summary.get('total_turnover', rp.get('total_turnover', 0.0))
+    buy_count = summary.get('buy_count', 0)
+    sell_count = summary.get('sell_count', 0)
+    hold_count = summary.get('hold_count', 0)
+
+    cost_breakdown = rp.get('cost_breakdown', {})
+    commission = cost_breakdown.get('commission', 0)
+    spread = cost_breakdown.get('spread', 0)
+    market_impact = cost_breakdown.get('market_impact', 0)
+    total_cost = cost_breakdown.get('total', rp.get('total_estimated_cost', 0.0))
+
+    approval = rp.get('approval', {})
+    requires_approval = approval.get('requires_human_approval', rp.get('requires_human_approval', False))
+    approval_reason = approval.get('approval_reason', '')
+
+    lines.append(f"### Execution Status: **{'EXECUTE' if should_execute else 'NOT EXECUTED'}**")
     lines.append("")
 
     if not should_execute:
-        lines.append(f"*Not executed reason: {rp.get('not_executed_reason', 'N/A')}*")
+        lines.append(f"> ℹ️ Not executed: `{not_executed_reason}`")
         lines.append("")
+
+    lines.append("#### Summary")
+    lines.append("| Metric | Value |")
+    lines.append("|--------|-------|")
+    lines.append(f"| **turnover** | {turnover:.2%} |")
+    lines.append(f"| **trigger_type** | {trigger_type} |")
+    lines.append(f"| **requires_approval** | {'⚠️ YES' if requires_approval else '✅ NO'} |")
+    lines.append(f"| Buy Orders | {buy_count} |")
+    lines.append(f"| Sell Orders | {sell_count} |")
+    lines.append(f"| Hold (No Change) | {hold_count} |")
+    lines.append("")
+
+    if requires_approval:
+        lines.append(f"> ⚠️ **Human Approval Required**: {approval_reason}")
+        lines.append("")
+
+    lines.append("#### Cost Breakdown (**est_total_cost**)")
+    lines.append("| Cost Type | Amount |")
+    lines.append("|-----------|--------|")
+    lines.append(f"| Commission | {commission:.4f} |")
+    lines.append(f"| Spread | {spread:.4f} |")
+    lines.append(f"| Market Impact | {market_impact:.4f} |")
+    lines.append(f"| **Total** | **{total_cost:.4f}** |")
+    lines.append("")
 
     # Trade list
     trades = rp.get('trades', [])
     if trades:
         lines.append("### Trade List")
-        lines.append("| asset | current_w | target_w | delta_w | est_cost |")
-        lines.append("|-------|-----------|----------|---------|----------|")
-        for t in trades[:20]:  # Limit to 20
-            lines.append(f"| {t.get('ticker', 'N/A')} | {t.get('current_weight', 0):.2%} | {t.get('target_weight', 0):.2%} | {t.get('delta_weight', 0):+.2%} | {t.get('estimated_cost', 0):.4f} |")
+        lines.append("| # | Asset | Action | Current | Target | Delta | Est. Cost |")
+        lines.append("|---|-------|--------|---------|--------|-------|-----------|")
+        for i, t in enumerate(trades[:20], 1):  # Limit to 20
+            action = t.get('action', 'HOLD')
+            action_fmt = f"**{action}**" if action in ('BUY', 'SELL') else action
+            lines.append(f"| {i} | {t.get('ticker', 'N/A')} | {action_fmt} | {t.get('current_weight', 0):.2%} | {t.get('target_weight', 0):.2%} | {t.get('delta_weight', t.get('delta', 0)):+.2%} | {t.get('estimated_cost', t.get('est_cost', 0)):.4f} |")
+        if len(trades) > 20:
+            lines.append(f"| ... | *{len(trades) - 20} more trades* | | | | | |")
+        lines.append("")
+
+    # Asset class summary
+    asset_class_summary = rp.get('asset_class_summary', [])
+    if asset_class_summary:
+        lines.append("### Asset Class Summary")
+        lines.append("| Asset Class | Current | Target | Delta |")
+        lines.append("|-------------|---------|--------|-------|")
+        for ac in asset_class_summary:
+            lines.append(f"| {ac.get('asset_class', 'N/A')} | {ac.get('current_weight', 0):.1%} | {ac.get('target_weight', 0):.1%} | {ac.get('delta', 0):+.1%} |")
         lines.append("")
 
     return lines
