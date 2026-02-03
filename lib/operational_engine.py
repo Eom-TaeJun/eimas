@@ -1831,6 +1831,13 @@ def repair_constraints(
     repaired = target_weights.copy()
     force_hold_reasons = []
 
+    # Recalculate current class weights for repair
+    current_class_weights = {c: 0.0 for c in class_weights}
+    for asset, weight in repaired.items():
+        asset_class = asset_class_map.get(asset, 'other')
+        if asset_class in current_class_weights:
+            current_class_weights[asset_class] += weight
+
     for violation in result.violations_found:
         assets_in_class = class_assets[violation.asset_class]
 
@@ -1842,12 +1849,13 @@ def repair_constraints(
             continue
 
         if violation.violation_type == "ABOVE_MAX":
-            # Proportionally reduce weights in violating class
+            # Step 4a: Reduce weights in violating class
             excess = violation.delta
             current_class_weight = sum(repaired.get(a, 0) for a in assets_in_class)
 
             if current_class_weight > 0:
-                scale = (current_class_weight - excess) / current_class_weight
+                _, max_bound = constraints[violation.asset_class]
+                scale = max_bound / current_class_weight if current_class_weight > 0 else 0
                 result.repair_actions.append(
                     f"Reducing {violation.asset_class} by {excess:.1%} (scale factor: {scale:.3f})"
                 )
@@ -1858,6 +1866,56 @@ def repair_constraints(
                         result.repair_actions.append(
                             f"  {asset}: {old_w:.3f} → {repaired[asset]:.3f}"
                         )
+
+                # Step 4b: Redistribute excess to eligible classes (below their max)
+                # Find classes that can absorb the excess
+                eligible_classes = []
+                for c, (min_b, max_b) in constraints.items():
+                    if c == violation.asset_class:
+                        continue
+                    c_weight = sum(repaired.get(a, 0) for a in class_assets.get(c, []))
+                    headroom = max_b - c_weight
+                    if headroom > 0.001 and class_assets.get(c):
+                        eligible_classes.append((c, headroom, class_assets[c]))
+
+                if eligible_classes:
+                    # Distribute proportionally by headroom
+                    total_headroom = sum(h for _, h, _ in eligible_classes)
+                    remaining_excess = excess
+
+                    result.repair_actions.append(
+                        f"Redistributing {excess:.1%} to {len(eligible_classes)} eligible class(es)"
+                    )
+
+                    for c, headroom, c_assets in eligible_classes:
+                        # Allocate proportionally but cap at headroom
+                        allocation = min(headroom, excess * (headroom / total_headroom))
+                        if allocation > 0.001:
+                            # Distribute equally among assets in class
+                            per_asset = allocation / len(c_assets)
+                            for asset in c_assets:
+                                if asset in repaired:
+                                    repaired[asset] += per_asset
+                                else:
+                                    repaired[asset] = per_asset
+                            result.repair_actions.append(
+                                f"  {c}: +{allocation:.1%} (headroom: {headroom:.1%})"
+                            )
+                            remaining_excess -= allocation
+
+                    if remaining_excess > 0.01:
+                        result.repair_actions.append(
+                            f"  ⚠️ Could not redistribute {remaining_excess:.1%} (no headroom)"
+                        )
+                else:
+                    result.repair_actions.append(
+                        f"  ⚠️ No eligible class to absorb {excess:.1%}"
+                    )
+
+                # Update tracked class weights
+                current_class_weights[violation.asset_class] = sum(
+                    repaired.get(a, 0) for a in assets_in_class
+                )
 
         elif violation.violation_type == "BELOW_MIN":
             # Transfer from largest class to deficient class
