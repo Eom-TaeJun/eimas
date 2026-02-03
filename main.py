@@ -113,6 +113,7 @@ from pipeline import (
     run_ai_validation
 )
 from pipeline.schemas import BubbleRiskMetrics
+from lib.operational_engine import OperationalEngine  # Operational Report generation
 from pipeline.analyzers import (
     analyze_hft_microstructure, analyze_volatility_garch,
     analyze_information_flow, calculate_proof_of_index,
@@ -425,6 +426,48 @@ async def _run_realtime(result: EIMASResult, enable: bool, duration: int):
         save_to_trading_db(signals)
 
 
+def _generate_operational_report(result: EIMASResult, current_weights: Dict = None):
+    """[Phase 4.5] Operational Report 생성 (decision governance, rebalance plan)"""
+    print("\n[Phase 4.5] Generating Operational Report...")
+
+    try:
+        engine = OperationalEngine()
+
+        # Use existing EIMAS results as input
+        eimas_data = result.to_dict()
+
+        # Use portfolio_weights as current weights if not provided
+        if current_weights is None:
+            current_weights = result.portfolio_weights or {}
+
+        # Generate operational report
+        op_report = engine.process(eimas_data, current_weights)
+
+        # Store in result
+        result.operational_report = op_report.to_dict()
+
+        # Update final_recommendation to match operational decision
+        if op_report.decision_policy.final_stance:
+            # Map HOLD/BULLISH/BEARISH to EIMAS recommendation format
+            stance = op_report.decision_policy.final_stance
+            if stance == "HOLD":
+                result.final_recommendation = "HOLD"
+            elif stance == "BULLISH":
+                result.final_recommendation = "BULLISH"
+            elif stance == "BEARISH":
+                result.final_recommendation = "BEARISH"
+            else:
+                result.final_recommendation = "NEUTRAL"
+
+        print(f"      ✓ Decision: {op_report.decision_policy.final_stance}")
+        print(f"      ✓ Constraints: {'SATISFIED' if op_report.constraint_repair.constraints_satisfied else 'VIOLATED'}")
+        print(f"      ✓ Rebalance: {'EXECUTE' if op_report.rebalance_plan.should_execute else 'NOT EXECUTED'}")
+
+    except Exception as e:
+        print(f"      ⚠️ Operational Report Error: {e}")
+        result.operational_report = {"error": str(e)}
+
+
 def _save_results(result: EIMASResult, events: List) -> str:
     """[Phase 5] 결과 저장: unified JSON (eimas_*.json)"""
     print("\n[Phase 5] Saving Results...")
@@ -567,7 +610,10 @@ async def run_integrated_pipeline(
     # Phase 3-4: Debate & Realtime
     await _run_debate(result, market_data)
     await _run_realtime(result, enable_realtime, realtime_duration)
-    
+
+    # Phase 4.5: Operational Report (decision governance, rebalance)
+    _generate_operational_report(result)
+
     # Phase 5-8: Storage, Report, Validation
     output_file = _save_results(result, events)
     report_content = await _generate_report(result, market_data, generate_report)

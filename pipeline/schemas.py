@@ -398,6 +398,9 @@ class EIMASResult:
     allocation_strategy: str = "risk_parity"                   # 사용된 배분 전략
     allocation_config: Dict = field(default_factory=dict)      # 배분 설정 (bounds, cost model)
 
+    # NEW: Operational Report (2026-02-03)
+    operational_report: Dict = field(default_factory=dict)     # OperationalReport.to_dict()
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
