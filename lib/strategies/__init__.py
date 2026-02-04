@@ -1,29 +1,15 @@
-"""
-EIMAS Strategies - 포트폴리오 전략 모듈
-======================================
-Portfolio optimization and risk management strategies.
+"""EIMAS Strategies"""
+def _safe_import(module_name, class_names):
+    try:
+        module = __import__(module_name, fromlist=class_names)
+        return {name: getattr(module, name, None) for name in class_names}
+    except (ImportError, AttributeError):
+        return {name: None for name in class_names}
 
-Modules:
-    - adaptive: Adaptive portfolio agents
-    - portfolio_optimizer: MST and HRP optimizers
-    - risk_manager: Risk management utilities
-    - custom_etf: Custom ETF builder
-"""
+# Safe imports
+try:
+    from .etf import CustomETFBuilder
+except ImportError:
+    CustomETFBuilder = None
 
-from lib.adaptive_agents import AdaptivePortfolioAgents
-from lib.portfolio_optimizer import MSTAnalyzer
-from lib.risk_manager import RiskManager
-from lib.custom_etf_builder import CustomETFBuilder
-from lib.risk_profile_agents import RiskProfileAgents
-from lib.sector_rotation import SectorRotationStrategy
-from lib.integrated_strategy import IntegratedStrategy
-
-__all__ = [
-    'AdaptivePortfolioAgents',
-    'MSTAnalyzer',
-    'RiskManager',
-    'CustomETFBuilder',
-    'RiskProfileAgents',
-    'SectorRotationStrategy',
-    'IntegratedStrategy',
-]
+__all__ = ["CustomETFBuilder"]
