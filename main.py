@@ -428,10 +428,17 @@ def _apply_extended_data_adjustment(result: EIMASResult):
     if adjustment != 0:
         result.extended_data_adjustment = adjustment
         old_risk = result.risk_score
-        result.risk_score = max(0, min(100, result.risk_score + adjustment))
+        # Floor of 1.0 prevents economically unrealistic zero risk
+        result.risk_score = max(1.0, min(100, result.risk_score + adjustment))
         print(f"      ✓ Extended Data Adjustment: {adjustment:+.0f} ({old_risk:.1f} → {result.risk_score:.1f})")
         if details:
             print(f"        Details: {', '.join(details)}")
+
+        # Warn if risk is extremely low
+        if result.risk_score < 5:
+            warning = f"⚠️ Extremely Low Risk ({result.risk_score:.1f}/100) - Verify market conditions"
+            result.warnings.append(warning)
+            print(f"      {warning}")
 
 
 def _analyze_sentiment_bubble(result: EIMASResult, market_data: Dict, quick_mode: bool):
