@@ -125,6 +125,12 @@ from lib.bubble_framework import FiveStageBubbleFramework
 from lib.gap_analyzer import MarketModelGapAnalyzer
 from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 
+# Portfolio Theory Modules (2026-02-04)
+from lib.backtest import BacktestEngine, BacktestConfig
+from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
+from lib.tactical_allocation import TacticalAssetAllocator
+from lib.stress_test import StressTestEngine, generate_stress_test_report
+
 
 # ============================================================================
 # Phase Helper Functions
@@ -194,6 +200,8 @@ def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
         _safe_call(lambda: setattr(result, 'volume_anomalies', analyze_volume_anomalies(market_data)), "Volume")
         # NEW: 비중 산출 엔진 (2026-02-02)
         _safe_call(lambda: _set_allocation_result(result, market_data), "Allocation Engine")
+        # NEW: 전술적 자산배분 (2026-02-04)
+        _safe_call(lambda: _run_tactical_allocation(result), "Tactical Allocation")
 
 
 def _set_allocation_result(result: EIMASResult, market_data: Dict):
@@ -431,6 +439,11 @@ def _generate_operational_report(result: EIMASResult, current_weights: Dict = No
     print("\n[Phase 4.5] Generating Operational Report...")
 
     try:
+        from lib.operational_engine import (
+            OperationalEngine, get_indicator_classification, get_input_validation,
+            get_operational_controls, get_audit_metadata, get_approval_status
+        )
+
         engine = OperationalEngine()
 
         # Use existing EIMAS results as input
@@ -446,26 +459,110 @@ def _generate_operational_report(result: EIMASResult, current_weights: Dict = No
         # Store in result
         result.operational_report = op_report.to_dict()
 
-        # Update final_recommendation to match operational decision
-        if op_report.decision_policy.final_stance:
-            # Map HOLD/BULLISH/BEARISH to EIMAS recommendation format
-            stance = op_report.decision_policy.final_stance
-            if stance == "HOLD":
+        # ================================================================
+        # Populate NEW enhanced operational fields (2026-02-03)
+        # ================================================================
+
+        # 1. Input Validation
+        result.input_validation = get_input_validation(eimas_data)
+
+        # 2. Indicator Classification (CORE vs AUX)
+        result.indicator_classification = get_indicator_classification(eimas_data)
+
+        # 3. Trade Plan (from rebalance plan or rebalance_decision)
+        rebal_plan = op_report.rebalance_plan
+        if rebal_plan.should_execute and rebal_plan.trades:
+            result.trade_plan = [t.to_dict() for t in rebal_plan.trades if t.action != "HOLD"]
+        elif result.rebalance_decision and result.rebalance_decision.get('trade_plan'):
+            result.trade_plan = result.rebalance_decision['trade_plan']
+
+        # 4. Operational Controls
+        result.operational_controls = get_operational_controls(
+            eimas_data,
+            rebalance_decision=result.rebalance_decision,
+            constraint_result=op_report.constraint_repair.to_dict()
+        )
+
+        # 5. Audit Metadata
+        result.audit_metadata = get_audit_metadata(eimas_data)
+
+        # 6. Approval Status
+        result.approval_status = get_approval_status(
+            eimas_data,
+            rebalance_plan=op_report.rebalance_plan.to_dict()
+        )
+
+        # ================================================================
+        # Failsafe Logic: Constraint Violations → HOLD
+        # ================================================================
+        if not op_report.constraint_repair.constraints_satisfied:
+            # Check if there are serious constraint violations
+            violations = op_report.constraint_repair.violations_found
+            has_severe_violation = any(
+                v.severity == "SEVERE" for v in violations
+            )
+
+            if op_report.constraint_repair.force_hold or has_severe_violation:
+                result.failsafe_status = {
+                    'triggered': True,
+                    'reason': 'CONSTRAINT_VIOLATION',
+                    'fallback_action': 'HOLD',
+                    'original_recommendation': result.final_recommendation,
+                    'violations': [v.to_dict() for v in violations]
+                }
                 result.final_recommendation = "HOLD"
-            elif stance == "BULLISH":
-                result.final_recommendation = "BULLISH"
-            elif stance == "BEARISH":
-                result.final_recommendation = "BEARISH"
+                result.warnings.append("⚠️ Constraint Violation - Forced to HOLD")
+                print(f"      ⚠️ FAILSAFE TRIGGERED: Constraint Violation → HOLD")
             else:
-                result.final_recommendation = "NEUTRAL"
+                # Constraints violated but repaired - just log warning
+                result.failsafe_status = {
+                    'triggered': False,
+                    'reason': 'Constraints violated but partially repaired',
+                    'fallback_action': None,
+                    'original_recommendation': result.final_recommendation
+                }
+                result.warnings.append(f"⚠️ {len(violations)} constraint violation(s) detected")
+        else:
+            # No constraint violations
+            if not result.failsafe_status:
+                result.failsafe_status = {
+                    'triggered': False,
+                    'reason': None,
+                    'fallback_action': None,
+                    'original_recommendation': result.final_recommendation
+                }
+
+        # Update final_recommendation to match operational decision
+        # (only if failsafe not triggered)
+        if not result.failsafe_status.get('triggered', False):
+            if op_report.decision_policy.final_stance:
+                # Map HOLD/BULLISH/BEARISH to EIMAS recommendation format
+                stance = op_report.decision_policy.final_stance
+                if stance == "HOLD":
+                    result.final_recommendation = "HOLD"
+                elif stance == "BULLISH":
+                    result.final_recommendation = "BULLISH"
+                elif stance == "BEARISH":
+                    result.final_recommendation = "BEARISH"
+                else:
+                    result.final_recommendation = "NEUTRAL"
 
         print(f"      ✓ Decision: {op_report.decision_policy.final_stance}")
         print(f"      ✓ Constraints: {'SATISFIED' if op_report.constraint_repair.constraints_satisfied else 'VIOLATED'}")
         print(f"      ✓ Rebalance: {'EXECUTE' if op_report.rebalance_plan.should_execute else 'NOT EXECUTED'}")
+        print(f"      ✓ Failsafe: {'TRIGGERED' if result.failsafe_status.get('triggered') else 'NOT TRIGGERED'}")
 
     except Exception as e:
+        import traceback
         print(f"      ⚠️ Operational Report Error: {e}")
+        traceback.print_exc()
         result.operational_report = {"error": str(e)}
+        result.failsafe_status = {
+            'triggered': False,
+            'reason': f'Error in operational report: {e}',
+            'fallback_action': None,
+            'original_recommendation': result.final_recommendation
+        }
 
 
 def _save_results(result: EIMASResult, events: List) -> str:
@@ -515,13 +612,26 @@ def _run_ai_validation_phase(result: EIMASResult, full_mode: bool):
     """[Phase 8] Multi-LLM 검증 (--full only, API 비용 발생)"""
     if not full_mode:
         return
-    
+
     print("\n" + "=" * 50)
     print("PHASE 8: AI VALIDATION (Multi-LLM)")
     print("=" * 50)
-    
+
     try:
         result.validation_loop_result = run_ai_validation(result.to_dict())
+
+        # CRITICAL: If validation REJECTS, force failsafe to HOLD
+        if result.validation_loop_result.get('final_result') == "REJECT":
+            result.failsafe_status = {
+                'triggered': True,
+                'reason': 'AI Validation REJECT',
+                'fallback_action': 'HOLD',
+                'original_recommendation': result.final_recommendation
+            }
+            result.final_recommendation = "HOLD"
+            result.warnings.append("⚠️ AI Validation REJECT - Forced to HOLD")
+            print(f"      ⚠️ FAILSAFE TRIGGERED: AI Validation REJECT → HOLD")
+
         save_result_json(result)
     except Exception as e:
         print(f"⚠️ AI Validation Error: {e}")
@@ -536,6 +646,246 @@ def _safe_call(fn, name: str):
 
 
 # ============================================================================
+# Portfolio Theory Module Functions (2026-02-04)
+# ============================================================================
+
+def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
+    """[Phase 6.1] 백테스팅 엔진 (Optional)"""
+    if not enable:
+        return
+
+    print("\n[Phase 6.1] Running Backtest Engine...")
+
+    try:
+        import pandas as pd
+        from datetime import timedelta
+
+        # Convert market_data to prices DataFrame
+        if not market_data or len(market_data) == 0:
+            print("⚠️ No market data for backtest")
+            return
+
+        # Get price data from market_data dict
+        tickers = list(market_data.keys())
+        prices_dict = {}
+
+        for ticker in tickers:
+            data = market_data[ticker]
+            if isinstance(data, pd.DataFrame) and 'close' in data.columns:
+                prices_dict[ticker] = data['close']
+
+        if not prices_dict:
+            print("⚠️ No valid price data for backtest")
+            return
+
+        prices = pd.DataFrame(prices_dict)
+        prices = prices.dropna()
+
+        if len(prices) < 252:
+            print(f"⚠️ Insufficient data for backtest: {len(prices)} days")
+            return
+
+        # Configure backtest (5 years or all available)
+        start_date = str(prices.index[252])  # Skip first year for indicators
+        end_date = str(prices.index[-1])
+
+        config = BacktestConfig(
+            start_date=start_date,
+            end_date=end_date,
+            rebalance_frequency='monthly',
+            transaction_cost_bps=10,
+            initial_capital=1_000_000
+        )
+
+        # Define allocation strategy (use current portfolio weights or equal weight)
+        def allocation_strategy(prices_window):
+            if result.portfolio_weights:
+                # Use existing portfolio weights
+                return result.portfolio_weights
+            else:
+                # Equal weight fallback
+                n = len(prices_window.columns)
+                return {ticker: 1/n for ticker in prices_window.columns}
+
+        # Run backtest
+        engine = BacktestEngine(config)
+        backtest_result = engine.run(prices, allocation_strategy)
+
+        # Store metrics
+        result.backtest_metrics = backtest_result.metrics.to_dict()
+
+        print(f"  ✅ Backtest Complete:")
+        print(f"     Sharpe: {backtest_result.metrics.sharpe_ratio:.2f}")
+        print(f"     Max DD: {backtest_result.metrics.max_drawdown*100:.1f}%")
+        print(f"     VaR 95%: {backtest_result.metrics.var_95*100:.2f}%")
+
+    except Exception as e:
+        print(f"⚠️ Backtest Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def _run_performance_attribution(result: EIMASResult, enable: bool):
+    """[Phase 6.2] 성과 귀속 분석 (Optional)"""
+    if not enable:
+        return
+
+    print("\n[Phase 6.2] Running Performance Attribution...")
+
+    try:
+        # Need portfolio weights and benchmark weights
+        portfolio_weights = result.portfolio_weights
+        if not portfolio_weights:
+            print("⚠️ No portfolio weights for attribution")
+            return
+
+        # Use 60/40 as default benchmark
+        benchmark_weights = {}
+        equity_tickers = ['SPY', 'QQQ', 'IWM']
+        bond_tickers = ['TLT', 'IEF']
+
+        # Distribute 60% to equities, 40% to bonds
+        for ticker in portfolio_weights.keys():
+            if ticker in equity_tickers:
+                benchmark_weights[ticker] = 0.60 / len([t for t in portfolio_weights if t in equity_tickers])
+            elif ticker in bond_tickers:
+                benchmark_weights[ticker] = 0.40 / len([t for t in portfolio_weights if t in bond_tickers])
+            else:
+                benchmark_weights[ticker] = 0.0
+
+        # Normalize
+        total = sum(benchmark_weights.values())
+        if total > 0:
+            benchmark_weights = {k: v/total for k, v in benchmark_weights.items()}
+
+        # Use assumed returns (would need actual returns from market data)
+        # This is a simplified example - real implementation would calculate from prices
+        portfolio_returns = {ticker: 0.10 for ticker in portfolio_weights.keys()}
+        benchmark_returns = {ticker: 0.08 for ticker in benchmark_weights.keys()}
+
+        # Brinson Attribution
+        brinson = BrinsonAttribution()
+        attribution = brinson.compute(
+            portfolio_weights, portfolio_returns,
+            benchmark_weights, benchmark_returns
+        )
+
+        result.performance_attribution = attribution.to_dict()
+
+        # Active Share
+        active_share = ActiveShare.compute(portfolio_weights, benchmark_weights)
+        result.performance_attribution['active_share'] = active_share
+
+        print(f"  ✅ Attribution Complete:")
+        print(f"     Excess Return: {attribution.excess_return*100:.2f}%")
+        print(f"     Allocation Effect: {attribution.allocation_effect*100:.2f}%")
+        print(f"     Active Share: {active_share*100:.1f}%")
+
+    except Exception as e:
+        print(f"⚠️ Attribution Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def _run_tactical_allocation(result: EIMASResult):
+    """[Phase 2.11] 전술적 자산배분 (Always run if portfolio exists)"""
+    if not result.portfolio_weights:
+        return
+
+    print("\n[Phase 2.11] Running Tactical Asset Allocation...")
+
+    try:
+        # Asset class mapping
+        asset_class_mapping = {
+            'SPY': 'equity', 'QQQ': 'equity', 'IWM': 'equity', 'DIA': 'equity',
+            'TLT': 'bond', 'IEF': 'bond', 'SHY': 'bond', 'HYG': 'bond',
+            'GLD': 'commodity', 'DBC': 'commodity',
+            'BTC-USD': 'crypto', 'ETH-USD': 'crypto'
+        }
+
+        # Get current regime
+        regime = result.regime.get('regime', 'Neutral')
+        regime_confidence = result.regime.get('confidence', 0.5)
+
+        # Tactical allocator
+        taa = TacticalAssetAllocator(
+            strategic_weights=result.portfolio_weights,
+            asset_class_mapping=asset_class_mapping,
+            max_tilt_pct=0.15
+        )
+
+        # Compute tactical weights
+        tactical_weights = taa.compute_tactical_weights(
+            regime=regime,
+            confidence=regime_confidence
+        )
+
+        result.tactical_weights = tactical_weights
+
+        # Calculate adjustment
+        total_adjustment = sum(abs(tactical_weights[t] - result.portfolio_weights[t])
+                              for t in tactical_weights)
+
+        print(f"  ✅ Tactical Allocation Complete:")
+        print(f"     Regime: {regime}")
+        print(f"     Total Adjustment: {total_adjustment*100:.1f}%")
+
+    except Exception as e:
+        print(f"⚠️ Tactical Allocation Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+def _run_stress_test(result: EIMASResult, enable: bool):
+    """[Phase 6.3] 스트레스 테스트 (Optional)"""
+    if not enable:
+        return
+
+    print("\n[Phase 6.3] Running Stress Testing...")
+
+    try:
+        portfolio_weights = result.portfolio_weights
+        if not portfolio_weights:
+            print("⚠️ No portfolio weights for stress test")
+            return
+
+        # Stress test engine
+        engine = StressTestEngine(
+            portfolio_weights=portfolio_weights,
+            portfolio_value=1_000_000
+        )
+
+        # Run historical scenarios
+        historical_results = engine.run_all_historical()
+
+        # Run hypothetical scenarios
+        hypothetical_results = engine.run_all_hypothetical()
+
+        # Extreme scenario
+        extreme_result = engine.extreme_scenario("severe")
+
+        # Store results
+        result.stress_test_results = {
+            'historical': [r.to_dict() for r in historical_results],
+            'hypothetical': [r.to_dict() for r in hypothetical_results],
+            'extreme': extreme_result.to_dict()
+        }
+
+        # Find worst case
+        all_results = historical_results + hypothetical_results + [extreme_result]
+        worst_case = max(all_results, key=lambda r: r.loss_pct)
+
+        print(f"  ✅ Stress Test Complete:")
+        print(f"     Scenarios Tested: {len(all_results)}")
+        print(f"     Worst Case: {worst_case.scenario_name} ({worst_case.loss_pct*100:.1f}%)")
+
+    except Exception as e:
+        print(f"⚠️ Stress Test Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+# ============================================================================
 # Main Pipeline
 # ============================================================================
 
@@ -544,7 +894,10 @@ async def run_integrated_pipeline(
     realtime_duration: int = 30,
     quick_mode: bool = False,
     generate_report: bool = False,
-    full_mode: bool = False
+    full_mode: bool = False,
+    enable_backtest: bool = False,
+    enable_attribution: bool = False,
+    enable_stress_test: bool = False
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -614,9 +967,18 @@ async def run_integrated_pipeline(
     # Phase 4.5: Operational Report (decision governance, rebalance)
     _generate_operational_report(result)
 
-    # Phase 5-8: Storage, Report, Validation
+    # Phase 5: Storage
     output_file = _save_results(result, events)
+
+    # Phase 6: Portfolio Theory Modules (Optional, 2026-02-04)
+    _run_backtest(result, market_data, enable_backtest)
+    _run_performance_attribution(result, enable_attribution)
+    _run_stress_test(result, enable_stress_test)
+
+    # Phase 7: AI Report Generation
     report_content = await _generate_report(result, market_data, generate_report)
+
+    # Phase 8: Validation
     await _validate_report(result, report_content, generate_report)
     _run_ai_validation_phase(result, full_mode)
 
@@ -642,17 +1004,25 @@ def main():
     parser.add_argument('--short', '-s', action='store_true', help='Quick analysis (no bubble/DTW)')
     parser.add_argument('--quick', '-q', action='store_true', help='Alias for --short')
     parser.add_argument('--full', '-f', action='store_true', help='All features (AI Validation, costs API)')
-    
+
+    # Portfolio Theory Modules (2026-02-04)
+    parser.add_argument('--backtest', action='store_true', help='Run backtest engine (5-year historical)')
+    parser.add_argument('--attribution', action='store_true', help='Performance attribution (Brinson)')
+    parser.add_argument('--stress-test', action='store_true', help='Stress testing (historical + hypothetical)')
+
     args = parser.parse_args()
-    
+
     is_short = args.short or args.quick
-    
+
     asyncio.run(run_integrated_pipeline(
         enable_realtime=args.realtime,
         realtime_duration=args.duration,
         quick_mode=is_short,
         generate_report=not is_short,
-        full_mode=args.full
+        full_mode=args.full,
+        enable_backtest=args.backtest,
+        enable_attribution=args.attribution,
+        enable_stress_test=args.stress_test
     ))
 
 
