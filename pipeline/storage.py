@@ -177,33 +177,33 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         ('portfolio_weights', '17. Portfolio Weights'),
         ('allocation_strategy', None),
         ('allocation_config', None),
-        ('allocation_result', None),
+        ('allocation_result', '18. Allocation Result'),  # NEW: 2026-02-04
         ('adaptive_portfolios', None),
         ('hrp_allocation_rationale', None),
-        ('rebalance_decision', None),
+        ('rebalance_decision', '19. Rebalancing Decision'),  # NEW: 2026-02-04
 
         # ============ PHASE 2: EXTERNAL DATA ============
-        ('ark_analysis', '18. ARK Invest Analysis'),
-        ('genius_act_signals', '19. Genius Act Signals'),
-        ('extended_data', '20. Extended Data'),
-        ('sentiment_analysis', '21. Sentiment Analysis'),
-        ('fomc_analysis', '22. FOMC Analysis'),
+        ('ark_analysis', '20. ARK Invest Analysis'),
+        ('genius_act_signals', '21. Genius Act Signals'),
+        ('extended_data', '22. Extended Data'),
+        ('sentiment_analysis', '23. Sentiment Analysis'),
+        ('fomc_analysis', '24. FOMC Analysis'),
 
-        ('gap_analysis', '23. Gap Analysis'),
-        ('institutional_analysis', '24. Institutional Analysis'),
+        ('gap_analysis', '25. Gap Analysis'),
+        ('institutional_analysis', '26. Institutional Analysis'),
 
         # ============ PHASE 2: CRYPTO ============
-        ('crypto_monitoring', '25. Crypto Monitoring'),
+        ('crypto_monitoring', '27. Crypto Monitoring'),
         ('crypto_stress_test', None),
         ('onchain_risk_signals', None),
         ('defi_tvl', None),
 
         # ============ PHASE 2: GLOBAL MARKETS ============
-        ('mena_markets', '26. Global Markets'),
+        ('mena_markets', '28. Global Markets'),
         ('intraday_summary', None),
 
         # ============ PHASE 3: MULTI-AGENT DEBATE ============
-        ('debate_consensus', '27. Multi-Agent Debate'),
+        ('debate_consensus', '29. Multi-Agent Debate'),
         ('debate_results', None),
         ('full_mode_position', None),
         ('reference_mode_position', None),
@@ -213,8 +213,8 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         ('devils_advocate_arguments', None),
         ('agent_outputs', None),
 
-        ('reasoning_chain', '28. Reasoning Chain'),
-        ('validation_loop_result', '29. Validation Results'),
+        ('reasoning_chain', '30. Reasoning Chain'),
+        ('validation_loop_result', '31. Validation Results'),
         ('verification', None),
 
         # ============ PHASE 4.5: OPERATIONAL ENGINE ============
@@ -252,6 +252,20 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         # Special handling for operational_report (rubric required sections)
         if key == 'operational_report' and isinstance(value, dict) and value:
             lines.extend(_format_operational_report(value))
+            continue
+
+        # Special handling for allocation_result (2026-02-04)
+        if key == 'allocation_result' and isinstance(value, dict) and value:
+            if section_title:
+                lines.append(f"\n## {section_title}")
+            lines.extend(_format_allocation_result(value))
+            continue
+
+        # Special handling for rebalance_decision (2026-02-04)
+        if key == 'rebalance_decision' and isinstance(value, dict) and value:
+            if section_title:
+                lines.append(f"\n## {section_title}")
+            lines.extend(_format_rebalance_decision(value))
             continue
 
         if section_title:
@@ -598,6 +612,109 @@ def _format_operational_report(op_data: dict) -> list:
         lines.append("|-------------|---------|--------|-------|")
         for ac in asset_class_summary:
             lines.append(f"| {ac.get('asset_class', 'N/A')} | {ac.get('current_weight', 0):.1%} | {ac.get('target_weight', 0):.1%} | {ac.get('delta', 0):+.1%} |")
+        lines.append("")
+
+    return lines
+
+
+def _format_allocation_result(alloc_data: dict) -> list:
+    """
+    Allocation Result를 읽기 쉬운 형식으로 포맷 (2026-02-04)
+
+    Sections:
+    - Strategy & Portfolio Metrics
+    - Target Weights (Top 10)
+    - Risk Contributions (Top 5)
+    """
+    lines = []
+    lines.append("")
+
+    # Strategy & Metrics
+    strategy = alloc_data.get('strategy', 'N/A')
+    expected_return = alloc_data.get('expected_return', 0)
+    expected_vol = alloc_data.get('expected_volatility', 0)
+    sharpe = alloc_data.get('sharpe_ratio', 0)
+    div_ratio = alloc_data.get('diversification_ratio', 0)
+    effective_n = alloc_data.get('effective_n', 0)
+
+    lines.append(f"**Strategy**: {strategy}")
+    lines.append(f"**Expected Return**: {expected_return:.2%}")
+    lines.append(f"**Expected Volatility**: {expected_vol:.2%}")
+    lines.append(f"**Sharpe Ratio**: {sharpe:.2f}")
+    lines.append(f"**Diversification Ratio**: {div_ratio:.2f}")
+    lines.append(f"**Effective N**: {effective_n:.1f}")
+    lines.append("")
+
+    # Target Weights (Top 10)
+    weights = alloc_data.get('weights', {})
+    if weights and isinstance(weights, dict):
+        lines.append("### Target Weights (Top 10)")
+        sorted_weights = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:10]
+        for ticker, weight in sorted_weights:
+            lines.append(f"- **{ticker}**: {weight:.1%}")
+        lines.append("")
+
+    # Risk Contributions (Top 5)
+    risk_contribs = alloc_data.get('risk_contributions', {})
+    if risk_contribs and isinstance(risk_contribs, dict):
+        lines.append("### Risk Contributions (Top 5)")
+        sorted_rc = sorted(risk_contribs.items(), key=lambda x: x[1], reverse=True)[:5]
+        for ticker, rc in sorted_rc:
+            lines.append(f"- **{ticker}**: {rc:.1%}")
+        lines.append("")
+
+    return lines
+
+
+def _format_rebalance_decision(rb_data: dict) -> list:
+    """
+    Rebalancing Decision을 읽기 쉬운 형식으로 포맷 (2026-02-04)
+
+    Sections:
+    - Decision Summary
+    - Priority Trades (HIGH only, Top 5)
+    - Warnings
+    """
+    lines = []
+    lines.append("")
+
+    # Decision Summary
+    should_rebalance = rb_data.get('should_rebalance', False)
+    action = rb_data.get('action', 'HOLD')
+    reason = rb_data.get('reason', 'N/A')
+    turnover = rb_data.get('turnover', 0)
+    estimated_cost = rb_data.get('estimated_cost', 0)
+
+    status_emoji = "✅" if should_rebalance else "❌"
+    lines.append(f"**Should Rebalance**: {status_emoji} {'Yes' if should_rebalance else 'No'}")
+    lines.append(f"**Action**: {action}")
+    lines.append(f"**Reason**: {reason}")
+    lines.append(f"**Turnover**: {turnover:.1%}")
+    lines.append(f"**Estimated Cost**: {estimated_cost:.2%}")
+    lines.append("")
+
+    # Priority Trades (HIGH only, Top 5)
+    trade_plan = rb_data.get('trade_plan', [])
+    if trade_plan:
+        high_priority = [t for t in trade_plan if isinstance(t, dict) and t.get('priority') == 'HIGH']
+        if high_priority:
+            lines.append("### Priority Trades (HIGH, Top 5)")
+            for i, trade in enumerate(high_priority[:5], 1):
+                action_type = trade.get('action', 'HOLD')
+                ticker = trade.get('ticker', 'Unknown')
+                delta = trade.get('delta_weight', 0)
+                cost_breakdown = trade.get('cost_breakdown', {})
+                cost = cost_breakdown.get('total', 0) if isinstance(cost_breakdown, dict) else 0
+
+                lines.append(f"{i}. **{action_type}** {ticker}: {delta:+.1%} (Cost: {cost:.2%})")
+            lines.append("")
+
+    # Warnings
+    warnings = rb_data.get('warnings', [])
+    if warnings:
+        lines.append("### Warnings")
+        for w in warnings:
+            lines.append(f"- ⚠️ {w}")
         lines.append("")
 
     return lines

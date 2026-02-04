@@ -402,6 +402,24 @@ class EIMASResult:
     # NEW: Operational Report (2026-02-03)
     operational_report: Dict = field(default_factory=dict)     # OperationalReport.to_dict()
 
+    # NEW: Enhanced Operational Controls (2026-02-03)
+    input_validation: Dict = field(default_factory=dict)       # 데이터 품질 및 입력 검증 결과
+    indicator_classification: Dict = field(default_factory=dict)  # CORE vs AUX 지표 분류
+    trade_plan: List[Dict] = field(default_factory=list)       # BUY/SELL/HOLD 거래 계획
+    operational_controls: Dict = field(default_factory=dict)   # turnover_cap, constraints 상태
+    audit_metadata: Dict = field(default_factory=dict)         # 감사 메타데이터 (timestamp, checksum)
+    approval_status: Dict = field(default_factory=dict)        # 승인 상태 및 체크리스트
+    failsafe_status: Dict = field(default_factory=dict)        # 페일세이프 트리거 상태
+
+    # NEW: Portfolio Theory Modules (2026-02-04)
+    backtest_metrics: Dict = field(default_factory=dict)       # BacktestMetrics.to_dict()
+    performance_attribution: Dict = field(default_factory=dict)  # AttributionResult.to_dict()
+    tactical_weights: Dict[str, float] = field(default_factory=dict)  # Tactical allocation weights
+    stress_test_results: Dict = field(default_factory=dict)    # StressTestResult list
+
+    # NEW: Quick Mode AI Validation (2026-02-04)
+    quick_validation: Dict = field(default_factory=dict)       # QuickOrchestrator validation result
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -588,7 +606,64 @@ class EIMASResult:
                 md.append(f"- {t}: {w:.1%}")
             if self.hrp_allocation_rationale:
                 md.append(f"  - Rationale: {self.hrp_allocation_rationale}")
-        
+
+        # NEW: Allocation Result & Rebalancing Decision (2026-02-04)
+        if self.allocation_result:
+            md.append("")
+            md.append("### Allocation Result")
+            ar = self.allocation_result
+            md.append(f"- **Strategy**: {self.allocation_strategy}")
+            md.append(f"- **Expected Return**: {ar.get('expected_return', 0):.2%}")
+            md.append(f"- **Expected Volatility**: {ar.get('expected_volatility', 0):.2%}")
+            md.append(f"- **Sharpe Ratio**: {ar.get('sharpe_ratio', 0):.2f}")
+            md.append(f"- **Diversification Ratio**: {ar.get('diversification_ratio', 0):.2f}")
+            md.append(f"- **Effective N**: {ar.get('effective_n', 0):.1f}")
+
+            # 자산별 목표 비중 (Top 10)
+            weights = ar.get('weights', {})
+            if weights:
+                md.append("#### Target Weights")
+                sorted_w = sorted(weights.items(), key=lambda x: x[1], reverse=True)[:10]
+                for ticker, weight in sorted_w:
+                    md.append(f"- {ticker}: {weight:.1%}")
+
+            # 리스크 기여도 (Top 5)
+            risk_contribs = ar.get('risk_contributions', {})
+            if risk_contribs:
+                md.append("#### Risk Contributions")
+                sorted_rc = sorted(risk_contribs.items(), key=lambda x: x[1], reverse=True)[:5]
+                for ticker, rc in sorted_rc:
+                    md.append(f"- {ticker}: {rc:.1%}")
+
+        if self.rebalance_decision:
+            md.append("")
+            md.append("### Rebalancing Decision")
+            rd = self.rebalance_decision
+            md.append(f"- **Should Rebalance**: {'✅ Yes' if rd.get('should_rebalance') else '❌ No'}")
+            md.append(f"- **Action**: {rd.get('action', 'HOLD')}")
+            md.append(f"- **Reason**: {rd.get('reason', 'N/A')}")
+            md.append(f"- **Turnover**: {rd.get('turnover', 0):.1%}")
+            md.append(f"- **Estimated Cost**: {rd.get('estimated_cost', 0):.2%}")
+
+            # 거래 계획 (우선순위 HIGH만 표시)
+            trade_plan = rd.get('trade_plan', [])
+            high_priority = [t for t in trade_plan if t.get('priority') == 'HIGH']
+            if high_priority:
+                md.append("#### Priority Trades")
+                for trade in high_priority[:5]:
+                    action = trade.get('action', 'HOLD')
+                    ticker = trade.get('ticker', 'Unknown')
+                    delta = trade.get('delta_weight', 0)
+                    cost = trade.get('cost_breakdown', {}).get('total', 0)
+                    md.append(f"- **{action}** {ticker}: {delta:+.1%} (Cost: {cost:.2%})")
+
+            # 경고 메시지
+            warnings = rd.get('warnings', [])
+            if warnings:
+                md.append("#### Warnings")
+                for w in warnings:
+                    md.append(f"- ⚠️ {w}")
+
         if self.theme_etf_analysis:
             md.append(f"### Theme ETF: {self.theme_etf_analysis.get('theme')}")
             

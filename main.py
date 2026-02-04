@@ -126,6 +126,9 @@ from lib.bubble_framework import FiveStageBubbleFramework
 from lib.gap_analyzer import MarketModelGapAnalyzer
 from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 
+# Quick Mode AI Agents (2026-02-04)
+from lib.quick_agents import QuickOrchestrator
+
 # Portfolio Theory Modules (2026-02-04)
 from lib.backtest import BacktestEngine, BacktestConfig
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
@@ -737,6 +740,88 @@ def _run_ai_validation_phase(result: EIMASResult, full_mode: bool):
         print(f"⚠️ AI Validation Error: {e}")
 
 
+def _run_quick_validation(
+    result: EIMASResult,
+    market_data: Dict,
+    output_file: str,
+    market_focus: str = None
+):
+    """[Phase 8.5] Quick Mode AI Validation (KOSPI/SPX 분리)"""
+    if not market_focus:
+        return
+
+    print("\n" + "=" * 70)
+    print(f"PHASE 8.5: QUICK MODE AI VALIDATION ({market_focus} Focus)")
+    print("=" * 70)
+
+    try:
+        orchestrator = QuickOrchestrator()
+
+        # Run validation
+        quick_result = orchestrator.run_quick_validation(
+            full_json_path=output_file,
+            market_data=market_data
+        )
+
+        # Store result
+        result.quick_validation = quick_result
+
+        # Extract key findings
+        final_val = quick_result.get('final_validation', {})
+        final_rec = final_val.get('final_recommendation', 'N/A')
+        confidence = final_val.get('confidence', 0)
+        validation_result = final_val.get('validation_result', 'N/A')
+
+        # Print summary
+        print(f"\n📊 Quick Validation Summary ({market_focus}):")
+        print(f"   • Validation Result: {validation_result}")
+        print(f"   • Final Recommendation: {final_rec}")
+        print(f"   • Confidence: {confidence*100:.0f}%")
+
+        # Agent consensus
+        agent_consensus = final_val.get('agent_consensus', {})
+        agreement_level = agent_consensus.get('agreement_level', 'N/A')
+        print(f"   • Agent Agreement: {agreement_level}")
+
+        # Full vs Quick comparison
+        comparison = final_val.get('full_vs_quick_comparison', {})
+        alignment = comparison.get('alignment', 'N/A')
+        print(f"   • Full vs Quick: {alignment}")
+
+        # Market sentiment (KOSPI or SPX focus)
+        market_sentiment = quick_result.get('market_sentiment', {})
+        if market_focus == 'KOSPI':
+            kospi_sent = market_sentiment.get('kospi_sentiment', {})
+            sent = kospi_sent.get('sentiment', 'N/A')
+            sent_conf = kospi_sent.get('confidence', 0)
+            print(f"   • KOSPI Sentiment: {sent} ({sent_conf*100:.0f}%)")
+        elif market_focus == 'SPX':
+            spx_sent = market_sentiment.get('spx_sentiment', {})
+            sent = spx_sent.get('sentiment', 'N/A')
+            sent_conf = spx_sent.get('confidence', 0)
+            print(f"   • SPX Sentiment: {sent} ({sent_conf*100:.0f}%)")
+
+        # Risk warnings
+        risk_warnings = final_val.get('risk_warnings', [])
+        if risk_warnings:
+            print(f"\n⚠️ Risk Warnings ({len(risk_warnings)}):")
+            for i, warning in enumerate(risk_warnings[:3], 1):
+                print(f"   {i}. {warning}")
+
+        # Save Quick validation result
+        import json
+        from pathlib import Path
+        quick_output = Path(output_file).parent / f"quick_validation_{market_focus.lower()}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        with open(quick_output, 'w', encoding='utf-8') as f:
+            json.dump(quick_result, f, indent=2, ensure_ascii=False)
+        print(f"\n✅ Quick validation saved: {quick_output}")
+
+    except Exception as e:
+        print(f"⚠️ Quick Validation Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def _safe_call(fn, name: str):
     """안전한 함수 호출 (에러 시 경고만)"""
     try:
@@ -997,7 +1082,8 @@ async def run_integrated_pipeline(
     full_mode: bool = False,
     enable_backtest: bool = False,
     enable_attribution: bool = False,
-    enable_stress_test: bool = False
+    enable_stress_test: bool = False,
+    quick_validation_mode: str = None
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -1015,7 +1101,8 @@ async def run_integrated_pipeline(
         Phase 6: AI report generation (optional)
         Phase 7: Report validation (whitening, fact-check)
         Phase 8: Multi-LLM cross-validation (full mode only)
-    
+        Phase 8.5: Quick mode AI validation (KOSPI/SPX 분리, --quick1/--quick2)
+
     Args:
         enable_realtime (bool): Enable real-time VPIN/OFI streaming.
                                실시간 스트리밍 활성화. Default: False.
@@ -1027,6 +1114,8 @@ async def run_integrated_pipeline(
                                AI 리포트 생성 여부. Default: False.
         full_mode (bool): Include Multi-LLM validation (incurs API costs).
                          Multi-LLM 검증 포함 (API 비용 발생). Default: False.
+        quick_validation_mode (str): Quick AI validation market focus ('KOSPI' or 'SPX').
+                                    Quick 모드 검증 시장 (KOSPI/SPX). Default: None.
     
     Returns:
         EIMASResult: Comprehensive analysis result object containing:
@@ -1082,6 +1171,9 @@ async def run_integrated_pipeline(
     await _validate_report(result, report_content, generate_report)
     _run_ai_validation_phase(result, full_mode)
 
+    # Phase 8.5: Quick Mode AI Validation (KOSPI/SPX 분리)
+    _run_quick_validation(result, market_data, output_file, quick_validation_mode)
+
     # Summary
     elapsed = (datetime.now() - start_time).total_seconds()
     print("\n" + "=" * 70)
@@ -1105,6 +1197,10 @@ def main():
     parser.add_argument('--quick', '-q', action='store_true', help='Alias for --short')
     parser.add_argument('--full', '-f', action='store_true', help='All features (AI Validation, costs API)')
 
+    # Quick Mode AI Validation (2026-02-04)
+    parser.add_argument('--quick1', action='store_true', help='Quick AI validation (KOSPI focus)')
+    parser.add_argument('--quick2', action='store_true', help='Quick AI validation (SPX focus)')
+
     # Portfolio Theory Modules (2026-02-04)
     parser.add_argument('--backtest', action='store_true', help='Run backtest engine (5-year historical)')
     parser.add_argument('--attribution', action='store_true', help='Performance attribution (Brinson)')
@@ -1114,6 +1210,13 @@ def main():
 
     is_short = args.short or args.quick
 
+    # Determine market focus
+    market_focus = None
+    if args.quick1:
+        market_focus = 'KOSPI'
+    elif args.quick2:
+        market_focus = 'SPX'
+
     asyncio.run(run_integrated_pipeline(
         enable_realtime=args.realtime,
         realtime_duration=args.duration,
@@ -1122,7 +1225,8 @@ def main():
         full_mode=args.full,
         enable_backtest=args.backtest,
         enable_attribution=args.attribution,
-        enable_stress_test=args.stress_test
+        enable_stress_test=args.stress_test,
+        quick_validation_mode=market_focus
     ))
 
 
