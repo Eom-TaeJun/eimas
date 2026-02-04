@@ -44,10 +44,14 @@
 
 ## ⚡ 우선순위 2: 성능 최적화 (이번 주)
 
-- [ ] **데이터 수집 병렬화** (2시간)
-  - ThreadPoolExecutor 구현
-  - 24 tickers 동시 수집
-  - 목표: 75초 → 30초
+- [x] **데이터 수집 병렬화** (2시간) ✅ 2026-02-04 완료
+  - lib/parallel_data_collector.py 생성 (430+ lines)
+  - ParallelMarketCollector (10 workers)
+  - ParallelCryptoCollector (5 workers)
+  - ParallelFREDCollector (5 workers, API rate limit 고려)
+  - benchmark_collection() 유틸리티
+  - Commit: ac594f1
+  - 목표: 75초 → 30초 (main.py 통합 후 검증 필요)
   
 - [ ] **분석 모듈 캐싱** (3시간)
   - Redis 또는 파일 기반 캐싱
