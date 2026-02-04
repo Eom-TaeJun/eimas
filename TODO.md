@@ -2,28 +2,36 @@
 
 ## 🔥 우선순위 1: 백테스트 시스템 (이번 주)
 
-- [ ] **lib/backtest_engine.py 분석** (30분)
-  - 현재 구현 상태 확인
-  - 필요한 기능 파악
-  
-- [ ] **lib/backtest/ 패키지 설계** (2시간)
-  - enums.py: BacktestMode, MetricType
-  - schemas.py: BacktestResult, PerformanceMetrics
-  - engine.py: BacktestEngine
-  - simulator.py: PortfolioSimulator
-  - metrics.py: calculate_sharpe, max_drawdown, win_rate
-  - report.py: BacktestReportGenerator
-  
-- [ ] **12개월 과거 데이터 준비** (1시간)
+- [x] **lib/backtest_engine.py 분석** (30분) ✅ 2026-02-04 완료
+  - 530줄 단일 파일 확인
+  - 종합 백테스트 엔진 (Sharpe, Sortino, Calmar, Omega 등 15개 지표)
+
+- [x] **lib/backtest/ 패키지 설계** (2시간) ✅ 2026-02-04 완료
+  - enums.py: RebalanceFrequency, BacktestMode (39 lines)
+  - schemas.py: BacktestConfig, BacktestMetrics, BacktestResult (191 lines)
+  - engine.py: BacktestEngine 클래스 (272 lines)
+  - metrics.py: 15개 성과 지표 계산 함수 (329 lines)
+  - utils.py: compare_strategies, generate_report (223 lines)
+  - __init__.py: Safe exports (100 lines)
+  - 총 1,154 lines (530 lines → 모듈화)
+  - Commit: 628a13f
+
+- [x] **BACKTEST_GUIDE.md 작성** (30분) ✅ 2026-02-04 완료
+  - 사용법, 예제 코드, 경제학적 방법론 설명
+
+- [x] **scripts/prepare_historical_data.py 생성** (30분) ✅ 2026-02-04 완료
+  - FRED + 24 market tickers + 5 crypto/RWA 수집
+  - Parquet/CSV 저장 지원
+
+- [ ] **12개월 과거 데이터 수집 실행** (1시간)
   - 2025-02-04 ~ 2026-02-04
-  - FRED, 시장, 크립토 데이터
-  - 일별 스냅샷 저장
-  
+  - data/backtest_historical.parquet 생성
+  - 주의: FRED API 호출 제한 고려
+
 - [ ] **백테스트 실행 및 검증** (2시간)
-  - FULL mode 과거 데이터로 실행
-  - 성과 지표 계산
-  - 목표: Sharpe > 1.0, Win Rate > 55%
-  
+  - Equal Weight, Risk Parity, HRP 전략 테스트
+  - 목표: Sharpe > 1.0, Win Rate > 55%, Max DD < 20%
+
 - [ ] **백테스트 보고서 생성** (1시간)
   - 레짐별 성과 비교
   - 월별 수익률
