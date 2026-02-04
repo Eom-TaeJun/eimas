@@ -323,14 +323,15 @@ def _calculate_strategic_allocation(result: EIMASResult, market_data: Dict, quic
                 market_stats['stock_return'] = spy_returns.mean() * 252
                 market_stats['stock_vol'] = spy_returns.std() * np.sqrt(252)
 
-        # 4. Strategic Allocation
+        # 4. Strategic Allocation (Evidence-Based in Full mode)
         include_korea = 'korea_data' in market_data and market_data['korea_data']
 
         allocation_results = calculate_strategic_allocation(
             fair_value_results=fair_value_results,
             market_stats=market_stats,
             risk_tolerance='moderate',
-            include_korea=include_korea
+            include_korea=include_korea,
+            use_evidence_based=not quick_mode  # Full 모드에서만 증거 기반
         )
 
         result.strategic_allocation = allocation_results

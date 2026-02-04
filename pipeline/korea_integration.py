@@ -19,6 +19,7 @@ import logging
 from lib.korea_data_collector import KoreaDataCollector, ParallelKoreaCollector
 from lib.fair_value_calculator import FairValueCalculator, compare_fair_values
 from lib.strategic_allocation import StrategicAssetAllocator, GlobalAssetAllocator
+from lib.evidence_based_allocator import EvidenceBasedAllocator
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +197,8 @@ def calculate_strategic_allocation(
     fair_value_results: Dict,
     market_stats: Dict,
     risk_tolerance: str = 'moderate',
-    include_korea: bool = True
+    include_korea: bool = True,
+    use_evidence_based: bool = True
 ) -> Dict:
     """
     전략적 자산배분 계산
@@ -206,37 +208,85 @@ def calculate_strategic_allocation(
         market_stats: 시장 통계 (return, vol, correlation)
         risk_tolerance: 'conservative', 'moderate', 'growth', 'aggressive'
         include_korea: 한국 자산 포함 여부
+        use_evidence_based: 증거 기반 계산 사용 (하드코딩 제거)
 
     Returns:
         {
             'stock_bond_allocation': {...},
             'global_allocation': {...} (if include_korea),
-            'tactical_signals': {...}
+            'tactical_signals': {...},
+            'calculation_evidence': [...] (if use_evidence_based)
         }
     """
-    allocator = StrategicAssetAllocator()
     results = {}
 
     try:
-        # 1. Stock/Bond Allocation
-        us_fair_gap = 0
-        if 'spx' in fair_value_results:
-            if 'consensus' in fair_value_results['spx']:
-                us_fair_gap = fair_value_results['spx']['consensus']['valuation_gap_pct']
-            elif 'fed_model' in fair_value_results['spx']:
-                us_fair_gap = fair_value_results['spx']['fed_model']['valuation_gap_pct']
+        # NEW: Evidence-Based Allocation (Full 모드 JSON 활용)
+        if use_evidence_based:
+            logger.info("Using Evidence-Based Allocator (Full JSON results)")
 
-        stock_bond_result = allocator.calculate_stock_bond_allocation(
-            expected_stock_return=market_stats.get('stock_return', 0.08),
-            expected_bond_return=market_stats.get('bond_return', 0.04),
-            stock_vol=market_stats.get('stock_vol', 0.16),
-            bond_vol=market_stats.get('bond_vol', 0.06),
-            correlation=market_stats.get('correlation', 0.1),
-            risk_tolerance=risk_tolerance,
-            fair_value_adjustment=us_fair_gap
-        )
+            evidence_allocator = EvidenceBasedAllocator()
+            full_analysis = evidence_allocator.load_latest_full_analysis()
 
-        results['stock_bond_allocation'] = stock_bond_result
+            if full_analysis:
+                # Extract market data from Full JSON
+                market_data = evidence_allocator.extract_market_data(full_analysis)
+
+                # Calculate allocation with evidence
+                allocation_result = evidence_allocator.calculate_risk_adjusted_allocation(
+                    market_data,
+                    risk_tolerance=risk_tolerance
+                )
+
+                # Format as stock_bond_allocation
+                stock_bond_result = {
+                    'risk_tolerance': risk_tolerance,
+                    'tactical_allocation': {
+                        'stock': allocation_result['stock'],
+                        'bond': allocation_result['bond']
+                    },
+                    'portfolio_metrics': {
+                        'expected_return': allocation_result['expected_return'],
+                        'volatility': allocation_result['expected_volatility'],
+                        'sharpe_ratio': allocation_result['sharpe_ratio']
+                    },
+                    'evidence_based': True,
+                    'calculation_details': allocation_result['calculation_details'],
+                    'market_data_used': allocation_result['market_data_used']
+                }
+
+                results['stock_bond_allocation'] = stock_bond_result
+                results['calculation_evidence'] = allocation_result['calculation_details']
+
+                logger.info(f"Evidence-based allocation: Stock {allocation_result['stock']*100:.1f}%, Bond {allocation_result['bond']*100:.1f}%")
+
+            else:
+                logger.warning("No Full JSON found, falling back to traditional method")
+                use_evidence_based = False
+
+        # FALLBACK: Traditional method (if no Full JSON or disabled)
+        if not use_evidence_based:
+            allocator = StrategicAssetAllocator()
+
+            # 1. Stock/Bond Allocation
+            us_fair_gap = 0
+            if 'spx' in fair_value_results:
+                if 'consensus' in fair_value_results['spx']:
+                    us_fair_gap = fair_value_results['spx']['consensus']['valuation_gap_pct']
+                elif 'fed_model' in fair_value_results['spx']:
+                    us_fair_gap = fair_value_results['spx']['fed_model']['valuation_gap_pct']
+
+            stock_bond_result = allocator.calculate_stock_bond_allocation(
+                expected_stock_return=market_stats.get('stock_return', 0.08),
+                expected_bond_return=market_stats.get('bond_return', 0.04),
+                stock_vol=market_stats.get('stock_vol', 0.16),
+                bond_vol=market_stats.get('bond_vol', 0.06),
+                correlation=market_stats.get('correlation', 0.1),
+                risk_tolerance=risk_tolerance,
+                fair_value_adjustment=us_fair_gap
+            )
+
+            results['stock_bond_allocation'] = stock_bond_result
 
         # 2. Global Allocation (US + Korea)
         if include_korea and 'kospi' in fair_value_results:
@@ -298,12 +348,22 @@ def generate_allocation_summary(allocation_results: Dict) -> str:
     lines.append("STRATEGIC ASSET ALLOCATION SUMMARY")
     lines.append("="*80)
 
+    # Evidence-Based Calculation Details (if available)
+    if 'calculation_evidence' in allocation_results:
+        lines.append("\n[Evidence-Based Calculation]")
+        lines.append("Using Full mode JSON results with quantitative formulas")
+        lines.append("")
+
     # Stock/Bond Allocation
     if 'stock_bond_allocation' in allocation_results:
         sb = allocation_results['stock_bond_allocation']
         tactical = sb['tactical_allocation']
 
-        lines.append("\n[1] Stock/Bond Allocation:")
+        # Check if evidence-based
+        is_evidence = sb.get('evidence_based', False)
+        method_label = "Evidence-Based" if is_evidence else "Traditional"
+
+        lines.append(f"\n[1] Stock/Bond Allocation ({method_label}):")
         lines.append(f"  Risk Tolerance: {sb['risk_tolerance']}")
         lines.append(f"  Stock: {tactical['stock']*100:.1f}%")
         lines.append(f"  Bond:  {tactical['bond']*100:.1f}%")
@@ -313,6 +373,17 @@ def generate_allocation_summary(allocation_results: Dict) -> str:
         lines.append(f"    Expected Return: {metrics['expected_return']*100:.2f}%")
         lines.append(f"    Volatility:      {metrics['volatility']*100:.2f}%")
         lines.append(f"    Sharpe Ratio:    {metrics['sharpe_ratio']:.2f}")
+
+        # Show market data used (if evidence-based)
+        if is_evidence and 'market_data_used' in sb:
+            md = sb['market_data_used']
+            lines.append(f"\n  Data Sources Used:")
+            lines.append(f"    Regime: {md.get('regime', 'N/A')} ({md.get('regime_confidence', 0)*100:.0f}% confidence)")
+            lines.append(f"    Risk Score: {md.get('risk_score', 0):.1f}/100")
+            if 'volatility' in md:
+                lines.append(f"    Volatility: {md['volatility']*100:.2f}% (GARCH model)")
+            if 'bubble_status' in md:
+                lines.append(f"    Bubble Risk: {md['bubble_status']}")
 
     # Global Allocation
     if 'global_allocation' in allocation_results:
