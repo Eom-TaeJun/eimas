@@ -162,131 +162,365 @@ npm run dev
 
 ---
 
-## Quick Reference
+---
+
+## EIMAS 실행 모드 개요 (v2.2.4)
+
+### 실행 모드 비교표
+
+| 모드 | 명령어 | 실행 시간 | API 비용 | 용도 |
+|------|--------|----------|---------|------|
+| **기본** | `python main.py` | ~3-5분 | ~$0.05 | 일반 분석 + AI 리포트 |
+| **Short** | `python main.py --short` | ~30초 | $0 | 빠른 데이터 확인 |
+| **Full** | `python main.py --full` | ~8-10분 | ~$0.15 | Multi-LLM 검증 포함 |
+| **Quick1** | `python main.py --quick1` | ~4분 | ~$0.08 | KOSPI 전용 AI 검증 |
+| **Quick2** | `python main.py --quick2` | ~4분 | ~$0.08 | SPX 전용 AI 검증 |
+
+### 모드별 Phase 실행 여부
+
+```
+                           기본   --short  --full  --quick1  --quick2
+┌─────────────────────────────────────────────────────────────────────┐
+│ Phase 1: Data Collection    ✅      ✅       ✅       ✅        ✅   │
+│ Phase 2: Basic Analysis     ✅      ✅       ✅       ✅        ✅   │
+│ Phase 2: Enhanced Analysis  ✅      ❌       ✅       ✅        ✅   │
+│ Phase 2: Sentiment/Bubble   ✅      ❌       ✅       ✅        ✅   │
+│ Phase 2: Institutional      ✅      ❌       ✅       ✅        ✅   │
+│ Phase 3: AI Debate          ✅      ✅       ✅       ✅        ✅   │
+│ Phase 4: Realtime           ❌      ❌       ❌       ❌        ❌   │
+│ Phase 4.5: Operational      ✅      ✅       ✅       ✅        ✅   │
+│ Phase 5: Storage            ✅      ✅       ✅       ✅        ✅   │
+│ Phase 6: Portfolio Modules  ❌      ❌       ❌       ❌        ❌   │
+│ Phase 7: AI Report          ✅      ❌       ✅       ✅        ✅   │
+│ Phase 8: Multi-LLM Valid.   ❌      ❌       ✅       ❌        ❌   │
+│ Phase 8.5: Quick Valid.     ❌      ❌       ❌       ✅(KOSPI) ✅(SPX)│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### CLI 옵션 전체 목록
 
 ```bash
-# 기본 실행 명령어 (v2.2.3 Quick Mode AI Edition)
-python main.py                    # 전체 파이프라인 (~5분, AI 리포트 제외)
-python main.py --quick            # 빠른 분석 (~30초, Phase 2.3-2.10 스킵)
-python main.py --report           # AI 리포트 포함
+# ═══════════════════════════════════════════════════════════════════
+# 기본 실행 (v2.2.4)
+# ═══════════════════════════════════════════════════════════════════
+
+python main.py                    # 기본 모드 (~3-5분)
+python main.py --short            # Short 모드 (버블/DTW 제외, ~30초)
+python main.py --quick            # --short와 동일 (alias)
+python main.py --full             # Full 모드 (Multi-LLM 검증 포함, ~8분)
+
+# ═══════════════════════════════════════════════════════════════════
+# Quick Mode AI Validation (2026-02-04)
+# ═══════════════════════════════════════════════════════════════════
+
+python main.py --quick1           # KOSPI 전용 AI 검증
+python main.py --quick2           # SPX 전용 AI 검증
+
+# Quick Mode 특징:
+# - 5개 전문 AI 에이전트가 Full 모드 결과 검증
+# - KOSPI/SPX 시장 정서 분리 분석
+# - 포트폴리오 이론 적합성 검증 (Markowitz, Risk Parity)
+# - 대체자산(크립토/금/RWA) 판단
+# - 비용: ~$0.03/run (Claude + Perplexity)
+
+# ═══════════════════════════════════════════════════════════════════
+# 추가 옵션
+# ═══════════════════════════════════════════════════════════════════
+
 python main.py --realtime         # 실시간 스트리밍 포함
-python main.py --realtime --duration 60  # 60초 스트리밍
+python main.py --realtime -d 60   # 60초 스트리밍
 
-# Quick Mode AI Validation (2026-02-04 신규)
-python main.py --quick1           # KOSPI 전용 AI 검증 (~3.5분)
-python main.py --quick2           # SPX 전용 AI 검증 (~3.5분)
-# → 5개 AI 에이전트로 Full 모드 결과 검증
-# → KOSPI/SPX 시장 정서 분리 분석
-# → 비용: ~$0.03/run (Claude + Perplexity API)
-
-# CLI 자동화 옵션
-python main.py --mode full        # 전체 분석 (기본값)
-python main.py --mode quick       # 빠른 분석 (--quick과 동일)
-python main.py --mode report      # AI 리포트 포함
-
-python main.py --cron             # 크론/서버용 (최소 출력)
-python main.py --output /path     # 출력 디렉토리 지정
-python main.py --version          # v2.2.3 (Quick Mode AI Edition)
-
-# Portfolio Theory Modules (2026-02-04 추가)
 python main.py --backtest         # 백테스팅 (5년 히스토리)
 python main.py --attribution      # 성과 귀속 분석 (Brinson)
 python main.py --stress-test      # 스트레스 테스트
 
-# Final Report Agent (2026-01-29 추가)
-python -m lib.final_report_agent                    # 기본 실행
-python -m lib.final_report_agent --user "엄태준"    # 사용자 이름 지정
-python -m lib.final_report_agent --output ./reports # 출력 경로 지정
+# ═══════════════════════════════════════════════════════════════════
+# 조합 예시
+# ═══════════════════════════════════════════════════════════════════
+
+python main.py --full --realtime          # 전체 + 실시간
+python main.py --quick2 --backtest        # SPX 검증 + 백테스트
+python main.py --full --stress-test       # 전체 + 스트레스테스트
 ```
 
-### 검증 시 주의사항 (Claude Code용)
-
-**IMPORTANT**: 파이프라인 변경 후 검증 시 반드시 `full` 모드로 테스트해야 함.
-
-```bash
-# 검증 명령어 (10분 타임아웃 필수)
-timeout 600 python main.py 2>&1
-
-# --quick 모드로는 Phase 2.3-2.10 스킵되어 전체 검증 불가
-# 예상 실행 시간: ~5분 (AI 리포트 없이), ~8분 (AI 리포트 포함)
-```
-
-**절대 금지사항:**
-- `--quick` 모드만으로 검증 완료 선언 금지
-- 2분 미만 타임아웃으로 전체 파이프라인 테스트 금지
+---
 
 ## main.py 파이프라인 구조
 
+### 전체 흐름도
+
 ```
-Phase 1: DATA COLLECTION
-|-- [1.1] FREDCollector          -> RRP, TGA, Net Liquidity, Fed Funds
-|-- [1.2] DataManager            -> 시장 데이터 (SPY, QQQ, TLT, GLD 등 24개)
-|-- [1.3] Crypto & RWA data      -> BTC-USD, ETH-USD + ONDO-USD, PAXG-USD, COIN
-|-- [1.4] MarketIndicatorsCollector -> VIX, Fear & Greed
-+-- 출력: fred_summary, market_data (24 tickers + 2 crypto + 3 RWA)
-
-Phase 2: ANALYSIS
-|-- [2.1] RegimeDetector           -> 시장 레짐 (BULL/BEAR/NEUTRAL)
-|-- [2.1.1] GMMRegimeAnalyzer      -> GMM 3-state + Shannon Entropy
-|-- [2.2] QuantitativeEventDetector -> 이벤트 탐지
-|-- [2.3] LiquidityMarketAnalyzer  -> Granger Causality
-|-- [2.4] CriticalPathAggregator   -> 리스크 스코어 (Base)
-|-- [2.4.1] DailyMicrostructureAnalyzer -> 시장 미세구조 품질 (NEW v2.1.1)
-|-- [2.4.2] BubbleDetector         -> 버블 리스크 오버레이 (NEW v2.1.1)
-|-- [2.5] ETFFlowAnalyzer          -> 섹터 로테이션
-|-- [2.6] GeniusActMacroStrategy   -> 스테이블코인-유동성 분석
-|-- [2.7] CustomETFBuilder         -> 테마 ETF 분석
-|-- [2.8] ShockPropagationGraph    -> 충격 전파 그래프
-|-- [2.9] GraphClusteredPortfolio  -> GC-HRP 포트폴리오 최적화
-|-- [2.10] IntegratedStrategy      -> 통합 전략 (Portfolio + Causality)
-+-- 출력: regime, events, risk_score (adjusted), market_quality, bubble_risk
-
-Phase 3: MULTI-AGENT DEBATE
-|-- [3.1] MetaOrchestrator (FULL mode, 365일)
-|-- [3.2] MetaOrchestrator (REFERENCE mode, 90일)
-|-- [3.3] DualModeAnalyzer       -> 모드 비교
-+-- 출력: final_recommendation, confidence
-
-Phase 4: REAL-TIME (--realtime 옵션)
-|-- [4.1] BinanceStreamer        -> WebSocket
-|-- MicrostructureAnalyzer       -> OFI, VPIN
-+-- 출력: realtime_signals
-
-Phase 5: DATABASE STORAGE
-|-- [5.1] EventDatabase          -> data/events.db
-|-- [5.2] SignalDatabase         -> outputs/realtime_signals.db
-|-- [5.3] Results 저장           -> outputs/integrated_YYYYMMDD_HHMMSS.json
-                                 -> outputs/integrated_YYYYMMDD_HHMMSS.md
-
-Phase 6: AI REPORT (--report 옵션)
-|-- [6.1] AIReportGenerator      -> Claude/Perplexity 기반
-|-- [6.2] Report Save
-+-- 출력: outputs/ai_report_YYYYMMDD.json
-
-Phase 7: WHITENING & FACT CHECK (--report 옵션)
-|-- [7.1] WhiteningEngine        -> 결과 경제학적 해석
-|-- [7.2] AutonomousFactChecker  -> AI 출력 팩트체킹
-+-- 출력: whitening_summary, fact_check_grade
-
-Phase 8: AI VALIDATION (--full 옵션)
-|-- [8.1] Multi-LLM Validation   -> Cross-LLM 검증
-+-- 출력: validation_loop_result
-
-Phase 8.5: QUICK MODE AI VALIDATION (--quick1/--quick2 옵션, NEW v2.2.3)
-|-- [8.5] QuickOrchestrator       -> 5개 전문 에이전트 조율
-|   |-- PortfolioValidator        -> 포트폴리오 이론 검증 (Claude)
-|   |-- AllocationReasoner        -> 자산배분 논리 분석 (Perplexity)
-|   |-- MarketSentimentAgent      -> 시장 정서 (KOSPI/SPX 분리, Claude)
-|   |-- AlternativeAssetAgent     -> 대체자산 판단 (Perplexity)
-|   +-- FinalValidator            -> 최종 종합 검증 (Claude)
-+-- 출력: quick_validation (KOSPI focus 또는 SPX focus)
-    -> outputs/quick_validation_{kospi|spx}_YYYYMMDD_HHMMSS.json
-
-실행 시간:
-- --quick1: ~3.5분 (KOSPI 전용 검증)
-- --quick2: ~3.5분 (SPX 전용 검증)
-- 비용: ~$0.03/run (Claude $0.02 + Perplexity $0.01)
+┌─────────────────────────────────────────────────────────────────────┐
+│                         main.py Entry Point                        │
+│                    run_integrated_pipeline()                       │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 1: DATA COLLECTION  [_collect_data()]                       │
+│  ───────────────────────────────────────────────────────────────── │
+│  [1.1] FREDCollector        → RRP, TGA, Net Liquidity, Fed Funds   │
+│  [1.2] DataManager          → 시장 데이터 (SPY, QQQ, TLT, GLD 등)   │
+│  [1.3] Crypto & RWA         → BTC, ETH + ONDO, PAXG, COIN          │
+│  [1.4] MarketIndicators     → VIX, Fear & Greed, Put/Call Ratio    │
+│  [1.5] Korea Assets         → KOSPI, KOSDAQ, 삼성전자, SK하이닉스   │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: fred_summary, market_data, crypto_data, extended_data       │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 2: ANALYSIS (Basic)  [_analyze_basic()]                     │
+│  ───────────────────────────────────────────────────────────────── │
+│  [2.1] RegimeDetector       → Bull/Bear/Neutral 시장 레짐           │
+│  [2.2] EventDetector        → 이벤트 탐지 (금리 변동, 뉴스 등)        │
+│  [2.4] CriticalPath         → 리스크 스코어 (Base: 0-100)           │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: regime, events, risk_score (base)                           │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │  --short 모드?         │
+                    └───────────┬───────────┘
+                         YES    │    NO
+                          │     │     │
+┌─────────────────────────▼─────┼─────▼───────────────────────────────┐
+│  PHASE 2: Enhanced Analysis  [_analyze_enhanced()]  (--short 스킵) │
+│  ───────────────────────────────────────────────────────────────── │
+│  [2.14] HFT Microstructure  → Kyle's Lambda, Tick Rule, Vol Clock  │
+│  [2.15] GARCH Volatility    → 변동성 예측, Half-life, Persistence   │
+│  [2.16] Information Flow    → Abnormal Volume, CAPM Alpha/Beta     │
+│  [2.17] Proof-of-Index      → 합성 지표, Hash 검증, Mean Reversion  │
+│  [2.18] Systemic Similarity → 시스템 리스크 유사도                   │
+│  [2.20] DTW Similarity      → 시계열 패턴 매칭                       │
+│  [2.21] ARK Invest Holdings → BUY/SELL 컨센서스, 신규 포지션         │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: hft_microstructure, garch_volatility, proof_of_index        │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 2: Sentiment & Bubble  [_analyze_sentiment_bubble()]        │
+│  ───────────────────────────────────────────────────────────────── │
+│  [2.22] BubbleDetector      → Greenwood-Shleifer 버블 탐지          │
+│  [2.23] SentimentAnalyzer   → Fear&Greed, VIX Term, News Sentiment │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: bubble_risk, sentiment_analysis                             │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 2: Risk Adjustment  [_apply_extended_data_adjustment()]     │
+│  ───────────────────────────────────────────────────────────────── │
+│  Final Risk = Base Risk + Adjustment (±15)                         │
+│  - Put/Call Ratio: >1.0 (공포) → -5, <0.7 (탐욕) → +5              │
+│  - Crypto Fear & Greed: <30 → -3, >70 → +3                        │
+│  - High Yield Spread 확대 → +5                                     │
+│  - Risk Score Floor: 최소 1.0 (2026-02-05 수정)                    │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: risk_score (adjusted), extended_data_adjustment             │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 2: Institutional Frameworks  [_analyze_institutional()]     │
+│  ───────────────────────────────────────────────────────────────── │
+│  - 5-Stage Bubble Framework (JP Morgan WM)                         │
+│  - Market-Model Gap Analysis (Goldman Sachs)                       │
+│  - FOMC Dot Plot Analysis (JP Morgan AM)                           │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: bubble_framework, gap_analysis, fomc_analysis               │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 2: Adaptive Portfolio  [_run_adaptive_portfolio()]          │
+│  ───────────────────────────────────────────────────────────────── │
+│  [2.13] AdaptivePortfolioAgents → 레짐별 최적 포지션 추천           │
+│  - Aggressive Agent: AGGRESSIVE_ENTRY / HOLD / EXIT               │
+│  - Balanced Agent: AGGRESSIVE_ENTRY / ENTRY / HOLD                │
+│  - Conservative Agent: ENTRY / HOLD / DEFENSIVE                   │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: adaptive_portfolios                                         │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 3: AI DEBATE  [_run_debate()]                               │
+│  ───────────────────────────────────────────────────────────────── │
+│  [3.1] MetaOrchestrator (FULL mode, 365일 lookback)                │
+│  [3.2] MetaOrchestrator (REFERENCE mode, 90일 lookback)            │
+│  [3.3] DualModeAnalyzer → 두 모드 비교, 합의 도출                    │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: full_mode_position, reference_mode_position, modes_agree    │
+│        final_recommendation, confidence                            │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 4: REALTIME (--realtime 옵션)  [_run_realtime()]            │
+│  ───────────────────────────────────────────────────────────────── │
+│  [4.1] BinanceStreamer      → WebSocket 실시간 데이터              │
+│  [4.2] MicrostructureAnalyzer → OFI, VPIN 실시간 계산              │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: realtime_signals                                            │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 4.5: OPERATIONAL REPORT  [_generate_operational_report()]   │
+│  ───────────────────────────────────────────────────────────────── │
+│  - Decision Governance (REBALANCE / HOLD / FAIL)                   │
+│  - Constraint Satisfaction Check                                   │
+│  - Failsafe Trigger Detection                                      │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: operational_report, trade_plan                              │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 5: STORAGE  [_save_results()]                               │
+│  ───────────────────────────────────────────────────────────────── │
+│  [5.1] EventDatabase        → data/events.db                       │
+│  [5.2] TradingDatabase      → trading_actions.db                   │
+│  [5.3] JSON 저장             → outputs/eimas_YYYYMMDD_HHMMSS.json   │
+│  [5.4] Markdown 저장         → outputs/eimas_YYYYMMDD_HHMMSS.md     │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: output_file path                                            │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │  --backtest 등 옵션?   │
+                    └───────────┬───────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 6: PORTFOLIO MODULES (선택적)                               │
+│  ───────────────────────────────────────────────────────────────── │
+│  [--backtest]     BacktestEngine     → 5년 히스토리 백테스팅        │
+│  [--attribution]  PerformanceAttrib  → Brinson 성과 귀속 분석       │
+│  [--stress-test]  StressTest         → Historical + Hypothetical   │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: backtest_result, attribution_result, stress_test_result     │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+┌───────────────────────────────▼─────────────────────────────────────┐
+│  PHASE 7: AI REPORT (기본 모드, --short 제외)  [_generate_report()] │
+│  ───────────────────────────────────────────────────────────────── │
+│  [7.1] AIReportGenerator    → Claude/Perplexity/GPT 기반 리포트     │
+│  [7.2] WhiteningEngine      → 경제학적 해석                         │
+│  [7.3] FactChecker          → AI 출력 팩트체킹                      │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: ai_report, whitening_summary, fact_check_grade              │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │  --full 모드?          │
+                    └───────────┬───────────┘
+                         YES    │    NO
+                          │     │     │
+┌─────────────────────────▼─────┼─────────────────────────────────────┐
+│  PHASE 8: MULTI-LLM VALIDATION (--full 전용)                       │
+│  ───────────────────────────────────────────────────────────────── │
+│  [8.1] ValidationLoop       → Claude + GPT + Perplexity 교차 검증   │
+│  [8.2] ConsensusBuilder     → 다중 LLM 합의 도출                    │
+│  ───────────────────────────────────────────────────────────────── │
+│  출력: validation_loop_result                                      │
+│  비용: ~$0.10 (3개 LLM 호출)                                        │
+└───────────────────────────────┬─────────────────────────────────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │  --quick1/--quick2?    │
+                    └───────────┬───────────┘
+                         YES    │    NO
+                          │     │     │
+┌─────────────────────────▼─────┼─────────────────────────────────────┐
+│  PHASE 8.5: QUICK MODE AI VALIDATION (--quick1 또는 --quick2)      │
+│  ═══════════════════════════════════════════════════════════════   │
+│                                                                     │
+│  QuickOrchestrator (5개 전문 에이전트 조율)                          │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                                                             │   │
+│  │  ┌─────────────────┐    ┌─────────────────┐                │   │
+│  │  │ PortfolioValid. │    │ AllocationReas. │                │   │
+│  │  │    (Claude)     │    │  (Perplexity)   │                │   │
+│  │  │                 │    │                 │                │   │
+│  │  │ • Markowitz MVO │    │ • 학술 논문 검색 │                │   │
+│  │  │ • Risk Parity   │    │ • 최신 연구 인용 │                │   │
+│  │  │ • Diversifictn  │    │ • 대안적 관점   │                │   │
+│  │  └────────┬────────┘    └────────┬────────┘                │   │
+│  │           │                      │                         │   │
+│  │           └──────────┬───────────┘                         │   │
+│  │                      │                                     │   │
+│  │  ┌───────────────────▼───────────────────┐                 │   │
+│  │  │       MarketSentimentAgent            │                 │   │
+│  │  │           (Claude)                    │                 │   │
+│  │  │                                       │                 │   │
+│  │  │  --quick1: KOSPI 전용 분석            │                 │   │
+│  │  │  --quick2: SPX 전용 분석              │                 │   │
+│  │  │                                       │                 │   │
+│  │  │  • 시장 정서 (BULLISH/NEUTRAL/BEARISH)│                 │   │
+│  │  │  • 신뢰도 (0-100%)                    │                 │   │
+│  │  │  • 핵심 요인 분석                     │                 │   │
+│  │  └───────────────────┬───────────────────┘                 │   │
+│  │                      │                                     │   │
+│  │  ┌───────────────────▼───────────────────┐                 │   │
+│  │  │      AlternativeAssetAgent            │                 │   │
+│  │  │         (Perplexity)                  │                 │   │
+│  │  │                                       │                 │   │
+│  │  │  • Crypto (BTC, ETH) 분석             │                 │   │
+│  │  │  • Gold/Commodities 역할              │                 │   │
+│  │  │  • RWA Tokenization 트렌드            │                 │   │
+│  │  └───────────────────┬───────────────────┘                 │   │
+│  │                      │                                     │   │
+│  │  ┌───────────────────▼───────────────────┐                 │   │
+│  │  │         FinalValidator                │                 │   │
+│  │  │           (Claude)                    │                 │   │
+│  │  │                                       │                 │   │
+│  │  │  • 5개 에이전트 의견 종합              │                 │   │
+│  │  │  • Full vs Quick 비교                 │                 │   │
+│  │  │  • 최종 검증 결과                     │                 │   │
+│  │  │    (PASS / CAUTION / FAIL)            │                 │   │
+│  │  └───────────────────────────────────────┘                 │   │
+│  │                                                             │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  출력: quick_validation                                            │
+│  파일: outputs/quick_validation_{kospi|spx}_YYYYMMDD_HHMMSS.json   │
+│  비용: ~$0.03/run                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                       PIPELINE COMPLETE                            │
+│  ─────────────────────────────────────────────────────────────────│
+│  최종 출력:                                                         │
+│  • outputs/eimas_YYYYMMDD_HHMMSS.json (통합 결과)                   │
+│  • outputs/eimas_YYYYMMDD_HHMMSS.md (마크다운 리포트)                │
+│  • outputs/quick_validation_*.json (Quick 모드 시)                  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Phase별 핵심 함수 매핑
+
+| Phase | 함수 | 파일 | 설명 |
+|-------|------|------|------|
+| 1 | `_collect_data()` | main.py:151 | 데이터 수집 (FRED, Market, Crypto) |
+| 2 | `_analyze_basic()` | main.py:183 | 기본 분석 (Regime, Events, Risk) |
+| 2+ | `_analyze_enhanced()` | main.py:203 | 고급 분석 (HFT, GARCH, DTW) |
+| 2+ | `_analyze_sentiment_bubble()` | main.py:444 | 센티먼트/버블 분석 |
+| 2+ | `_apply_extended_data_adjustment()` | main.py:352 | 리스크 조정 |
+| 2+ | `_analyze_institutional_frameworks()` | main.py:462 | 기관 프레임워크 |
+| 2+ | `_run_adaptive_portfolio()` | main.py:529 | 적응형 포트폴리오 |
+| 3 | `_run_debate()` | main.py:502 | AI 에이전트 토론 |
+| 4 | `_run_realtime()` | main.py:538 | 실시간 스트리밍 |
+| 4.5 | `_generate_operational_report()` | main.py:547 | 운영 리포트 |
+| 5 | `_save_results()` | main.py:678 | 결과 저장 |
+| 6 | `_run_backtest()` | main.py:844 | 백테스팅 |
+| 7 | `_generate_report()` | main.py:687 | AI 리포트 생성 |
+| 7+ | `_validate_report()` | main.py:703 | 리포트 검증 |
+| 8 | `_run_ai_validation_phase()` | main.py:721 | Multi-LLM 검증 |
+| 8.5 | `_run_quick_validation()` | main.py:750 | Quick 모드 검증 |
+
+### 실행 시간 및 비용 예상
+
+| 모드 | 실행 시간 | API 비용 | 주요 비용 항목 |
+|------|----------|---------|---------------|
+| `--short` | ~30초 | $0 | 없음 (API 호출 없음) |
+| 기본 | ~3-5분 | ~$0.05 | AI Report (Claude/GPT) |
+| `--full` | ~8-10분 | ~$0.15 | Multi-LLM Validation |
+| `--quick1/2` | ~4분 | ~$0.08 | 5-Agent Validation |
+| `--backtest` | +2분 | $0 | 로컬 연산만 |
+| `--stress-test` | +1분 | $0 | 로컬 연산만 |
 
 ## 신규 모듈 통합 상태 (21개)
 
@@ -579,6 +813,34 @@ python -m cli.eimas analyze --report
 ```
 
 ## 최근 업데이트 (Changelog)
+
+### v2.2.4 (2026-02-05) - Risk Score Fix & Documentation
+
+**Risk Score Edge Case 수정** (2026-02-05)
+- **문제**: Risk Score = 0.0 edge case 발생 (Quick2 검증에서 감지)
+- **원인**: Base risk (~10) + 음수 adjustment (-10) = 0으로 clamping
+- **수정**: `main.py` line 431
+  ```python
+  # BEFORE
+  result.risk_score = max(0, min(100, result.risk_score + adjustment))
+
+  # AFTER
+  result.risk_score = max(1.0, min(100, result.risk_score + adjustment))
+  ```
+- **추가**: 낮은 리스크 경고 (risk_score < 5 시 자동 경고)
+- **결과**: 최소 risk score 1.0 보장, 경제학적으로 비현실적인 0 방지
+
+**문서 업데이트** (2026-02-05)
+- **CLAUDE.md**: EIMAS 전체 실행 흐름 재정리
+  - 모드별 Phase 실행 여부 비교표 추가
+  - CLI 옵션 전체 목록 정리
+  - 파이프라인 흐름도 ASCII art로 시각화
+  - Phase별 핵심 함수 매핑 테이블 추가
+  - 실행 시간 및 비용 예상 테이블 추가
+- **FULL_MODE_DIAGNOSIS_20260205.md**: 진단 리포트 생성
+- **FULL_MODE_FIX_SUMMARY.md**: 수정 요약 (한국어)
+
+---
 
 ### v2.2.3 (2026-02-04) - Quick Mode AI Validation
 
@@ -1333,7 +1595,7 @@ sudo systemctl enable eimas-api
 
 ---
 
-*마지막 업데이트: 2026-02-04 22:40 KST*
-*Version: v2.2.3 (Quick Mode AI Edition)*
+*마지막 업데이트: 2026-02-05 01:10 KST*
+*Version: v2.2.4 (Pipeline Flow Documentation)*
 *문의: EIMAS 프로젝트 담당자*
 
