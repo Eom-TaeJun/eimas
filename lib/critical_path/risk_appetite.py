@@ -1,111 +1,42 @@
 #!/usr/bin/env python3
 """
-Market Anomaly Detector - Risk Appetite & Uncertainty Index
-============================================================
-Bekaert et al. 연구 기반 리스크 선호도와 불확실성을 분리 측정하는 모듈
+Critical Path - Risk Appetite & Uncertainty Index
+==================================================
 
-경제학적 배경:
-- 불확실성(Uncertainty): 시장의 예측 불가능성, 변동성 채널로 작용
-- 리스크 애퍼타이트(Risk Appetite): 투자자들의 위험 감수 의지, 할인율 채널로 작용
-- VIX만으로는 두 개념이 섞여서 해석 오류 발생
-- 분산 리스크 프리미엄 = VIX² - 실현분산 (리스크 선호의 프록시)
+리스크 애퍼타이트와 불확실성 분리 측정 모듈
+
+Economic Foundation:
+    Bekaert et al. (2013) "The VRP and the Cross-Section of Expected Returns"
+
+    핵심 개념:
+    - VIX만으로는 "불확실성"과 "리스크 선호도" 구분 불가
+    - 불확실성(Uncertainty): 시장의 예측 불가능성 → 변동성 채널
+    - 리스크 애퍼타이트(Risk Appetite): 투자자 위험 감수 의지 → 할인율 채널
+    - 분산 리스크 프리미엄(VRP) = VIX² - 실현분산 → 리스크 선호도 프록시
+
+Classes:
+    - RiskAppetiteUncertaintyIndex: 두 지수 계산 및 시장 상태 판단
+
+TODO (Task #4):
+    - calculate_uncertainty_index()에 step-by-step 로깅 추가
+    - VIX 정규화 공식 및 입력값 로깅
+    - 실현 변동성 계산 과정 로깅
+    - Variance Risk Premium 도출 과정 로깅
+    - 최종 리스크 점수 계산 (가중치 포함) 로깅
 """
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict, field
+from typing import Dict
 from datetime import datetime
-import warnings
-import logging
 
-warnings.filterwarnings('ignore')
-logger = logging.getLogger(__name__)
-
-# Granger Causality 검정을 위한 statsmodels 임포트
-try:
-    from statsmodels.tsa.stattools import grangercausalitytests
-    STATSMODELS_AVAILABLE = True
-except ImportError:
-    STATSMODELS_AVAILABLE = False
-    print("Warning: statsmodels not available. Granger Causality tests will be skipped.")
-
-
-@dataclass
-class RiskAppetiteUncertaintyResult:
-    """
-    리스크 애퍼타이트와 불확실성 분석 결과
-    
-    경제학적 의미:
-    - risk_appetite_score: 0-100, 높을수록 위험 선호 (투자자들이 위험을 감수하려는 의지)
-    - uncertainty_score: 0-100, 높을수록 불확실 (시장의 예측 불가능성)
-    - market_state: 두 지수의 조합으로 시장 상태 해석
-    """
-    timestamp: str
-    risk_appetite_score: float      # 0-100, 높을수록 위험 선호
-    uncertainty_score: float        # 0-100, 높을수록 불확실
-    risk_appetite_level: str        # "LOW", "MEDIUM", "HIGH"
-    uncertainty_level: str          # "LOW", "MEDIUM", "HIGH"
-    market_state: str               # "NORMAL", "SPECULATIVE", "STAGNANT", "CRISIS", "MIXED"
-    components: Dict                 # 개별 지표 값들
-    interpretation: str           # 해석 텍스트
-    
-    def to_dict(self) -> Dict:
-        """딕셔너리로 변환 (JSON 직렬화용)"""
-        return asdict(self)
-
-
-def calculate_rolling_zscore(series: pd.Series, window: int = 20) -> pd.Series:
-    """
-    롤링 Z-score 계산
-    
-    경제학적 의미:
-    - Z-score = (현재값 - N일 평균) / N일 표준편차
-    - |Z| > 2: 통계적으로 이상치 (95% 신뢰구간 벗어남)
-    - Mean Reversion: 극단적 Z-score는 평균 회귀 경향
-    """
-    mean = series.rolling(window=window, min_periods=1).mean()
-    std = series.rolling(window=window, min_periods=1).std()
-    z_score = (series - mean) / std.replace(0, np.nan)
-    return z_score.fillna(0)
-
-
-def calculate_realized_volatility(prices: pd.Series, window: int = 20) -> float:
-    """
-    실현 변동성 계산 (연율화)
-    
-    경제학적 의미:
-    - 실현 변동성 = 과거 N일간 수익률의 표준편차 × √252
-    - 높은 변동성 = 높은 불확실성 = 높은 리스크
-    """
-    returns = prices.pct_change().dropna()
-    if len(returns) < window:
-        window = len(returns)
-    if window == 0:
-        return 0.0
-    return returns.tail(window).std() * np.sqrt(252) * 100
-
-
-def normalize_to_score(value: float, min_val: float, max_val: float) -> float:
-    """
-    값을 0-100 스코어로 정규화
-
-    Args:
-        value: 정규화할 값
-        min_val: 최소값 (0점)
-        max_val: 최대값 (100점)
-
-    Returns:
-        0-100 사이의 정규화된 스코어
-
-    Notes:
-        - 범위가 없을 경우 (min = max) 중립값 50 반환 (median bias)
-        - Clamping: 범위 초과 시 0 또는 100으로 제한 (극단값 처리)
-    """
-    if max_val == min_val:
-        return 50.0  # 중립값: 데이터 없을 때 median bias 적용
-    normalized = (value - min_val) / (max_val - min_val) * 100
-    return max(0.0, min(100.0, normalized))  # Clamping to [0, 100]
+# Import schemas from same package
+from .schemas import (
+    RiskAppetiteUncertaintyResult,
+    calculate_rolling_zscore,
+    calculate_realized_volatility,
+    normalize_to_score
+)
 
 
 class RiskAppetiteUncertaintyIndex:
@@ -132,26 +63,25 @@ class RiskAppetiteUncertaintyIndex:
     def calculate_uncertainty_index(self, market_data: Dict[str, pd.DataFrame]) -> Dict:
         """
         불확실성 지수 계산
-
+        
         구성요소:
         1. VIX 레벨 (정규화)
            - VIX < 15: 낮음, 15-25: 보통, > 25: 높음
-
+        
         2. 실현변동성 (20일)
            - SPY 일간 수익률의 표준편차 * sqrt(252) * 100
-
+        
         3. VIX-실현변동성 괴리
            - 괴리 = VIX - 실현변동성
            - 괴리가 클수록 불확실성에 대한 프리미엄 높음
-
+        
         4. 섹터간 상관관계 분산
            - 11개 섹터 ETF 간 상관관계의 분산
            - 분산이 낮으면(상관관계 수렴) 불확실성 높음 (위기 시 동조화)
-
+        
         Returns:
             Dict with 'score' (0-100), 'level', 'components'
         """
-        logger.info("[Risk Calc] Starting Uncertainty Index calculation...")
         components = {}
         
         # 1. VIX 레벨
@@ -165,10 +95,8 @@ class RiskAppetiteUncertaintyIndex:
         
         components['vix_level'] = vix_value
         # VIX 정규화: 10-40 범위를 0-100으로 매핑
-        # 근거: 2000-2024 CBOE VIX 데이터 P5=11.2, P95=38.7 → 10-40 범위 설정
         vix_score = normalize_to_score(vix_value, min_val=10.0, max_val=40.0)
         components['vix_score'] = vix_score
-        logger.info(f"[Risk Calc] VIX: {vix_value:.2f} → Score: {vix_score:.1f}/100 (range: 10-40, CBOE P5-P95)")
         
         # 2. 실현변동성
         spy_data = market_data.get('SPY')
@@ -182,20 +110,16 @@ class RiskAppetiteUncertaintyIndex:
         
         components['realized_volatility'] = realized_vol
         # 실현변동성 정규화: 5-35 범위를 0-100으로 매핑
-        # 근거: SPY 20일 실현변동성 P5=6.2%, P95=33.4% (2000-2024)
         realized_vol_score = normalize_to_score(realized_vol, min_val=5.0, max_val=35.0)
         components['realized_vol_score'] = realized_vol_score
-        logger.info(f"[Risk Calc] Realized Vol (20d): {realized_vol:.2f}% → Score: {realized_vol_score:.1f}/100 (range: 5-35)")
         
         # 3. VIX-실현변동성 괴리
         vix_realized_gap = vix_value - realized_vol
         components['vix_realized_gap'] = vix_realized_gap
         # 괴리 정규화: -10 ~ +15 범위를 0-100으로 매핑
         # 괴리가 클수록 불확실성 프리미엄 높음
-        # 근거: Bekaert et al. (2013) VRP 정상 범위 -5~+10, 극단값 ±15
         gap_score = normalize_to_score(vix_realized_gap, min_val=-10.0, max_val=15.0)
         components['gap_score'] = gap_score
-        logger.info(f"[Risk Calc] VIX-Realized Gap: {vix_realized_gap:.2f} → Score: {gap_score:.1f}/100 (range: -10 to +15, Bekaert 2013)")
         
         # 4. 섹터간 상관관계 분산
         # 섹터 ETF 목록 (XLB, XLC, XLE, XLF, XLI, XLK, XLP, XLRE, XLU, XLV, XLY)
@@ -225,10 +149,8 @@ class RiskAppetiteUncertaintyIndex:
                 components['sector_corr_variance'] = corr_variance
                 # 분산이 낮으면(상관관계 수렴) 불확실성 높음
                 # 분산 0.01-0.1 범위를 100-0으로 역매핑 (낮은 분산 = 높은 불확실성)
-                # 근거: 위기 시 상관관계 수렴(낮은 분산) → 시장 불확실성 증가
                 corr_score = 100 - normalize_to_score(corr_variance, min_val=0.01, max_val=0.1)
                 components['corr_variance_score'] = corr_score
-                logger.info(f"[Risk Calc] Sector Corr Variance: {corr_variance:.4f} → Score: {corr_score:.1f}/100 (range: 0.01-0.1, inverted)")
             else:
                 components['sector_corr_variance'] = 0.05
                 components['corr_variance_score'] = 50.0
@@ -238,17 +160,13 @@ class RiskAppetiteUncertaintyIndex:
         
         # 종합 불확실성 스코어 (가중평균)
         # VIX: 30%, 실현변동성: 30%, 괴리: 25%, 상관관계: 15%
-        # 근거: VIX & RealVol = 직접 변동성 측정 (60%), Gap = 프리미엄 (25%), Corr = 시장 구조 (15%)
         uncertainty_score = (
             vix_score * 0.30 +
             realized_vol_score * 0.30 +
             gap_score * 0.25 +
             components['corr_variance_score'] * 0.15
         )
-        logger.info(f"[Risk Calc] Uncertainty Weights: VIX=30%, RealVol=30%, Gap=25%, CorrVar=15%")
-        logger.info(f"[Risk Calc] Uncertainty Breakdown: VIX={vix_score*0.30:.1f} + RealVol={realized_vol_score*0.30:.1f} + Gap={gap_score*0.25:.1f} + CorrVar={components['corr_variance_score']*0.15:.1f}")
-        logger.info(f"[Risk Calc] Final Uncertainty Score: {uncertainty_score:.1f}/100")
-
+        
         # 레벨 결정
         if uncertainty_score < 40:
             uncertainty_level = "LOW"
@@ -266,29 +184,28 @@ class RiskAppetiteUncertaintyIndex:
     def calculate_risk_appetite_index(self, market_data: Dict[str, pd.DataFrame]) -> Dict:
         """
         리스크 애퍼타이트 지수 계산
-
+        
         구성요소:
         1. HYG/LQD 비율 Z-score
            - HYG(하이일드) / LQD(투자등급) 비율
            - 비율 상승 = 신용 스프레드 축소 = 위험 선호 증가
-
+        
         2. XLY/XLP 비율 Z-score
            - XLY(경기민감소비재) / XLP(필수소비재) 비율
            - 비율 상승 = 경기민감 선호 = 위험 선호 증가
-
+        
         3. IWM/SPY 비율 Z-score
            - IWM(소형주) / SPY(대형주) 비율
            - 비율 상승 = 소형주(고위험) 선호 = 위험 선호 증가
-
+        
         4. 분산 리스크 프리미엄 (역변환)
            - VRP = VIX² - 실현분산
            - VRP 높음 = 옵션 프리미엄 높음 = 리스크 회피
            - VRP를 역으로 변환하여 리스크 선호로 해석
-
+        
         Returns:
             Dict with 'score' (0-100), 'level', 'components'
         """
-        logger.info("[Risk Calc] Starting Risk Appetite Index calculation...")
         components = {}
         
         # 1. HYG/LQD 비율 Z-score
@@ -388,28 +305,19 @@ class RiskAppetiteUncertaintyIndex:
             components['vrp_score'] = 50.0
         
         # Z-score들을 스코어로 변환 (-3 ~ +3 범위를 0-100으로)
-        # 근거: Z-score ±3 = 99.7% 신뢰구간 (정규분포 가정)
         hyg_score = normalize_to_score(components['hyg_lqd_zscore'], min_val=-3.0, max_val=3.0)
         xly_score = normalize_to_score(components['xly_xlp_zscore'], min_val=-3.0, max_val=3.0)
         iwm_score = normalize_to_score(components['iwm_spy_zscore'], min_val=-3.0, max_val=3.0)
-        logger.info(f"[Risk Calc] HYG/LQD Z-score: {components['hyg_lqd_zscore']:.2f} → Score: {hyg_score:.1f}/100")
-        logger.info(f"[Risk Calc] XLY/XLP Z-score: {components['xly_xlp_zscore']:.2f} → Score: {xly_score:.1f}/100")
-        logger.info(f"[Risk Calc] IWM/SPY Z-score: {components['iwm_spy_zscore']:.2f} → Score: {iwm_score:.1f}/100")
-        logger.info(f"[Risk Calc] VRP: {components.get('variance_risk_premium', 0):.4f} → Score: {components['vrp_score']:.1f}/100 (inverted)")
         
         # 종합 리스크 애퍼타이트 스코어 (가중평균)
         # HYG/LQD: 30%, XLY/XLP: 25%, IWM/SPY: 25%, VRP: 20%
-        # 근거: 신용 스프레드(HYG/LQD) = 가장 직접적 지표(30%), 섹터/규모 선호(50%), VRP = 옵션 시장 심리(20%)
         risk_appetite_score = (
             hyg_score * 0.30 +
             xly_score * 0.25 +
             iwm_score * 0.25 +
             components['vrp_score'] * 0.20
         )
-        logger.info(f"[Risk Calc] Risk Appetite Weights: HYG/LQD=30%, XLY/XLP=25%, IWM/SPY=25%, VRP=20%")
-        logger.info(f"[Risk Calc] Risk Appetite Breakdown: HYG={hyg_score*0.30:.1f} + XLY={xly_score*0.25:.1f} + IWM={iwm_score*0.25:.1f} + VRP={components['vrp_score']*0.20:.1f}")
-        logger.info(f"[Risk Calc] Final Risk Appetite Score: {risk_appetite_score:.1f}/100")
-
+        
         # 레벨 결정
         if risk_appetite_score < 40:
             risk_appetite_level = "LOW"
