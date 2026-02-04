@@ -86,6 +86,7 @@ import asyncio
 import argparse
 from datetime import datetime
 from typing import Dict, List, Any
+import numpy as np
 
 # ============================================================================
 # Pipeline Imports
@@ -131,27 +132,48 @@ from lib.performance_attribution import BrinsonAttribution, InformationRatio, Ac
 from lib.tactical_allocation import TacticalAssetAllocator
 from lib.stress_test import StressTestEngine, generate_stress_test_report
 
+# Korea & Strategic Allocation (2026-02-04)
+from pipeline.korea_integration import (
+    collect_korea_assets,
+    calculate_fair_values,
+    calculate_strategic_allocation,
+    generate_allocation_summary
+)
+
 
 # ============================================================================
 # Phase Helper Functions
 # ============================================================================
 
 async def _collect_data(result: EIMASResult, quick_mode: bool) -> Dict:
-    """[Phase 1] 데이터 수집: FRED, Market, Crypto, Extended"""
+    """[Phase 1] 데이터 수집: FRED, Market, Crypto, Extended, Korea"""
     print("\n[Phase 1] Collecting Data...")
-    
+
     result.fred_summary = collect_fred_data()
-    
+
     ext_collector = ExtendedDataCollector()
     result.extended_data = await ext_collector.collect_all()
-    
+
     market_data = collect_market_data(lookback_days=90 if quick_mode else 365)
     result.market_data_count = len(market_data)
-    
+
     collect_crypto_data()
     if not quick_mode:
         collect_market_indicators()
-    
+
+    # [NEW] 한국 자산 수집 (Quick/Full 모두 포함)
+    print("\n[Phase 1.4] Collecting Korea Assets...")
+    korea_result = collect_korea_assets(
+        lookback_days=90 if quick_mode else 365,
+        use_parallel=True
+    )
+    result.korea_data = korea_result['data']
+    result.korea_summary = korea_result['summary']
+    print(f"  ✓ Korea assets: {korea_result['summary'].get('total_assets', 0)} collected")
+
+    # Store korea data in market_data for downstream use
+    market_data['korea_data'] = korea_result['data']
+
     return market_data
 
 
@@ -186,7 +208,10 @@ def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
     _safe_call(lambda: setattr(result, 'proof_of_index', calculate_proof_of_index(market_data)), "PoI")
     _safe_call(lambda: setattr(result, 'ark_analysis', analyze_ark_trades()), "ARK")
     _safe_call(lambda: enhance_portfolio_with_systemic_similarity(market_data), "Systemic Sim")
-    
+
+    # NEW: Fair Value & Strategic Allocation (Quick/Full 모두 실행)
+    _safe_call(lambda: _calculate_strategic_allocation(result, market_data, quick_mode), "Strategic Allocation")
+
     # Full mode only
     if not quick_mode:
         _safe_call(lambda: setattr(result, 'dtw_similarity', analyze_dtw_similarity(market_data)), "DTW")
@@ -244,6 +269,80 @@ def _set_genius_act(result):
     ga_res = analyze_genius_act()
     result.genius_act_signals = ga_res.signals
     result.genius_act_regime = ga_res.regime
+
+
+def _calculate_strategic_allocation(result: EIMASResult, market_data: Dict, quick_mode: bool):
+    """
+    [Phase 2.13] Fair Value & 전략적 자산배분
+
+    Quick Mode: Fed Model + 주식/채권 비중
+    Full Mode: 종합 Fair Value + 글로벌 배분
+    """
+    print("\n[Phase 2.13] Calculating Fair Values & Strategic Allocation...")
+
+    try:
+        # 1. Bond yields from FRED summary
+        bond_yields = {
+            'us_10y': 0.042,  # Default
+            'korea_10y': 0.035  # Default
+        }
+
+        # Try to get actual yields from FRED
+        if hasattr(result, 'fred_summary') and result.fred_summary:
+            # US 10Y from FRED (DGS10)
+            if 'DGS10' in result.fred_summary:
+                bond_yields['us_10y'] = result.fred_summary['DGS10'] / 100
+
+        # 2. Fair Value calculation
+        mode = 'quick' if quick_mode else 'comprehensive'
+        fair_value_results = calculate_fair_values(
+            market_data=market_data,
+            bond_yields=bond_yields,
+            mode=mode
+        )
+
+        result.fair_value_analysis = fair_value_results
+        print(f"  ✓ Fair Value: SPX {'✓' if 'spx' in fair_value_results else '✗'}, KOSPI {'✓' if 'kospi' in fair_value_results else '✗'}")
+
+        # 3. Market stats (estimated from recent data)
+        market_stats = {
+            'stock_return': 0.08,
+            'bond_return': 0.04,
+            'stock_vol': 0.16,
+            'bond_vol': 0.06,
+            'correlation': 0.1,
+            'kospi_return': 0.06,
+            'kospi_vol': 0.20,
+            'us_korea_corr': 0.6
+        }
+
+        # Estimate from market_data if available
+        if 'SPY' in market_data and not market_data['SPY'].empty:
+            spy_returns = market_data['SPY']['Close'].pct_change().dropna()
+            if len(spy_returns) > 20:
+                market_stats['stock_return'] = spy_returns.mean() * 252
+                market_stats['stock_vol'] = spy_returns.std() * np.sqrt(252)
+
+        # 4. Strategic Allocation
+        include_korea = 'korea_data' in market_data and market_data['korea_data']
+
+        allocation_results = calculate_strategic_allocation(
+            fair_value_results=fair_value_results,
+            market_stats=market_stats,
+            risk_tolerance='moderate',
+            include_korea=include_korea
+        )
+
+        result.strategic_allocation = allocation_results
+
+        # Summary
+        summary = generate_allocation_summary(allocation_results)
+        print(summary)
+
+    except Exception as e:
+        print(f"  ✗ Strategic Allocation Error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def _apply_extended_data_adjustment(result: EIMASResult):
