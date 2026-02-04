@@ -147,7 +147,6 @@ Please provide evidence-based analysis with specific references to recent resear
             ],
             "temperature": 0.2,
             "max_tokens": 2000,
-            "search_domain_filter": ["scholar.google.com", "ssrn.com", "arxiv.org"],
             "return_citations": True
         }
 

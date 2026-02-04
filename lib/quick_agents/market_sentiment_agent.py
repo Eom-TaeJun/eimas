@@ -215,23 +215,30 @@ Output in JSON format with keys: kospi_sentiment, spx_sentiment, comparison, ove
         """시장 데이터 포맷팅"""
         lines = []
 
+        # Helper function to safely format numeric values
+        def safe_format(value, format_spec):
+            if isinstance(value, (int, float)):
+                return f"{value:{format_spec}}"
+            else:
+                return str(value)
+
         # Price & Returns
         if 'current_price' in data:
-            lines.append(f"- Current Price: {data['current_price']:.2f}")
+            lines.append(f"- Current Price: {safe_format(data['current_price'], '.2f')}")
         if 'ytd_return' in data:
-            lines.append(f"- YTD Return: {data['ytd_return']:.2f}%")
+            lines.append(f"- YTD Return: {safe_format(data['ytd_return'], '.2f')}%")
         if 'momentum' in data:
-            lines.append(f"- Momentum: {data['momentum']:.2f}%")
+            lines.append(f"- Momentum: {safe_format(data['momentum'], '.2f')}%")
 
         # Volatility
         if 'volatility' in data:
-            lines.append(f"- Volatility: {data['volatility']:.2f}%")
+            lines.append(f"- Volatility: {safe_format(data['volatility'], '.2f')}%")
 
         # Sentiment Indicators
         if 'fear_greed' in data:
             lines.append(f"- Fear & Greed: {data['fear_greed']}")
         if 'put_call_ratio' in data:
-            lines.append(f"- Put/Call Ratio: {data['put_call_ratio']:.2f}")
+            lines.append(f"- Put/Call Ratio: {safe_format(data['put_call_ratio'], '.2f')}")
 
         # Volume & Flows
         if 'volume_trend' in data:
@@ -241,9 +248,9 @@ Output in JSON format with keys: kospi_sentiment, spx_sentiment, comparison, ove
 
         # Valuation
         if 'pe_ratio' in data:
-            lines.append(f"- P/E Ratio: {data['pe_ratio']:.1f}")
+            lines.append(f"- P/E Ratio: {safe_format(data['pe_ratio'], '.1f')}")
         if 'fair_value_gap' in data:
-            lines.append(f"- Fair Value Gap: {data['fair_value_gap']:.1f}%")
+            lines.append(f"- Fair Value Gap: {safe_format(data['fair_value_gap'], '.1f')}%")
 
         # Sector/Constituent Info
         if 'sector_leaders' in data:

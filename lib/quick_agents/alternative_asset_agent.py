@@ -206,7 +206,6 @@ Please provide evidence-based analysis with specific references to recent instit
             ],
             "temperature": 0.2,
             "max_tokens": 2500,
-            "search_domain_filter": ["coindesk.com", "theblock.co", "bloomberg.com", "ft.com"],
             "return_citations": True
         }
 
