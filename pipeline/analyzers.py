@@ -1361,14 +1361,21 @@ def run_allocation_engine(
             'risk_free_rate': engine.risk_free_rate
         }
 
+        # Fallback transparency: 최적화 실패 시 경고 추가
+        if allocation.is_fallback:
+            result['warnings'].append(f"Optimization fallback: {allocation.fallback_reason}")
+            logger.warning(f"Allocation engine used fallback: {allocation.optimization_status}")
+
         # 상위 비중 출력
         top_weights = sorted(allocation.weights.items(), key=lambda x: x[1], reverse=True)[:5]
         top_str = ", ".join([f"{t}:{w:.1%}" for t, w in top_weights])
-        print(f"      ✓ Strategy: {strategy_enum.value}")
+        print(f"      ✓ Strategy: {strategy_enum.value} ({allocation.optimization_status})")
         print(f"      ✓ Top Allocation: {top_str}")
         print(f"      ✓ Expected Return: {allocation.expected_return:.2%}")
         print(f"      ✓ Expected Vol: {allocation.expected_volatility:.2%}")
         print(f"      ✓ Sharpe: {allocation.sharpe_ratio:.2f}")
+        if allocation.is_fallback:
+            print(f"      ⚠️  Fallback used: {allocation.fallback_reason}")
 
         # Rebalancing Policy 평가 (현재 비중이 제공된 경우)
         if current_weights:

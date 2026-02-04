@@ -92,6 +92,9 @@ class AllocationResult:
         risk_contributions: 자산별 리스크 기여도
         diversification_ratio: 분산화 비율
         effective_n: 실효 자산 수 (1/sum(w^2))
+        optimization_status: 최적화 상태 ("SUCCESS" | "FALLBACK_EQUAL_WEIGHT" | "FALLBACK_PREVIOUS" | "ANALYTICAL")
+        is_fallback: 최적화 실패 시 fallback 사용 여부
+        fallback_reason: fallback 사유 (최적화 실패 원인)
         metadata: 추가 메타데이터
     """
     weights: Dict[str, float]
@@ -102,6 +105,9 @@ class AllocationResult:
     risk_contributions: Dict[str, float] = field(default_factory=dict)
     diversification_ratio: float = 1.0
     effective_n: float = 1.0
+    optimization_status: str = "SUCCESS"
+    is_fallback: bool = False
+    fallback_reason: Optional[str] = None
     metadata: Dict = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
@@ -135,6 +141,11 @@ class AllocationEngine:
     ):
         self.risk_free_rate = risk_free_rate
         self.annualization_factor = annualization_factor
+
+        # Optimization status tracking (for fallback transparency)
+        self._optimization_status = "SUCCESS"
+        self._is_fallback = False
+        self._fallback_reason = None
 
     def allocate(
         self,
@@ -187,6 +198,11 @@ class AllocationEngine:
         optimizer = strategy_map.get(strategy)
         if optimizer is None:
             raise ValueError(f"Unknown strategy: {strategy}")
+
+        # 최적화 상태 초기화 (fallback transparency)
+        self._optimization_status = "SUCCESS"
+        self._is_fallback = False
+        self._fallback_reason = None
 
         # 최적화 실행
         weights = optimizer(mean_returns, cov_matrix, constraints, **kwargs)
@@ -258,7 +274,11 @@ class AllocationEngine:
         if result.success:
             return dict(zip(assets, result.x))
         else:
-            logger.warning(f"MVO optimization failed: {result.message}. Using equal weight.")
+            # Fallback to equal weight with status tracking
+            self._optimization_status = "FALLBACK_EQUAL_WEIGHT"
+            self._is_fallback = True
+            self._fallback_reason = f"MVO max sharpe optimization failed: {result.message}"
+            logger.warning(f"{self._fallback_reason}. Using equal weight fallback.")
             return dict(zip(assets, w0))
 
     def _mvo_min_variance(
@@ -279,6 +299,10 @@ class AllocationEngine:
 
         if not SCIPY_AVAILABLE:
             # Fallback: 분석적 해
+            self._optimization_status = "ANALYTICAL"
+            self._is_fallback = True
+            self._fallback_reason = "scipy not available, using analytical GMV solution"
+            logger.info(f"{self._fallback_reason}")
             return self._analytical_gmv(cov_matrix, constraints)
 
         w0 = np.array([1.0/n] * n)
@@ -301,7 +325,11 @@ class AllocationEngine:
         if result.success:
             return dict(zip(assets, result.x))
         else:
-            logger.warning(f"Min variance optimization failed: {result.message}")
+            # Fallback to equal weight with status tracking
+            self._optimization_status = "FALLBACK_EQUAL_WEIGHT"
+            self._is_fallback = True
+            self._fallback_reason = f"Min variance optimization failed: {result.message}"
+            logger.warning(f"{self._fallback_reason}. Using equal weight fallback.")
             return dict(zip(assets, w0))
 
     def _mvo_max_return(
@@ -322,6 +350,10 @@ class AllocationEngine:
         assets = mean_returns.index.tolist()
 
         if not SCIPY_AVAILABLE:
+            self._optimization_status = "FALLBACK_EQUAL_WEIGHT"
+            self._is_fallback = True
+            self._fallback_reason = "scipy not available, cannot perform max return optimization"
+            logger.warning(f"{self._fallback_reason}. Using equal weight fallback.")
             return self._equal_weight(mean_returns, cov_matrix, constraints)
 
         w0 = np.array([1.0/n] * n)
@@ -349,6 +381,11 @@ class AllocationEngine:
         if result.success:
             return dict(zip(assets, result.x))
         else:
+            # Fallback to equal weight with status tracking
+            self._optimization_status = "FALLBACK_EQUAL_WEIGHT"
+            self._is_fallback = True
+            self._fallback_reason = f"Max return optimization failed: {result.message if hasattr(result, 'message') else 'unknown error'}"
+            logger.warning(f"{self._fallback_reason}. Using equal weight fallback.")
             return dict(zip(assets, w0))
 
     def _analytical_tangency(
@@ -459,7 +496,11 @@ class AllocationEngine:
         if result.success:
             return dict(zip(assets, result.x))
         else:
-            logger.warning("Risk parity optimization failed, using inverse vol")
+            # Fallback to inverse volatility with status tracking
+            self._optimization_status = "FALLBACK_INVERSE_VOL"
+            self._is_fallback = True
+            self._fallback_reason = f"Risk parity optimization failed: {result.message if hasattr(result, 'message') else 'unknown error'}"
+            logger.warning(f"{self._fallback_reason}. Using inverse volatility fallback.")
             return self._inverse_volatility(mean_returns, cov_matrix, constraints)
 
     # =========================================================================
@@ -727,7 +768,10 @@ class AllocationEngine:
             sharpe_ratio=float(sharpe),
             risk_contributions=risk_contributions,
             diversification_ratio=float(div_ratio),
-            effective_n=float(effective_n)
+            effective_n=float(effective_n),
+            optimization_status=self._optimization_status,
+            is_fallback=self._is_fallback,
+            fallback_reason=self._fallback_reason
         )
 
     def compare_strategies(

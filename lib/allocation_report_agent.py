@@ -225,7 +225,7 @@ class AllocationReportAgent:
         return report
 
     def _check_data_quality(self, data: Dict) -> Dict[str, Any]:
-        """데이터 품질 검사"""
+        """데이터 품질 검사 (확장된 검증)"""
         # market_quality 필드 확인
         mq = data.get('market_quality', {})
         if isinstance(mq, dict):
@@ -238,6 +238,59 @@ class AllocationReportAgent:
         missing = [f for f in required if f not in data or data.get(f) is None]
         if missing:
             return {'valid': False, 'reason': f'필수 필드 누락: {missing}'}
+
+        # 수치 검증 (리스크 점수 범위, 비중 유효성 등)
+        num_validation = self._validate_numerical_values(data)
+        if not num_validation['valid']:
+            return num_validation
+
+        return {'valid': True}
+
+    def _validate_numerical_values(self, data: Dict) -> Dict[str, Any]:
+        """
+        수치 값 검증 (새 숫자 생성 방지)
+
+        검증 항목:
+        - 리스크 점수 범위 (0-100)
+        - 포트폴리오 비중 합계 = 1.0 (±0.01 허용오차)
+        - 음수 비중 검출
+        - 신뢰도 범위 (0-1)
+        """
+        # 1. 리스크 점수 범위 검증
+        risk_score = data.get('risk_score', 50.0)
+        if not (0 <= risk_score <= 100):
+            return {'valid': False, 'reason': f'리스크 점수 범위 오류: {risk_score} (0-100 범위 초과)'}
+
+        # 2. 신뢰도 범위 검증
+        confidence = data.get('confidence', 0.5)
+        if not (0 <= confidence <= 1):
+            return {'valid': False, 'reason': f'신뢰도 범위 오류: {confidence} (0-1 범위 초과)'}
+
+        # 3. 포트폴리오 비중 검증
+        portfolio_weights = data.get('portfolio_weights', {})
+        if portfolio_weights and isinstance(portfolio_weights, dict):
+            # 비중 합계 검증
+            weight_sum = sum(portfolio_weights.values())
+            if abs(weight_sum - 1.0) > 0.01:  # 1% 허용오차
+                return {'valid': False, 'reason': f'포트폴리오 비중 합계 오류: {weight_sum:.4f} (1.0±0.01 범위 초과)'}
+
+            # 음수 비중 검증
+            negative_weights = {k: v for k, v in portfolio_weights.items() if v < 0}
+            if negative_weights:
+                return {'valid': False, 'reason': f'음수 비중 검출: {negative_weights}'}
+
+        # 4. Allocation Result 비중 검증 (있을 경우)
+        alloc_result = data.get('allocation_result', {})
+        if isinstance(alloc_result, dict) and 'weights' in alloc_result:
+            weights = alloc_result['weights']
+            if isinstance(weights, dict):
+                weight_sum = sum(weights.values())
+                if abs(weight_sum - 1.0) > 0.01:
+                    return {'valid': False, 'reason': f'Allocation 비중 합계 오류: {weight_sum:.4f}'}
+
+                negative_weights = {k: v for k, v in weights.items() if v < 0}
+                if negative_weights:
+                    return {'valid': False, 'reason': f'Allocation 음수 비중: {negative_weights}'}
 
         return {'valid': True}
 
