@@ -796,25 +796,41 @@ def _run_quick_validation(
         alignment = comparison.get('alignment', 'N/A')
         print(f"   • Full vs Quick: {alignment}")
 
-        # Market sentiment (KOSPI or SPX focus)
+        # Market sentiment (focus market primary, other as reference)
         market_sentiment = quick_result.get('market_sentiment', {})
         if market_focus == 'KOSPI':
-            kospi_sent = market_sentiment.get('kospi_sentiment', {})
-            sent = kospi_sent.get('sentiment', 'N/A')
-            sent_conf = kospi_sent.get('confidence', 0)
-            print(f"   • KOSPI Sentiment: {sent} ({sent_conf*100:.0f}%)")
+            primary = market_sentiment.get('kospi_sentiment', {})
+            secondary = market_sentiment.get('spx_sentiment', {})
+            print(f"   • KOSPI Sentiment: {primary.get('sentiment', 'N/A')} ({primary.get('confidence', 0)*100:.0f}%)")
+            print(f"   • SPX (ref):       {secondary.get('sentiment', 'N/A')} ({secondary.get('confidence', 0)*100:.0f}%)")
         elif market_focus == 'SPX':
-            spx_sent = market_sentiment.get('spx_sentiment', {})
-            sent = spx_sent.get('sentiment', 'N/A')
-            sent_conf = spx_sent.get('confidence', 0)
-            print(f"   • SPX Sentiment: {sent} ({sent_conf*100:.0f}%)")
+            primary = market_sentiment.get('spx_sentiment', {})
+            secondary = market_sentiment.get('kospi_sentiment', {})
+            print(f"   • SPX Sentiment:   {primary.get('sentiment', 'N/A')} ({primary.get('confidence', 0)*100:.0f}%)")
+            print(f"   • KOSPI (ref):     {secondary.get('sentiment', 'N/A')} ({secondary.get('confidence', 0)*100:.0f}%)")
 
-        # Risk warnings
+        # Alternative assets summary
+        alt_assets = quick_result.get('alternative_assets', {})
+        crypto_rec = alt_assets.get('crypto_assessment', {}).get('recommendation', 'N/A')
+        commodity_rec = alt_assets.get('commodity_assessment', {}).get('recommendation', 'N/A')
+        print(f"   • Crypto: {crypto_rec}, Commodity: {commodity_rec}")
+
+        # Agent health
+        success_rate = quick_result.get('success_rate', 1.0)
+        print(f"   • Agent Success: {success_rate*100:.0f}% ({int(success_rate*4)}/4 agents)")
+
+        # Risk warnings — filter by market focus relevance
         risk_warnings = final_val.get('risk_warnings', [])
         if risk_warnings:
-            print(f"\n⚠️ Risk Warnings ({len(risk_warnings)}):")
-            for i, warning in enumerate(risk_warnings[:3], 1):
-                print(f"   {i}. {warning}")
+            other_market = 'KOSPI' if market_focus == 'SPX' else 'SPX'
+            filtered_warnings = [
+                w for w in risk_warnings
+                if other_market.lower() not in w.lower() or 'divergence' in w.lower()
+            ]
+            if filtered_warnings:
+                print(f"\n⚠️ Risk Warnings ({len(filtered_warnings)}):")
+                for i, warning in enumerate(filtered_warnings[:3], 1):
+                    print(f"   {i}. {warning}")
 
         # Save Quick validation result
         import json

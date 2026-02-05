@@ -295,7 +295,25 @@ Please provide evidence-based analysis with specific references to recent instit
         diversification_keywords = ['diversification', 'uncorrelated', 'low correlation', 'hedge']
         diversification_benefit = 'Yes' if any(kw in content_lower for kw in diversification_keywords) else 'Limited'
 
+        # Recommendation heuristic (commodity-specific)
+        bullish_keywords = ['gold rally', 'oil surge', 'commodity boom', 'supply shortage', 'strong demand', 'commodity bull']
+        bearish_keywords = ['commodity crash', 'oil slump', 'demand weakness', 'supply glut', 'commodity bear', 'price collapse']
+        bullish_count = sum(1 for kw in bullish_keywords if kw in content_lower)
+        bearish_count = sum(1 for kw in bearish_keywords if kw in content_lower)
+
+        # Safe haven / inflation hedge roles are mildly bullish for commodities
+        if gold_role != 'NEUTRAL':
+            bullish_count += 1
+
+        if bullish_count > bearish_count + 1:
+            recommendation = 'BULLISH'
+        elif bearish_count > bullish_count + 1:
+            recommendation = 'BEARISH'
+        else:
+            recommendation = 'NEUTRAL'
+
         return {
+            'recommendation': recommendation,
             'gold_role': gold_role,
             'diversification_benefit': diversification_benefit
         }

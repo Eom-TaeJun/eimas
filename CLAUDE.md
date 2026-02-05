@@ -2,8 +2,8 @@
 
 > Claude Code가 프로젝트를 빠르게 파악하기 위한 요약 문서입니다.
 
-**Version:** v2.2.4 (2026-02-05)
-**Last Update:** 2026-02-05 01:10 KST
+**Version:** v2.2.5 (2026-02-06)
+**Last Update:** 2026-02-06 KST
 
 ---
 
@@ -339,6 +339,27 @@ class BubbleRiskMetrics:
 
 ## 8. 최근 업데이트 (Changelog)
 
+### v2.2.5 (2026-02-06) - Backtest DB v2.1 & Quick Mode Stability
+
+**Backtest DB v2.1**
+- 3 new tables: `backtest_daily_nav`, `backtest_snapshots`, `backtest_period_metrics`
+- Migration: `backtest_runs` += git_commit, random_seed, benchmark, cost_model
+- Critical bug fix: turnover was always 0 for equal-weight → now tracks actual drift
+- Per-ticker P&L attribution with invariant check (sum == portfolio return)
+- Benchmark-relative alpha/beta/IR (OVERALL + YEARLY + QUARTERLY + REGIME)
+- TradingCostModel integration (commission + spread + sqrt market impact)
+
+**Quick Mode Stability (60% → 100%)**
+- Root cause: Perplexity model names deprecated + `return_citations` payload error
+- Fixed: sonar/sonar-pro models, removed invalid params (fc7a439)
+- Added degraded-agent fallback (SKIPPED sentinel vs raw error dict)
+- Added `success_rate` + `degraded_agents` to orchestrator output
+- Fixed commodity_assessment: added `recommendation` field (was missing)
+- Fixed agent numbering labels: 1/5..5/5 (was 1/4..4/4)
+- market_focus filtering: `--quick2` (SPX) suppresses KOSPI-only warnings
+
+---
+
 ### v2.2.4 (2026-02-05) - Risk Score Fix & Documentation
 
 **Risk Score Edge Case 수정**
@@ -495,26 +516,26 @@ export GOOGLE_API_KEY="..."                # Gemini (선택)
 
 ### ⚠️ 알려진 이슈
 
-**1. Perplexity API 400 오류** (우선순위: 높음)
-- 증상: AllocationReasoner, AlternativeAssetAgent에서 400 Bad Request
-- 영향: Quick Mode 성공률 60% (5개 중 3개만 작동)
-- 해결 필요: API 키 권한 확인, 요청 형식 디버깅
-
-**2. KOSPI 데이터 신뢰도 낮음** (우선순위: 중간)
+**1. KOSPI 데이터 신뢰도 낮음** (우선순위: 중간)
 - 증상: KOSPI 정서 신뢰도 30% (SPX 80%에 비해 낮음)
 - 원인: 한국 시장 데이터 부족
 - 해결 필요: Korea Exchange API 추가
 
-**3. 대시보드 차트 미구현** (우선순위: 낮음)
+**2. 대시보드 차트 미구현** (우선순위: 낮음)
 - 누락: 포트폴리오 파이 차트, 상관관계 히트맵
 - 현재: 텍스트 메트릭만 표시
 - 필요: Recharts 통합
 
+### ✅ 해결 완료
+
+- **Perplexity API 400 오류** (fc7a439, 2026-02-05): 모델명 deprecated → sonar/sonar-pro, return_citations 제거
+- **Quick Mode 성공률** (2026-02-06): 60% → 100% (5/5 에이전트 정상)
+- **Backtest turnover=0 버그** (1f36f46, 2026-02-06): drift tracking으로 수정
+
 ### 📋 다음 작업 우선순위
 
-1. **Priority 1**: Perplexity API 오류 해결
-2. **Priority 2**: Quick Mode 안정성 개선 (60% → 80%)
-3. **Priority 3**: 문서화 및 사용성 개선
+1. **Priority 1**: KOSPI 데이터 신뢰도 개선 (Korea Exchange API)
+2. **Priority 2**: 대시보드 차트 구현 (Recharts)
 
 ---
 
@@ -531,5 +552,5 @@ export GOOGLE_API_KEY="..."                # Gemini (선택)
 
 ---
 
-*마지막 업데이트: 2026-02-05 01:10 KST*
+*마지막 업데이트: 2026-02-06 KST*
 *문의: EIMAS 프로젝트 담당자*

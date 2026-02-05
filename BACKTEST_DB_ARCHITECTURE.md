@@ -247,8 +247,8 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
         'final_capital': backtest_result.portfolio_values.iloc[-1],
         'total_return': backtest_result.metrics.total_return,
         'annual_return': backtest_result.metrics.annualized_return,
-        'benchmark_return': 0.0,  # TODO: SPY 벤치마크 추가
-        'alpha': 0.0,
+        'benchmark_return': overall_bm_return,  # v2.1: SPY benchmark
+        'alpha': overall_alpha,  # v2.1: from period_metrics OVERALL
         'volatility': backtest_result.metrics.annualized_volatility,
         'max_drawdown': backtest_result.metrics.max_drawdown,
         'max_drawdown_duration': backtest_result.metrics.max_drawdown_duration,
@@ -256,8 +256,8 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
         'sortino_ratio': backtest_result.metrics.sortino_ratio,
         'calmar_ratio': backtest_result.metrics.calmar_ratio,
         'total_trades': backtest_result.metrics.num_trades,
-        'winning_trades': 0,  # TODO: 승/패 분리 로직 추가
-        'losing_trades': 0,
+        'winning_trades': int(metrics.win_rate * metrics.num_periods),
+        'losing_trades': metrics.num_periods - int(metrics.win_rate * metrics.num_periods),
         'win_rate': backtest_result.metrics.win_rate,
         'avg_win': backtest_result.metrics.avg_win,
         'avg_loss': backtest_result.metrics.avg_loss,
@@ -271,7 +271,7 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
             'transaction_cost_bps': config.transaction_cost_bps,
             'initial_capital': config.initial_capital
         },
-        'trades': []  # TODO: 개별 거래 기록 추가
+        'trades': []  # ticker-level entry/exit는 backtest_snapshots에서 복원
     }
 
     run_id = db.save_backtest_run(backtest_dict)

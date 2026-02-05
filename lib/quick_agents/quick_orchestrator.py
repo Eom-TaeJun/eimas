@@ -102,8 +102,8 @@ class QuickOrchestrator:
         # Step 3: Run agents in sequence
         results = {}
 
-        # Agent 1: Portfolio Validator
-        logger.info("\n[Agent 1/4] Running Portfolio Validator...")
+        # Agent 1/5: Portfolio Validator (Claude)
+        logger.info("\n[Agent 1/5] Running Portfolio Validator...")
         try:
             results['portfolio_validation'] = self.portfolio_validator.validate_portfolio(
                 allocation_result=extracted_data['allocation_result'],
@@ -113,10 +113,13 @@ class QuickOrchestrator:
             logger.info(f"✓ Portfolio Validation: {results['portfolio_validation'].get('validation_result', 'N/A')}")
         except Exception as e:
             logger.error(f"Portfolio Validator failed: {e}")
-            results['portfolio_validation'] = {'error': str(e)}
+            results['portfolio_validation'] = {
+                'validation_result': 'SKIPPED', 'confidence': 0,
+                'error': str(e), 'degraded': True
+            }
 
-        # Agent 2: Allocation Reasoner
-        logger.info("\n[Agent 2/4] Running Allocation Reasoner...")
+        # Agent 2/5: Allocation Reasoner (Perplexity)
+        logger.info("\n[Agent 2/5] Running Allocation Reasoner...")
         try:
             results['allocation_reasoning'] = self.allocation_reasoner.analyze_reasoning(
                 allocation_decision=extracted_data['allocation_decision'],
@@ -126,10 +129,13 @@ class QuickOrchestrator:
             logger.info(f"✓ Reasoning Quality: {results['allocation_reasoning'].get('reasoning_quality', 'N/A')}")
         except Exception as e:
             logger.error(f"Allocation Reasoner failed: {e}")
-            results['allocation_reasoning'] = {'error': str(e)}
+            results['allocation_reasoning'] = {
+                'reasoning_quality': 'SKIPPED', 'academic_support': {},
+                'error': str(e), 'degraded': True
+            }
 
-        # Agent 3: Market Sentiment Agent
-        logger.info("\n[Agent 3/4] Running Market Sentiment Agent...")
+        # Agent 3/5: Market Sentiment Agent (Claude)
+        logger.info("\n[Agent 3/5] Running Market Sentiment Agent...")
         try:
             results['market_sentiment'] = self.market_sentiment_agent.analyze_market_sentiment(
                 kospi_data=extracted_data['kospi_data'],
@@ -141,10 +147,14 @@ class QuickOrchestrator:
             logger.info(f"✓ KOSPI Sentiment: {kospi_sent}, SPX Sentiment: {spx_sent}")
         except Exception as e:
             logger.error(f"Market Sentiment Agent failed: {e}")
-            results['market_sentiment'] = {'error': str(e)}
+            results['market_sentiment'] = {
+                'kospi_sentiment': {'sentiment': 'SKIPPED', 'confidence': 0},
+                'spx_sentiment': {'sentiment': 'SKIPPED', 'confidence': 0},
+                'error': str(e), 'degraded': True
+            }
 
-        # Agent 4: Alternative Asset Agent
-        logger.info("\n[Agent 4/4] Running Alternative Asset Agent...")
+        # Agent 4/5: Alternative Asset Agent (Perplexity)
+        logger.info("\n[Agent 4/5] Running Alternative Asset Agent...")
         try:
             results['alternative_assets'] = self.alternative_asset_agent.analyze_alternative_assets(
                 crypto_data=extracted_data['crypto_data'],
@@ -155,10 +165,18 @@ class QuickOrchestrator:
             logger.info(f"✓ Crypto Recommendation: {crypto_rec}")
         except Exception as e:
             logger.error(f"Alternative Asset Agent failed: {e}")
-            results['alternative_assets'] = {'error': str(e)}
+            results['alternative_assets'] = {
+                'crypto_assessment': {'recommendation': 'SKIPPED'},
+                'commodity_assessment': {'recommendation': 'SKIPPED'},
+                'error': str(e), 'degraded': True
+            }
 
         # Step 4: Final Validation & Synthesis
-        logger.info("\n[Final] Running Final Validator...")
+        degraded_agents = [k for k in results if results[k].get('degraded')]
+        if degraded_agents:
+            logger.warning(f"⚠ Degraded agents (skipped): {degraded_agents}")
+
+        logger.info("\n[Agent 5/5] Running Final Validator...")
         try:
             results['final_validation'] = self.final_validator.validate_and_synthesize(
                 full_mode_result=full_mode_result,
@@ -178,6 +196,8 @@ class QuickOrchestrator:
         end_time = datetime.now()
         results['timestamp'] = datetime.now().isoformat()
         results['execution_time_seconds'] = (end_time - start_time).total_seconds()
+        results['degraded_agents'] = [k for k in ('portfolio_validation', 'allocation_reasoning', 'market_sentiment', 'alternative_assets') if results.get(k, {}).get('degraded')]
+        results['success_rate'] = 1.0 - len(results['degraded_agents']) / 4.0
 
         logger.info("\n" + "=" * 80)
         logger.info(f"Quick Mode Validation Completed in {results['execution_time_seconds']:.1f}s")
