@@ -79,9 +79,9 @@ class ResearchAgent(BaseAgent):
 
     # Perplexity 모델
     PERPLEXITY_MODELS = {
-        "online": "llama-3.1-sonar-small-128k-online",
-        "large_online": "llama-3.1-sonar-large-128k-online",
-        "chat": "llama-3.1-sonar-small-128k-chat"
+        "online": "sonar",
+        "large_online": "sonar-pro",
+        "chat": "sonar"
     }
 
     # 카테고리별 검색 템플릿

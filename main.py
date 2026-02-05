@@ -131,6 +131,7 @@ from lib.quick_agents import QuickOrchestrator
 
 # Portfolio Theory Modules (2026-02-04)
 from lib.backtest import BacktestEngine, BacktestConfig
+from lib.trading_db import TradingDB
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
 from lib.tactical_allocation import TacticalAssetAllocator
 from lib.stress_test import StressTestEngine, generate_stress_test_report
@@ -904,12 +905,52 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
         backtest_result = engine.run(prices, allocation_strategy)
 
         # Store metrics
-        result.backtest_metrics = backtest_result.metrics.to_dict()
+        metrics = backtest_result.metrics
+        result.backtest_metrics = metrics.to_dict()
+
+        # DB 저장
+        db = TradingDB()
+        db_payload = {
+            'strategy_name': 'EIMAS_Portfolio',
+            'start_date': metrics.start_date,
+            'end_date': metrics.end_date,
+            'initial_capital': config.initial_capital,
+            'final_capital': config.initial_capital * (1 + metrics.total_return),
+            'total_return': metrics.total_return,
+            'annual_return': metrics.annualized_return,
+            'benchmark_return': 0.0,
+            'alpha': 0.0,
+            'volatility': metrics.annualized_volatility,
+            'max_drawdown': metrics.max_drawdown,
+            'max_drawdown_duration': metrics.max_drawdown_duration,
+            'sharpe_ratio': metrics.sharpe_ratio,
+            'sortino_ratio': metrics.sortino_ratio,
+            'calmar_ratio': metrics.calmar_ratio,
+            'total_trades': metrics.num_trades,
+            'winning_trades': int(metrics.win_rate * metrics.num_periods),
+            'losing_trades': metrics.num_periods - int(metrics.win_rate * metrics.num_periods),
+            'win_rate': metrics.win_rate,
+            'avg_win': metrics.avg_win,
+            'avg_loss': metrics.avg_loss,
+            'profit_factor': metrics.profit_factor,
+            'avg_holding_days': 30,  # monthly rebalance
+            'total_commission': metrics.total_transaction_costs,
+            'total_slippage': 0.0,
+            'total_short_cost': 0.0,
+            'parameters': {
+                'rebalance_frequency': config.rebalance_frequency,
+                'transaction_cost_bps': config.transaction_cost_bps,
+                'initial_capital': config.initial_capital
+            },
+            'trades': []  # 리밸런싱 로그는 개별 거래 기록과 다른 형식 — TODO: 향후 ticker별 entry/exit 변환
+        }
+        result.backtest_run_id = db.save_backtest_run(db_payload)
 
         print(f"  ✅ Backtest Complete:")
-        print(f"     Sharpe: {backtest_result.metrics.sharpe_ratio:.2f}")
-        print(f"     Max DD: {backtest_result.metrics.max_drawdown*100:.1f}%")
-        print(f"     VaR 95%: {backtest_result.metrics.var_95*100:.2f}%")
+        print(f"     Sharpe: {metrics.sharpe_ratio:.2f}")
+        print(f"     Max DD: {metrics.max_drawdown*100:.1f}%")
+        print(f"     VaR 95%: {metrics.var_95*100:.2f}%")
+        print(f"     DB Saved: Run ID {result.backtest_run_id}")
 
     except Exception as e:
         print(f"⚠️ Backtest Error: {e}")

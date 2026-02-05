@@ -37,7 +37,7 @@ class AllocationReasoner:
             raise ValueError("PERPLEXITY_API_KEY not found")
 
         self.api_url = "https://api.perplexity.ai/chat/completions"
-        self.model = "llama-3.1-sonar-large-128k-online"  # Online search model
+        self.model = "sonar-pro"  # Perplexity online search model
 
     def analyze_reasoning(
         self,
@@ -146,8 +146,7 @@ Please provide evidence-based analysis with specific references to recent resear
                 }
             ],
             "temperature": 0.2,
-            "max_tokens": 2000,
-            "return_citations": True
+            "max_tokens": 2000
         }
 
         response = requests.post(

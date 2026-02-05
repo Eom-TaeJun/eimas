@@ -119,7 +119,7 @@ async def test_perplexity_api() -> Tuple[bool, str]:
         participant = DebateParticipant(
             name="Perplexity",
             provider=AIProvider.PERPLEXITY,
-            model="llama-3.1-sonar-small-128k-online"  # 비용 절약
+            model="sonar"  # 비용 절약
         )
         client = AIClient(participant)
 

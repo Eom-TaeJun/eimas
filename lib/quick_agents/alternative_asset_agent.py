@@ -38,7 +38,7 @@ class AlternativeAssetAgent:
             raise ValueError("PERPLEXITY_API_KEY not found")
 
         self.api_url = "https://api.perplexity.ai/chat/completions"
-        self.model = "llama-3.1-sonar-large-128k-online"  # Online search model
+        self.model = "sonar-pro"  # Perplexity online search model
 
     def analyze_alternative_assets(
         self,
@@ -205,8 +205,7 @@ Please provide evidence-based analysis with specific references to recent instit
                 }
             ],
             "temperature": 0.2,
-            "max_tokens": 2500,
-            "return_citations": True
+            "max_tokens": 2500
         }
 
         response = requests.post(

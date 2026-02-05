@@ -164,8 +164,9 @@ class HistoricalDataCollector:
                 self.market_tickers,
                 start=self.start_date.strftime('%Y-%m-%d'),
                 end=(self.end_date + timedelta(days=1)).strftime('%Y-%m-%d'),
-                progress=False
-            )['Adj Close']
+                progress=False,
+                auto_adjust=True
+            )['Close']
 
             if isinstance(data, pd.Series):
                 # Single ticker case
@@ -188,8 +189,9 @@ class HistoricalDataCollector:
                 self.crypto_tickers,
                 start=self.start_date.strftime('%Y-%m-%d'),
                 end=(self.end_date + timedelta(days=1)).strftime('%Y-%m-%d'),
-                progress=False
-            )['Adj Close']
+                progress=False,
+                auto_adjust=True
+            )['Close']
 
             if isinstance(data, pd.Series):
                 data = data.to_frame(name=self.crypto_tickers[0])

@@ -312,7 +312,7 @@ JSON 형식으로 응답:
                         "Content-Type": "application/json"
                     },
                     json={
-                        "model": "llama-3.1-sonar-small-128k-online",
+                        "model": "sonar",
                         "messages": [
                             {"role": "system", "content": "You are a fact-checking assistant. Verify claims with current data."},
                             {"role": "user", "content": prompt}

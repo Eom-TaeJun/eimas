@@ -413,6 +413,7 @@ class EIMASResult:
 
     # NEW: Portfolio Theory Modules (2026-02-04)
     backtest_metrics: Dict = field(default_factory=dict)       # BacktestMetrics.to_dict()
+    backtest_run_id: Optional[int] = None                      # TradingDB 저장 시 생성된 run_id
     performance_attribution: Dict = field(default_factory=dict)  # AttributionResult.to_dict()
     tactical_weights: Dict[str, float] = field(default_factory=dict)  # Tactical allocation weights
     stress_test_results: Dict = field(default_factory=dict)    # StressTestResult list
