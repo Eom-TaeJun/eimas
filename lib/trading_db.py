@@ -412,6 +412,76 @@ class TradingDB:
             )
         """)
 
+        # 10. Backtest Daily NAV 테이블 (v2.1 추가)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS backtest_daily_nav (
+                run_id INTEGER NOT NULL,
+                trade_date DATE NOT NULL,
+                nav FLOAT NOT NULL,
+                daily_return FLOAT NOT NULL,
+                cum_return FLOAT NOT NULL,
+                drawdown FLOAT NOT NULL,
+                weights JSON NOT NULL,
+                ticker_returns JSON NOT NULL,
+                ticker_pnl JSON NOT NULL,
+                benchmark_nav FLOAT,
+                benchmark_return FLOAT,
+                regime TEXT,
+                is_rebalance_day INTEGER DEFAULT 0,
+                rebalance_cost FLOAT,
+                PRIMARY KEY (run_id, trade_date),
+                FOREIGN KEY (run_id) REFERENCES backtest_runs(id)
+            )
+        """)
+
+        # 11. Backtest Snapshots 테이블 (v2.1 추가) — 리밸런싱 포인트별 스냅샷
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS backtest_snapshots (
+                run_id INTEGER NOT NULL,
+                snapshot_date DATE NOT NULL,
+                information_cutoff DATE NOT NULL,
+                weights_drifted JSON NOT NULL,
+                weights_target JSON NOT NULL,
+                weights_executed JSON NOT NULL,
+                turnover FLOAT NOT NULL,
+                transaction_cost FLOAT NOT NULL,
+                cost_per_ticker JSON,
+                nav_before FLOAT NOT NULL,
+                nav_after FLOAT NOT NULL,
+                regime TEXT,
+                PRIMARY KEY (run_id, snapshot_date),
+                FOREIGN KEY (run_id) REFERENCES backtest_runs(id)
+            )
+        """)
+
+        # 12. Backtest Period Metrics 테이블 (v2.1 추가) — OVERALL/YEARLY/QUARTERLY/REGIME 분해
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS backtest_period_metrics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                period_type TEXT NOT NULL,
+                period_label TEXT NOT NULL,
+                period_start DATE NOT NULL,
+                period_end DATE NOT NULL,
+                total_return FLOAT,
+                annualized_return FLOAT,
+                annualized_vol FLOAT,
+                sharpe_ratio FLOAT,
+                sortino_ratio FLOAT,
+                max_drawdown FLOAT,
+                num_trading_days INTEGER,
+                benchmark_return FLOAT,
+                alpha FLOAT,
+                beta FLOAT,
+                tracking_error FLOAT,
+                information_ratio FLOAT,
+                FOREIGN KEY (run_id) REFERENCES backtest_runs(id)
+            )
+        """)
+
+        # v2.1 마이그레이션: backtest_runs 새 컬럼 추가
+        self._migrate_backtest_runs_v21(cursor)
+
         # 인덱스 생성
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_source ON signals(signal_source)")
@@ -426,8 +496,31 @@ class TradingDB:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_backtest_trades_run ON backtest_trades(run_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_walk_forward_run ON walk_forward_results(run_id)")
 
+        # v2.1 백테스트 인덱스
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_nav_run ON backtest_daily_nav(run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_daily_nav_date ON backtest_daily_nav(trade_date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_snapshots_run ON backtest_snapshots(run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_period_metrics_run ON backtest_period_metrics(run_id)")
+
         conn.commit()
         conn.close()
+
+    def _migrate_backtest_runs_v21(self, cursor):
+        """v2.1 마이그레이션: backtest_runs에 git_commit, random_seed, benchmark, cost_model 컬럼 추가"""
+        # 기존 컬럼 목록 확인
+        cursor.execute("PRAGMA table_info(backtest_runs)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        migrations = {
+            'git_commit': 'ALTER TABLE backtest_runs ADD COLUMN git_commit TEXT',
+            'random_seed': 'ALTER TABLE backtest_runs ADD COLUMN random_seed INTEGER',
+            'benchmark': "ALTER TABLE backtest_runs ADD COLUMN benchmark TEXT DEFAULT 'SPY'",
+            'cost_model': "ALTER TABLE backtest_runs ADD COLUMN cost_model TEXT DEFAULT 'simple_bps'",
+        }
+
+        for col, sql in migrations.items():
+            if col not in existing_cols:
+                cursor.execute(sql)
 
     # ========================================================================
     # Signal Methods
@@ -1073,6 +1166,216 @@ class TradingDB:
                 'max_oos_sharpe': round(row['max_oos_sharpe'] or 0, 2),
             }
         return {}
+
+    # ========================================================================
+    # Backtest Detail Methods (v2.1)
+    # ========================================================================
+
+    def save_backtest_daily_nav(self, run_id: int, records: List[Dict]):
+        """백테스트 일별 NAV 저장 (벌크 삽입)
+
+        Args:
+            run_id: backtest_runs.id
+            records: List of {
+                trade_date, nav, daily_return, cum_return, drawdown,
+                weights, ticker_returns, ticker_pnl,
+                benchmark_nav, benchmark_return, regime,
+                is_rebalance_day, rebalance_cost
+            }
+        """
+        if not records:
+            return
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.executemany("""
+            INSERT OR REPLACE INTO backtest_daily_nav
+            (run_id, trade_date, nav, daily_return, cum_return, drawdown,
+             weights, ticker_returns, ticker_pnl,
+             benchmark_nav, benchmark_return, regime,
+             is_rebalance_day, rebalance_cost)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            (
+                run_id,
+                r['trade_date'],
+                r['nav'],
+                r['daily_return'],
+                r['cum_return'],
+                r['drawdown'],
+                json.dumps(r['weights']),
+                json.dumps(r['ticker_returns']),
+                json.dumps(r['ticker_pnl']),
+                r.get('benchmark_nav'),
+                r.get('benchmark_return'),
+                r.get('regime'),
+                r.get('is_rebalance_day', 0),
+                r.get('rebalance_cost'),
+            )
+            for r in records
+        ])
+
+        conn.commit()
+        conn.close()
+
+    def save_backtest_snapshots(self, run_id: int, snapshots: List[Dict]):
+        """리밸런싱 스냅샷 저장
+
+        Args:
+            run_id: backtest_runs.id
+            snapshots: List of {
+                snapshot_date, information_cutoff,
+                weights_drifted, weights_target, weights_executed,
+                turnover, transaction_cost, cost_per_ticker,
+                nav_before, nav_after, regime
+            }
+        """
+        if not snapshots:
+            return
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.executemany("""
+            INSERT OR REPLACE INTO backtest_snapshots
+            (run_id, snapshot_date, information_cutoff,
+             weights_drifted, weights_target, weights_executed,
+             turnover, transaction_cost, cost_per_ticker,
+             nav_before, nav_after, regime)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            (
+                run_id,
+                s['snapshot_date'],
+                s['information_cutoff'],
+                json.dumps(s['weights_drifted']),
+                json.dumps(s['weights_target']),
+                json.dumps(s['weights_executed']),
+                s['turnover'],
+                s['transaction_cost'],
+                json.dumps(s.get('cost_per_ticker', {})),
+                s['nav_before'],
+                s['nav_after'],
+                s.get('regime'),
+            )
+            for s in snapshots
+        ])
+
+        conn.commit()
+        conn.close()
+
+    def save_backtest_period_metrics(self, run_id: int, periods: List[Dict]):
+        """기간별 성과 메트릭 저장
+
+        Args:
+            run_id: backtest_runs.id
+            periods: List of {
+                period_type, period_label, period_start, period_end,
+                total_return, annualized_return, annualized_vol,
+                sharpe_ratio, sortino_ratio, max_drawdown, num_trading_days,
+                benchmark_return, alpha, beta, tracking_error, information_ratio
+            }
+        """
+        if not periods:
+            return
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.executemany("""
+            INSERT INTO backtest_period_metrics
+            (run_id, period_type, period_label, period_start, period_end,
+             total_return, annualized_return, annualized_vol,
+             sharpe_ratio, sortino_ratio, max_drawdown, num_trading_days,
+             benchmark_return, alpha, beta, tracking_error, information_ratio)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            (
+                run_id,
+                p['period_type'],
+                p['period_label'],
+                p['period_start'],
+                p['period_end'],
+                p.get('total_return'),
+                p.get('annualized_return'),
+                p.get('annualized_vol'),
+                p.get('sharpe_ratio'),
+                p.get('sortino_ratio'),
+                p.get('max_drawdown'),
+                p.get('num_trading_days'),
+                p.get('benchmark_return'),
+                p.get('alpha'),
+                p.get('beta'),
+                p.get('tracking_error'),
+                p.get('information_ratio'),
+            )
+            for p in periods
+        ])
+
+        conn.commit()
+        conn.close()
+
+    def get_backtest_daily_nav(self, run_id: int) -> List[Dict]:
+        """백테스트 일별 NAV 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM backtest_daily_nav
+            WHERE run_id = ?
+            ORDER BY trade_date
+        """, (run_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for row in rows:
+            d = dict(row)
+            for col in ('weights', 'ticker_returns', 'ticker_pnl'):
+                if d.get(col):
+                    d[col] = json.loads(d[col])
+            results.append(d)
+        return results
+
+    def get_backtest_snapshots(self, run_id: int) -> List[Dict]:
+        """리밸런싱 스냅샷 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM backtest_snapshots
+            WHERE run_id = ?
+            ORDER BY snapshot_date
+        """, (run_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        results = []
+        for row in rows:
+            d = dict(row)
+            for col in ('weights_drifted', 'weights_target', 'weights_executed', 'cost_per_ticker'):
+                if d.get(col):
+                    d[col] = json.loads(d[col])
+            results.append(d)
+        return results
+
+    def get_backtest_period_metrics(self, run_id: int) -> List[Dict]:
+        """기간별 성과 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM backtest_period_metrics
+            WHERE run_id = ?
+            ORDER BY period_type, period_start
+        """, (run_id,))
+
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
 
     # ========================================================================
     # Utility Methods

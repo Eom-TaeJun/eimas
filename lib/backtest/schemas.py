@@ -145,6 +145,12 @@ class BacktestResult:
     # Regime breakdown
     regime_history: Optional[pd.Series] = None
 
+    # v2.1: 세부 기록 (DB 저장용)
+    daily_nav_records: List[Dict[str, Any]] = field(default_factory=list)
+    snapshot_records: List[Dict[str, Any]] = field(default_factory=list)
+    period_metrics: List[Dict[str, Any]] = field(default_factory=list)
+    benchmark_series: Optional[pd.Series] = None
+
     def save(self, output_path: Path):
         """결과 저장"""
         result = {

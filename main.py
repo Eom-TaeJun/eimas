@@ -900,16 +900,31 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
                 n = len(prices_window.columns)
                 return {ticker: 1/n for ticker in prices_window.columns}
 
-        # Run backtest
-        engine = BacktestEngine(config)
-        backtest_result = engine.run(prices, allocation_strategy)
+        # TradingCostModel 생성
+        from lib.rebalancing_policy import TradingCostModel
+        cost_model = TradingCostModel()
+
+        # Run backtest (v2.1: drift tracking + benchmark + TradingCostModel)
+        engine = BacktestEngine(config, cost_model=cost_model)
+        backtest_result = engine.run(prices, allocation_strategy, benchmark='SPY')
 
         # Store metrics
         metrics = backtest_result.metrics
         result.backtest_metrics = metrics.to_dict()
 
+        # --- Period metrics에서 OVERALL alpha/beta 추출 ---
+        overall_alpha = 0.0
+        overall_bm_return = 0.0
+        for pm in backtest_result.period_metrics:
+            if pm['period_type'] == 'OVERALL':
+                overall_alpha = pm.get('alpha') or 0.0
+                overall_bm_return = pm.get('benchmark_return') or 0.0
+                break
+
         # DB 저장
         db = TradingDB()
+
+        # 1. backtest_runs (기존 테이블 + v2.1 컬럼)
         db_payload = {
             'strategy_name': 'EIMAS_Portfolio',
             'start_date': metrics.start_date,
@@ -918,8 +933,8 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
             'final_capital': config.initial_capital * (1 + metrics.total_return),
             'total_return': metrics.total_return,
             'annual_return': metrics.annualized_return,
-            'benchmark_return': 0.0,
-            'alpha': 0.0,
+            'benchmark_return': overall_bm_return,
+            'alpha': overall_alpha,
             'volatility': metrics.annualized_volatility,
             'max_drawdown': metrics.max_drawdown,
             'max_drawdown_duration': metrics.max_drawdown_duration,
@@ -940,17 +955,51 @@ def _run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
             'parameters': {
                 'rebalance_frequency': config.rebalance_frequency,
                 'transaction_cost_bps': config.transaction_cost_bps,
-                'initial_capital': config.initial_capital
+                'initial_capital': config.initial_capital,
+                'benchmark': 'SPY',
+                'cost_model': 'TradingCostModel',
             },
-            'trades': []  # 리밸런싱 로그는 개별 거래 기록과 다른 형식 — TODO: 향후 ticker별 entry/exit 변환
+            'trades': []  # ticker-level entry/exit는 snapshots에서 복원 가능
         }
         result.backtest_run_id = db.save_backtest_run(db_payload)
+        run_id = result.backtest_run_id
+
+        # 2. backtest_daily_nav (일별 NAV + ticker attribution)
+        db.save_backtest_daily_nav(run_id, backtest_result.daily_nav_records)
+
+        # 3. backtest_snapshots (리밸런싱 스냅샷)
+        db.save_backtest_snapshots(run_id, backtest_result.snapshot_records)
+
+        # 4. backtest_period_metrics (기간별 성과 분해)
+        db.save_backtest_period_metrics(run_id, backtest_result.period_metrics)
+
+        # v2.1 컬럼 업데이트 (git_commit, benchmark, cost_model)
+        import subprocess, sqlite3
+        try:
+            git_hash = subprocess.check_output(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                cwd=str(Path(__file__).parent),
+                stderr=subprocess.DEVNULL
+            ).decode().strip()
+        except Exception:
+            git_hash = None
+
+        conn = sqlite3.connect(db.db_path)
+        conn.execute("""
+            UPDATE backtest_runs
+            SET git_commit = ?, benchmark = 'SPY', cost_model = 'TradingCostModel'
+            WHERE id = ?
+        """, (git_hash, run_id))
+        conn.commit()
+        conn.close()
 
         print(f"  ✅ Backtest Complete:")
         print(f"     Sharpe: {metrics.sharpe_ratio:.2f}")
         print(f"     Max DD: {metrics.max_drawdown*100:.1f}%")
         print(f"     VaR 95%: {metrics.var_95*100:.2f}%")
-        print(f"     DB Saved: Run ID {result.backtest_run_id}")
+        print(f"     Alpha: {overall_alpha*100:.2f}%")
+        print(f"     Snapshots: {len(backtest_result.snapshot_records)}")
+        print(f"     DB Saved: Run ID {run_id}")
 
     except Exception as e:
         print(f"⚠️ Backtest Error: {e}")
