@@ -80,7 +80,7 @@ async def run_analysis_deprecated():
     have been moved to archive directories.
 
     For analysis, use:
-    - CLI: python main_integrated.py --quick
+    - CLI: python main.py --short
     - Dashboard: GET /latest for cached results
 
     To restore this endpoint, see:
@@ -92,7 +92,7 @@ async def run_analysis_deprecated():
         detail={
             "message": "This endpoint has been deprecated and archived.",
             "alternatives": [
-                "CLI: python main_integrated.py --quick",
+                "CLI: python main.py --short",
                 "Dashboard: GET /latest",
             ],
             "restore_info": "See pipeline/archive/ and agents/archive/"

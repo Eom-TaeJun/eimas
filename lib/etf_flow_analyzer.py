@@ -964,7 +964,7 @@ class ETFFlowAnalyzer:
 
     def analyze(self) -> Dict[str, Any]:
         """
-        간략한 ETF 분석 실행 (main_integrated.py 호출용)
+        간략한 ETF 분석 실행 (main.py 파이프라인 호출용)
 
         Returns:
             Dict with:

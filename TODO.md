@@ -1,192 +1,140 @@
-# EIMAS TODO List (2026-02-04)
+# EIMAS TODO (Full Mode Refactor) - 2026-02-06
 
-## 🔥 우선순위 1: 백테스트 시스템 (이번 주)
+## Goal
+- 기준 실행 경로를 `python main.py --full`로 고정
+- 과도하게 결합된 기능을 도메인별로 분리
+- `eimas`는 "full orchestration core"로 축소
 
-- [x] **lib/backtest_engine.py 분석** (30분) ✅ 2026-02-04 완료
-  - 530줄 단일 파일 확인
-  - 종합 백테스트 엔진 (Sharpe, Sortino, Calmar, Omega 등 15개 지표)
-
-- [x] **lib/backtest/ 패키지 설계** (2시간) ✅ 2026-02-04 완료
-  - enums.py: RebalanceFrequency, BacktestMode (39 lines)
-  - schemas.py: BacktestConfig, BacktestMetrics, BacktestResult (191 lines)
-  - engine.py: BacktestEngine 클래스 (272 lines)
-  - metrics.py: 15개 성과 지표 계산 함수 (329 lines)
-  - utils.py: compare_strategies, generate_report (223 lines)
-  - __init__.py: Safe exports (100 lines)
-  - 총 1,154 lines (530 lines → 모듈화)
-  - Commit: 628a13f
-
-- [x] **BACKTEST_GUIDE.md 작성** (30분) ✅ 2026-02-04 완료
-  - 사용법, 예제 코드, 경제학적 방법론 설명
-
-- [x] **scripts/prepare_historical_data.py 생성** (30분) ✅ 2026-02-04 완료
-  - FRED + 24 market tickers + 5 crypto/RWA 수집
-  - Parquet/CSV 저장 지원
-
-- [ ] **12개월 과거 데이터 수집 실행** (1시간)
-  - 2025-02-04 ~ 2026-02-04
-  - data/backtest_historical.parquet 생성
-  - 주의: FRED API 호출 제한 고려
-
-- [ ] **백테스트 실행 및 검증** (2시간)
-  - Equal Weight, Risk Parity, HRP 전략 테스트
-  - 목표: Sharpe > 1.0, Win Rate > 55%, Max DD < 20%
-
-- [ ] **백테스트 보고서 생성** (1시간)
-  - 레짐별 성과 비교
-  - 월별 수익률
-  - 최대 손실 구간 분석
-
-**예상 소요 시간**: 6-7시간
-**측정 가능한 결과**: Sharpe Ratio, Max Drawdown, Win Rate
+## Refactor Rules
+- 단일 진입점: `main.py` (`run_integrated_pipeline`)
+- 호환성 유지: 기존 import 경로는 shim으로 유지 후 단계적 제거
+- 분리 우선순위: "독립 실행 가능 + 외부 API 의존 + 파일 크기 큰 영역" 먼저
+- 검증 정책: 작은 변경은 `py_compile + import/function smoke`, full은 milestone/merge에서만 실행
+- 구조 기준 문서: `STRUCTURE_REDESIGN_MASTERPLAN.md`
+- 비대화 해소 기준 문서: `BLOAT_RESOLUTION_ARCHITECTURE.md`
 
 ---
 
-## ⚡ 우선순위 2: 성능 최적화 (이번 주)
+## Track A - Full Mode 안정화 (이번 세션)
 
-- [x] **데이터 수집 병렬화** (2시간) ✅ 2026-02-04 완료
-  - lib/parallel_data_collector.py 생성 (430+ lines)
-  - ParallelMarketCollector (10 workers)
-  - ParallelCryptoCollector (5 workers)
-  - ParallelFREDCollector (5 workers, API rate limit 고려)
-  - benchmark_collection() 유틸리티
-  - Commit: ac594f1
-  - 목표: 75초 → 30초 (main.py 통합 후 검증 필요)
-  
-- [ ] **분석 모듈 캐싱** (3시간)
-  - Redis 또는 파일 기반 캐싱
-  - TTL: 1시간
-  - 캐시 키: (date, ticker, module_name)
-  - 목표: 120초 → 60초
-  
-- [ ] **AI 호출 최적화** (2시간)
-  - async/await 패턴
-  - asyncio.gather() 병렬 호출
-  - 목표: 30초 → 15초
-  
-- [ ] **성능 벤치마크** (1시간)
-  - 최적화 전/후 비교
-  - 병목 지점 재확인
-  - 목표: FULL 249초 → 120초
+### A1. 실행 경로 정리
+- [x] `main_integrated.py` 제거 (단일 진입점 `main.py`로 통합)
+- [x] `pipeline/runner.py`를 canonical 파이프라인 위임 방식으로 교체
+- [x] `pipeline/runner.py`에 legacy `run_pipeline` alias 복구
+- [x] `run_all_pipeline.sh`를 `python main.py --full` 기반으로 교체
+- [x] `api/main.py`, `cli/eimas.py`의 legacy 주석/의존 제거
+- [x] 단일 run JSON artifact 경로 정책 도입 (`ADV_007`, phase7/8 동일 파일 갱신)
+- [x] `api/main.py`를 canonical API 엔트리로 고정, `api/server.py` 제거
 
-**예상 소요 시간**: 8시간
-**측정 가능한 결과**: 실행 시간 50% 감소
+### A2. 깨진/중복 경로 청소
+- [x] `main_integrated` 직접 참조 제거 (활성 코드 경로 기준)
+- [x] 루트 세션성 MD를 `docs/archive/root_legacy/`로 이관
+- [x] 활성 경로 backup 파일(`*_backup_*`, `.backup_*`) 제거
+- [x] `lib/deprecated/` 제거 (레거시 import 의존 정리)
+- [x] `archive/legacy/` 제거 (구형 실행파일 삭제)
+- [ ] `pipeline.collection.runner` 등 archive 잔재 참조 제거
+- [ ] 사용하지 않는 실행 스크립트 목록화 및 정리
 
 ---
 
-## 📊 우선순위 3: 대시보드 개선 (다음 주)
+## Track B - 기능 분할 (온체인 방식으로 외부 폴더 분리)
 
-- [ ] **차트 추가 (Recharts)** (2시간)
-  - 포트폴리오 가중치 파이 차트
-  - 리스크 점수 타임라인
-  - 상관관계 히트맵
-  - GMM 확률 분포 차트
-  
-- [ ] **시그널 테이블 통합** (1시간)
-  - `/latest` 엔드포인트 기반
-  - `integrated_signals` 활용
-  
-- [ ] **WebSocket 연결** (1시간)
-  - Phase 4 결과 반영
-  - 실시간 업데이트
+### B0. 완료/진행 상태
+- [x] `onchain_intelligence` 1차 분리 완료
+- [ ] `eimas`와 `onchain_intelligence` 인터페이스 계약(JSON schema) 명시
 
-**예상 소요 시간**: 4시간
+### B1. 분리 후보 1: Execution Intelligence (우선)
+대상: 운영결정/리밸런싱/제약복구/전술배분/스트레스테스트
+- [x] 새 폴더 생성: `/home/tj/projects/autoai/execution_intelligence`
+- [x] 1차 이동 완료:
+  - `lib/allocation_engine.py` -> `execution_intelligence/models/allocation_engine.py`
+  - `lib/rebalancing_policy.py` -> `execution_intelligence/models/rebalancing_policy.py`
+  - `pipeline/analyzers.py`가 adapter 경유 import로 전환
+- [ ] 2차 이동 대기:
+  - `lib/tactical_allocation.py`
+  - `lib/stress_test.py`
+- [ ] 운영결정 이동 정리:
+  - `lib/operational_engine.py`
+  - `lib/operational/` (EXIS에 copy 완료, eimas 원본은 아직 유지)
+- [x] EIMAS adapter 작성: 실패 시 HOLD fallback 보장
 
----
+### B2. 분리 후보 2: Reporting Intelligence
+대상: AI 리포트/화이트닝/팩트체크/문서 변환
+- [ ] 새 폴더 생성: `/home/tj/projects/autoai/reporting_intelligence`
+- [ ] 이동 대상 확정:
+  - `pipeline/report.py`
+  - `lib/ai_report_generator.py`
+  - `lib/whitening_engine.py`
+  - `lib/autonomous_agent.py`
+  - `lib/json_to_md_converter.py`
+  - `lib/json_to_html_converter.py`
 
-## 🔔 우선순위 4: 알림 시스템 (다음 주)
-
-- [ ] **Slack 연동** (1.5시간)
-  - Webhook 설정
-  - 알림 포맷 정의
-  
-- [ ] **알림 규칙 구현** (1.5시간)
-  - 버블 DANGER level
-  - 레짐 변화 (Bull ↔ Bear)
-  - 리스크 급등 (50+ → 70+)
-  - AI 합의 불일치
-
-**예상 소요 시간**: 3시간
-
----
-
-## 📚 우선순위 5: 문서화 (다음 주)
-
-- [ ] **API_REFERENCE.md** (2시간)
-  - FastAPI 엔드포인트
-  - 요청/응답 예시
-  
-- [ ] **PACKAGE_GUIDE.md** (2시간)
-  - 패키지별 사용법
-  - 예제 코드
-
-**예상 소요 시간**: 4시간
+### B3. 분리 후보 3: Realtime Intelligence
+대상: 바이낸스 스트림/실시간 파이프라인/알림
+- [ ] 새 폴더 생성: `/home/tj/projects/autoai/realtime_intelligence`
+- [ ] 이동 대상 확정:
+  - `pipeline/realtime.py`
+  - `lib/binance_stream.py`
+  - `lib/realtime_pipeline.py`
 
 ---
 
-## 🔧 선택 사항: 추가 리팩토링
+## Track C - Full Mode 성능/신뢰성
 
-- [ ] trading_db.py → lib/db/trading/ (2-3h)
-- [ ] event_db.py → lib/db/events/ (1-2h)
-- [ ] json_to_html_converter.py → lib/converters/ (1h)
-- [ ] json_to_md_converter.py → lib/converters/ (1h)
-- [ ] market_indicators.py → lib/collectors/indicators/ (2h)
-- [ ] data_collector.py → lib/collectors/market/ (2h)
+### C1. 성능 예산
+- [ ] FULL 총 실행 시간: `249s -> 150s -> 120s`
+- [ ] Phase 2 분석 병목: 캐시 도입 (`1h TTL`)
+- [ ] AI 검증 병렬화: validation call fan-out
 
-**총 예상 시간**: 9-11시간
-
----
-
-## 🐛 버그 수정
-
-- [ ] **자산 배분 제약 위반** (P2)
-  - RebalancingPolicy 강화
-  - Failsafe 메커니즘
-  
-- [ ] **NVDA 버블 경고 대응** (P1)
-  - 포지션 크기 제한 (최대 5%)
-  - 방어적 헤지 전략
-  
-- [ ] **yfinance 401 오류** (P3)
-  - Retry 로직 (최대 3회)
-  - 대체 데이터 소스
+### C2. 신뢰성
+- [ ] `sys.path.insert` 제거 계획 수립 (활성 트리 기준 63건)
+- [ ] 절대경로 제거 (`/home/tj/projects/autoai/eimas` 하드코딩)
+- [x] `Close`/`close` 컬럼 편차에 대한 backtest/전략배분 로직 내성 강화
+- [ ] `pytest` 실행 가능한 테스트 환경 정비
 
 ---
 
-## 📈 측정 지표 (완료 시 체크)
+## Track D - 문서/운영 프로세스 재설계
 
-### 성능
-- [ ] FULL 실행 시간: < 120초 (현재 249초)
-- [ ] --quick 실행 시간: < 15초 (현재 30초)
-- [ ] 메모리 사용: < 600MB (현재 850MB)
-
-### 백테스트
-- [ ] Sharpe Ratio: > 1.0
-- [ ] Win Rate: > 55%
-- [ ] Max Drawdown: < 20%
-
-### 대시보드
-- [ ] 차트: 4개 추가
-- [ ] WebSocket 지연: < 100ms
-- [ ] 알림 지연: < 5초
+- [x] `FULL_EXECUTION_PROCESS.md` 신설
+- [ ] `README.md`에 full-mode refactor 문서 링크 추가
+- [ ] `CURRENT_STATUS.md`를 refactor 진행 기준으로 업데이트
 
 ---
 
-## 🎯 이번 세션 시작점
+## 이번 주 실행 순서
+
+1. `A` 완료: 실행 경로/깨진 import 정리 완료
+2. `B1` 시작: Execution Intelligence 폴더 생성 + 모듈 이동 리스트 확정
+3. `C` 착수: per-change/per-wave 검증 자동화
+4. `B2`/`B3`로 확장: 보고서/실시간 분리
+
+---
+
+## 내일 바로 시작 (Restart)
+
+1. 상태 확인:
+   - `git status --short`
+   - `python3 -m py_compile main.py api/main.py pipeline/runner.py lib/ai_report_generator.py`
+2. 계약 확인:
+   - `bash scripts/check_execution_contract.sh`
+3. 다음 클리닝:
+   - `docs/architecture/*`의 legacy 명령/엔트리 참조 정리
+   - `archive/docs`, `docs/session_artifacts` 보존 기준 확정 후 pruning
+4. 구조 리팩토링 재개:
+   - `execution_intelligence` 2차 이동 (`tactical_allocation`, `stress_test`)
+
+---
+
+## Canonical Commands
 
 ```bash
-# 1. 백테스트 엔진 분석
-cat lib/backtest_engine.py | head -100
+# Full mode (기준 실행)
+python main.py --full
 
-# 2. 패키지 구조 설계
-mkdir -p lib/backtest
-touch lib/backtest/{__init__.py,enums.py,schemas.py,engine.py,simulator.py,metrics.py,report.py}
+# Full + realtime
+python main.py --full --realtime -d 30
 
-# 3. 과거 데이터 준비
-python scripts/prepare_historical_data.py --start 2025-02-04 --end 2026-02-04
+# Shell wrapper
+./run_all_pipeline.sh
 ```
-
----
-
-*Created: 2026-02-04 19:30 KST*
-*Priority: 백테스트 > 성능 > 대시보드 > 알림 > 문서*

@@ -7,7 +7,7 @@ Purpose:
     Phase 5 데이터 저장 담당 (Data Storage)
 
 Functions:
-    - save_result_json(result, output_dir) -> str
+    - save_result_json(result, output_dir, output_file) -> str
     - save_to_trading_db(signals)
     - save_to_event_db(events)
 
@@ -24,34 +24,46 @@ Example:
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, Union
 
 # EIMAS 라이브러리
 from lib.trading_db import TradingDB, Signal
 from lib.event_db import EventDatabase
 from pipeline.schemas import EIMASResult, Event, RealtimeSignal
 
-def save_result_json(result: EIMASResult, output_dir: Path = None) -> str:
+def save_result_json(
+    result: EIMASResult,
+    output_dir: Path = None,
+    output_file: Optional[Union[str, Path]] = None,
+) -> str:
     """결과를 JSON 파일로 저장 (통합 포맷)"""
     print("\n" + "=" * 50)
     print("PHASE 5: DATABASE STORAGE")
     print("=" * 50)
     print("\n[5.3] Saving unified JSON result...")
-    
+
     if output_dir is None:
         output_dir = Path(__file__).parent.parent / "outputs"
-    
+
+    output_dir = Path(output_dir).expanduser()
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # NEW: 통합 파일명 (eimas_*)
-    output_file = output_dir / f"eimas_{timestamp_str}.json"
+    if output_file:
+        target_file = Path(output_file).expanduser()
+        if not target_file.is_absolute():
+            target_file = output_dir / target_file
+    else:
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # NEW: 통합 파일명 (eimas_*)
+        target_file = output_dir / f"eimas_{timestamp_str}.json"
+
+    target_file.parent.mkdir(exist_ok=True, parents=True)
 
     try:
-        with open(output_file, 'w') as f:
+        with open(target_file, 'w') as f:
             json.dump(result.to_dict(), f, indent=2, default=str)
-        print(f"      ✓ Saved: {output_file}")
-        return str(output_file)
+        print(f"      ✓ Saved: {target_file}")
+        return str(target_file)
     except Exception as e:
         print(f"      ✗ JSON save error: {e}")
         return ""

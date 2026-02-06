@@ -5,7 +5,7 @@ EIMAS Final Report Generator
 실행된 분석 결과(JSON)를 바탕으로 AI 기반 심층 리포트를 생성합니다.
 
 기능:
-1. 최신 full_analysis_*.json 로드
+1. 최신 eimas_*.json 로드 (legacy integrated_*.json fallback)
 2. AIReportGenerator를 통해 IB 스타일 Memorandum 생성
 3. Proof-of-Index, DTW, HFT 등 신규 지표 반영 확인
 4. 결과 저장
@@ -29,11 +29,13 @@ async def main():
     
     # 1. 최신 분석 결과 로드
     output_dir = Path("outputs")
-    json_files = sorted(output_dir.glob("full_analysis_*.json"), reverse=True)
-    
+    json_files = sorted(output_dir.glob("eimas_*.json"), reverse=True)
     if not json_files:
-        print("❌ 분석 결과 파일(full_analysis_*.json)을 찾을 수 없습니다.")
-        print("먼저 'python run_full_analysis.py'를 실행해주세요.")
+        json_files = sorted(output_dir.glob("integrated_*.json"), reverse=True)
+
+    if not json_files:
+        print("❌ 분석 결과 파일(eimas_*.json)을 찾을 수 없습니다.")
+        print("먼저 'python main.py --full'를 실행해주세요.")
         return
         
     latest_file = json_files[0]

@@ -82,7 +82,7 @@ e9af621 - refactor: Extract causality modules into lib/causality/ package
 | 문서 | 크기 | 목적 | 상태 |
 |------|------|------|------|
 | EIMAS_OVERVIEW.md | 700+ lines | 하향식 구조 설명 | ✅ |
-| RECENT_RESULTS.md | 370+ lines | 최근 실행 결과 | ✅ |
+| docs/archive/root_legacy/RECENT_RESULTS.md | 370+ lines | 최근 실행 결과(아카이브) | ✅ |
 | CLAUDE.md | 업데이트됨 | 개발자 가이드 | ✅ |
 | ARCHITECTURE.md | 기존 유지 | 상세 설계 | ✅ |
 
@@ -267,7 +267,7 @@ Phase 6 (Report): ~15초
 
 **현재 문서:**
 - ✅ EIMAS_OVERVIEW.md (하향식 구조)
-- ✅ RECENT_RESULTS.md (최근 결과)
+- ✅ docs/archive/root_legacy/RECENT_RESULTS.md (최근 결과, 아카이브)
 - ⚠️  API 문서 부족
 - ⚠️  패키지별 README 없음
 

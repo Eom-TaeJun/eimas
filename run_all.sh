@@ -9,7 +9,8 @@ echo "================================================"
 echo ""
 
 # Create logs directory if not exists
-cd /home/tj/projects/autoai/eimas
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 mkdir -p logs
 
 # Check if backend is already running

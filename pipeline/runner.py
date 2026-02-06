@@ -1,70 +1,67 @@
-import asyncio
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, Any
+"""
+Pipeline runner (compatibility wrapper).
 
-# Ensure project root is in sys.path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+Historically this module tried to import `pipeline.collection.runner`,
+`pipeline.analysis.runner`, etc., but those modules were archived.
+To keep one canonical execution path for full mode, this runner now
+delegates to `main.run_integrated_pipeline`.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+from typing import Awaitable, Callable
 
 from pipeline.schemas import EIMASResult
-from pipeline.collection.runner import run_data_collection
-from pipeline.analysis.runner import run_analysis
-from pipeline.signal.runner import run_debate
-from pipeline.realtime.runner import run_realtime_monitor_pipeline
-from pipeline.storage.runner import run_storage
-from pipeline.reporting.runner import run_report_and_qa
-from pipeline.standalone.runner import run_standalone_scripts
+
+_RUN_MAIN_PIPELINE: Callable[..., Awaitable[EIMASResult]] | None = None
+
+
+def _get_main_pipeline_runner() -> Callable[..., Awaitable[EIMASResult]]:
+    """Load canonical `main.py` by file path (independent of current cwd)."""
+    global _RUN_MAIN_PIPELINE
+    if _RUN_MAIN_PIPELINE is not None:
+        return _RUN_MAIN_PIPELINE
+
+    root_path = Path(__file__).resolve().parents[1]
+    root_str = str(root_path)
+    if root_str not in sys.path:
+        sys.path.insert(0, root_str)
+
+    main_path = root_path / "main.py"
+    spec = importlib.util.spec_from_file_location("eimas_main_canonical", main_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Failed to load canonical main module from {main_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    _RUN_MAIN_PIPELINE = module.run_integrated_pipeline
+    return _RUN_MAIN_PIPELINE
+
 
 async def run_integrated_pipeline(
     enable_realtime: bool = False,
     realtime_duration: int = 30,
     quick_mode: bool = False,
-    output_dir: str = 'outputs',
+    output_dir: str = "outputs",
     cron_mode: bool = False,
-    full_mode: bool = False
+    full_mode: bool = False,
 ) -> EIMASResult:
-    """
-    EIMAS 통합 파이프라인 실행
-    """
-    start_time = datetime.now()
-    result = EIMASResult(timestamp=start_time.isoformat())
+    """Compatibility entrypoint that forwards to the canonical main pipeline."""
+    run_main_pipeline = _get_main_pipeline_runner()
+    return await run_main_pipeline(
+        enable_realtime=enable_realtime,
+        realtime_duration=realtime_duration,
+        quick_mode=quick_mode,
+        generate_report=not quick_mode,
+        full_mode=full_mode,
+        output_dir=output_dir,
+        cron_mode=cron_mode,
+    )
 
-    print("=" * 70)
-    print("  EIMAS - Integrated Analysis Pipeline")
-    print("=" * 70)
-    mode_str = 'Full' if full_mode else ('Quick' if quick_mode else 'Standard')
-    print(f"  Mode: {mode_str}")
-    print(f"  Realtime: {'Enabled' if enable_realtime else 'Disabled'}")
-    if full_mode:
-        print(f"  Standalone Scripts: Enabled")
-    print("=" * 70)
 
-    # Phase 1: Data Collection
-    market_data, indicators_summary = run_data_collection(result, quick_mode)
-
-    # Phase 2: Analysis
-    result = await run_analysis(result, market_data, result.fred_summary, quick_mode)
-
-    # Phase 3: Multi-Agent Debate
-    result = await run_debate(result, market_data, quick_mode)
-
-    # Phase 4: Real-time Monitoring
-    result = await run_realtime_monitor_pipeline(result, enable_realtime, realtime_duration)
-
-    # Phase 5: Storage
-    output_json, output_md = run_storage(result, market_data, output_dir, cron_mode)
-
-    # Phase 6 & 7: Report & QA
-    if not cron_mode:
-        await run_report_and_qa(result, market_data, output_md, quick_mode)
-
-    # Phase 12: Standalone Scripts (if full_mode)
-    if full_mode:
-        await run_standalone_scripts(result)
-
-    print("\n" + "=" * 70)
-    print(f"  EIMAS Pipeline Completed in {(datetime.now() - start_time).total_seconds():.1f}s")
-    print("=" * 70)
-
-    return result
+async def run_pipeline(*args, **kwargs) -> EIMASResult:
+    """Legacy alias kept for historical callers."""
+    return await run_integrated_pipeline(*args, **kwargs)

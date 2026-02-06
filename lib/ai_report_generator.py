@@ -935,11 +935,12 @@ class AIReportGenerator:
         # 13. 백테스팅 섹션 (유사 레짐 분석)
         self._log("Generating backtest section (similar regime analysis)...")
         try:
-            from lib.deprecated.regime_history import RegimeHistoryAnalyzer, add_backtest_section_to_report
+            # Legacy module was removed during cleanup. Keep this optional.
+            from lib.regime_history import add_backtest_section_to_report
             report.backtest_section = add_backtest_section_to_report(report.to_dict())
             self._log("Backtest section generated successfully")
-        except Exception as e:
-            self._log(f"Backtest section generation failed: {e}")
+        except Exception:
+            self._log("Backtest section skipped (legacy regime-history module unavailable)")
             report.backtest_section = ""
 
         # 14. 옵션/센티먼트 분석 (NEW)
@@ -1044,15 +1045,15 @@ class AIReportGenerator:
                     pass 
                 except:
                     pass
-            # 실제 데이터 구조에 따라 파싱 (여기서는 run_full_analysis.py의 출력을 가정)
+            # 실제 데이터 구조에 따라 파싱 (legacy 구조 포함)
             # JSON 로드 시 딕셔너리로 들어옴
             
             # PoI 상세 데이터가 analyses['proof_of_index'] 자체에 있을 수도 있음 (구조 확인 필요)
-            # run_full_analysis.py는 'summary' 키에 문자열 요약을 넣거나, 전체 데이터를 넣음.
+            # legacy 출력은 'summary' 키에 문자열 요약을 넣거나, 전체 데이터를 넣음.
             # 여기서는 전체 데이터를 가정하고 접근
             pass 
 
-        # run_full_analysis.py의 결과 구조:
+        # legacy 결과 구조:
         # results['analyses']['proof_of_index'] = {...}
         
         # 1. HFT Microstructure

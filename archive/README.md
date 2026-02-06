@@ -6,13 +6,6 @@ Historical code and documentation preserved for reference.
 
 ```
 archive/
-├── legacy/           # Legacy Python entry points
-│   ├── main_legacy.py
-│   ├── main_integrated.py
-│   ├── main_orchestrator.py
-│   ├── run_full_analysis.py
-│   ├── debug_forecast.py
-│   └── dashboard.py      # Streamlit dashboard (replaced by Next.js)
 ├── deprecated/       # Deprecated lib/ modules
 ├── v0_generation/    # V0 SDK web app generation scripts
 │   ├── generate_fix.js
@@ -30,12 +23,17 @@ archive/
 
 | What | Where | Notes |
 |------|-------|-------|
-| **Old Python dashboards** | `legacy/dashboard.py` | Replaced by Next.js frontend |
-| **Alternate orchestrators** | `legacy/main_orchestrator.py` | Use `main.py` instead |
 | **V0 generation scripts** | `v0_generation/` | Used to bootstrap frontend |
 | **Phase reports** | `docs/PHASE_*.md` | Development history |
 | **TODO/Gap analysis** | `docs/todolist.md`, `gap_analysis.md` | Mostly completed |
 
 ---
 
-*Last updated: 2026-01-31*
+## Notes (2026-02-06 cleanup)
+
+- `archive/legacy/` and `lib/deprecated/` were removed from the live tree.
+- Canonical entrypoints:
+  - pipeline: `main.py`
+  - API: `api.main`
+
+*Last updated: 2026-02-06*

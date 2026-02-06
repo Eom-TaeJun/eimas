@@ -320,11 +320,68 @@ class QuickOrchestrator:
         }
 
     def _extract_kospi_data(self, full_result: Dict, market_data: Optional[Dict]) -> Dict:
-        """KOSPI 데이터 추출"""
+        """KOSPI 데이터 추출 — market_data의 runtime DataFrame에서 직접 계산"""
         kospi = {}
+        korea_data = market_data.get('korea_data', {}) if market_data else {}
 
-        # From Korea data in full_result
-        if 'korea_data' in full_result:
+        # KOSPI 기본 통계 + 모멘텀
+        if 'indices' in korea_data and 'KOSPI' in korea_data['indices']:
+            kospi_df = korea_data['indices']['KOSPI']
+            if not kospi_df.empty and 'Close' in kospi_df.columns:
+                prices = kospi_df['Close']
+                returns = prices.pct_change().dropna()
+
+                kospi['current_price'] = float(prices.iloc[-1])
+                kospi['ytd_return'] = float((prices.iloc[-1] / prices.iloc[0] - 1) * 100)
+                kospi['volatility'] = float(returns.std() * (252 ** 0.5) * 100)
+                kospi['sharpe'] = float((returns.mean() / returns.std()) * (252 ** 0.5)) if returns.std() > 0 else 0.0
+
+                # 1월 모멘텀 (21 거래일)
+                if len(prices) >= 22:
+                    kospi['momentum'] = float((prices.iloc[-1] / prices.iloc[-22] - 1) * 100)
+
+        # 환율 (USDKRW) → 외국인 흐름 프록시
+        # KRW 약화(USD 강화) = 외국인 자금 유출 신호
+        if 'currency' in korea_data and 'USDKRW' in korea_data['currency']:
+            fx_df = korea_data['currency']['USDKRW']
+            if not fx_df.empty and 'Close' in fx_df.columns:
+                fx_prices = fx_df['Close']
+                fx_current = float(fx_prices.iloc[-1])
+                fx_1m = float(fx_prices.iloc[-22]) if len(fx_prices) >= 22 else fx_current
+                fx_change_pct = (fx_current / fx_1m - 1) * 100
+                if fx_change_pct > 1.0:
+                    kospi['foreign_flow'] = f"Negative (KRW -{fx_change_pct:.1f}% vs USD)"
+                elif fx_change_pct < -1.0:
+                    kospi['foreign_flow'] = f"Positive (KRW +{abs(fx_change_pct):.1f}% vs USD)"
+                else:
+                    kospi['foreign_flow'] = "Neutral"
+
+        # 섹터 리더 (1월 수익률 상위 3개)
+        if 'sector_etfs' in korea_data:
+            sector_returns = {}
+            for name, df in korea_data['sector_etfs'].items():
+                if not df.empty and 'Close' in df.columns and len(df) >= 22:
+                    prices = df['Close']
+                    ret = float((prices.iloc[-1] / prices.iloc[-22] - 1) * 100)
+                    sector_returns[name.replace('KODEX_', '')] = ret
+            top_sectors = sorted(sector_returns.items(), key=lambda x: x[1], reverse=True)[:3]
+            if top_sectors:
+                kospi['sector_leaders'] = [f"{name} {ret:+.1f}%" for name, ret in top_sectors]
+
+        # 대형주 퍼포머 (1월 수익률 상위 3개)
+        if 'large_caps' in korea_data:
+            cap_returns = {}
+            for name, df in korea_data['large_caps'].items():
+                if not df.empty and 'Close' in df.columns and len(df) >= 22:
+                    prices = df['Close']
+                    ret = float((prices.iloc[-1] / prices.iloc[-22] - 1) * 100)
+                    cap_returns[name.replace('_', ' ')] = ret
+            top_caps = sorted(cap_returns.items(), key=lambda x: x[1], reverse=True)[:3]
+            if top_caps:
+                kospi['top_performers'] = [f"{name} {ret:+.1f}%" for name, ret in top_caps]
+
+        # Fallback: full_result에서 기본 통계만 (market_data 미사용 시)
+        if not kospi and 'korea_data' in full_result:
             korea_summary = full_result['korea_data'].get('summary', {})
             kospi_stats = korea_summary.get('kospi_stats', {})
             kospi['current_price'] = kospi_stats.get('current_price', 0)
@@ -332,7 +389,7 @@ class QuickOrchestrator:
             kospi['volatility'] = kospi_stats.get('volatility', 0)
             kospi['sharpe'] = kospi_stats.get('sharpe', 0)
 
-        # Fair Value gap (if available)
+        # Fair Value gap (full_result에서 — 직렬화됨)
         if 'fair_value_results' in full_result and 'kospi' in full_result['fair_value_results']:
             kospi_fv = full_result['fair_value_results']['kospi']
             if 'consensus' in kospi_fv:
