@@ -18,7 +18,9 @@ from pathlib import Path
 from datetime import datetime
 
 # 프로젝트 루트 경로 설정
-sys.path.insert(0, str(Path(__file__).parent))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from lib.ai_report_generator import AIReportGenerator
 
@@ -28,7 +30,7 @@ async def main():
     print("=" * 60)
     
     # 1. 최신 분석 결과 로드
-    output_dir = Path("outputs")
+    output_dir = PROJECT_ROOT / "outputs"
     json_files = sorted(output_dir.glob("eimas_*.json"), reverse=True)
     if not json_files:
         json_files = sorted(output_dir.glob("integrated_*.json"), reverse=True)
