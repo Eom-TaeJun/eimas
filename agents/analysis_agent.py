@@ -10,23 +10,14 @@ Wraps CriticalPathAggregator for agent framework integration
 - 정량적 분석 + 정성적 해석의 결합
 """
 
-import sys
-import os
 from typing import Dict, Any
 from datetime import datetime
-
-# 프로젝트 루트를 sys.path에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import BaseAgent, AgentConfig
 from core.schemas import AgentRequest, AgentResponse, AgentOpinion, AgentRole, OpinionStrength
 
-# CriticalPathAggregator 임포트
-critical_path_module_path = '/home/tj/projects/autoai/market_anomaly_detector_v2.2/market_anomaly_detector'
-sys.path.insert(0, critical_path_module_path)
-
 try:
-    from critical_path_analyzer import CriticalPathAggregator, CriticalPathResult
+    from lib.critical_path import CriticalPathAggregator, CriticalPathResult
     CRITICAL_PATH_AVAILABLE = True
 except ImportError as e:
     CRITICAL_PATH_AVAILABLE = False

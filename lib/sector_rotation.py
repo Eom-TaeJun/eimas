@@ -18,9 +18,6 @@ Usage:
     print(result.recommended_sectors)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import numpy as np
 import pandas as pd
 import yfinance as yf

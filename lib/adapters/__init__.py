@@ -7,12 +7,17 @@ from .execution_models import (
     AllocationResult,
     AllocationStrategy,
     AssetClassBounds,
+    MomentumOverlay,
     RebalanceConfig,
     RebalanceDecision,
     RebalanceFrequency,
     RebalancePolicy,
     RebalancingPolicy,
+    StressTestEngine,
+    TacticalAssetAllocator,
     TradingCostModel,
+    VolatilityTargeting,
+    generate_stress_test_report,
 )
 
 __all__ = [
@@ -22,10 +27,15 @@ __all__ = [
     "AllocationResult",
     "AllocationStrategy",
     "AssetClassBounds",
+    "MomentumOverlay",
     "RebalanceConfig",
     "RebalanceDecision",
     "RebalanceFrequency",
     "RebalancePolicy",
     "RebalancingPolicy",
+    "StressTestEngine",
+    "TacticalAssetAllocator",
     "TradingCostModel",
+    "VolatilityTargeting",
+    "generate_stress_test_report",
 ]

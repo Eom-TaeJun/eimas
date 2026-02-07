@@ -91,7 +91,7 @@ from typing import Dict
 # ============================================================================
 # Pipeline Imports
 # ============================================================================
-from pipeline import EIMASResult
+from pipeline.schemas import EIMASResult
 
 # Extracted phase handlers (M2 split)
 from pipeline.phases.phase1_collect import collect_data as phase1_collect_data

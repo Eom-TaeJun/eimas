@@ -15,18 +15,18 @@ EIMAS Daily Data Collector
     python scripts/daily_collector.py
 
     # cron 설정 (매일 오후 5시, 미국 동부시간)
-    0 17 * * 1-5 cd /home/tj/projects/autoai/eimas && python scripts/daily_collector.py >> logs/daily.log 2>&1
+    0 17 * * 1-5 cd /path/to/eimas && python scripts/daily_collector.py >> logs/daily.log 2>&1
 
     # systemd timer 설정
     systemctl --user enable eimas-daily.timer
 """
 
 import sys
-import os
+from pathlib import Path
 
-# 프로젝트 루트 추가
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-os.chdir('/home/tj/projects/autoai/eimas')
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import argparse
 from datetime import datetime

@@ -17,9 +17,6 @@ Market Indicators Collector
 - 계산: 스프레드, 비율 등
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import yfinance as yf
 import pandas as pd
 import numpy as np

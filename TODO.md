@@ -28,12 +28,12 @@
 
 ### A2. 깨진/중복 경로 청소
 - [x] `main_integrated` 직접 참조 제거 (활성 코드 경로 기준)
-- [x] 루트 세션성 MD를 `docs/archive/root_legacy/`로 이관
+- [x] 구버전 archive/docs 및 docs/archive 제거
 - [x] 활성 경로 backup 파일(`*_backup_*`, `.backup_*`) 제거
 - [x] `lib/deprecated/` 제거 (레거시 import 의존 정리)
-- [x] `archive/legacy/` 제거 (구형 실행파일 삭제)
-- [ ] `pipeline.collection.runner` 등 archive 잔재 참조 제거
-- [ ] 사용하지 않는 실행 스크립트 목록화 및 정리
+- [x] `archive/` 전체 제거 (구형 코드/문서 정리)
+- [x] `pipeline.collection.runner` 등 archive 잔재 참조 제거
+- [x] 사용하지 않는 실행 스크립트 목록화 및 1차 정리 (`RUN_SCRIPT_INVENTORY_20260207`, `merge_frontend.sh` 제거)
 
 ---
 
@@ -50,12 +50,16 @@
   - `lib/allocation_engine.py` -> `execution_intelligence/models/allocation_engine.py`
   - `lib/rebalancing_policy.py` -> `execution_intelligence/models/rebalancing_policy.py`
   - `pipeline/analyzers.py`가 adapter 경유 import로 전환
-- [ ] 2차 이동 대기:
-  - `lib/tactical_allocation.py`
-  - `lib/stress_test.py`
+- [x] 2차 이동 완료 (adapter 경유 전환):
+  - `lib/tactical_allocation.py` -> `execution_intelligence.models.tactical_allocation`
+  - `lib/stress_test.py` -> `execution_intelligence.models.stress_test`
+  - `phase6_portfolio.py`, `tests/test_portfolio_modules.py` import를 `lib.adapters`로 전환
 - [ ] 운영결정 이동 정리:
   - `lib/operational_engine.py`
   - `lib/operational/` (EXIS에 copy 완료, eimas 원본은 아직 유지)
+  - 진행: `lib/operational/*`을 EXIS 기준으로 동기화, `execution_backend`는 package-first + monolith fallback으로 전환
+  - 진행: `phase45_operational.py`가 `audit_metadata`에 `execution_backend_source`/`execution_backend_fallback_reason` 기록
+  - 다음: fallback 관측(`backend_source`, `backend_fallback_reason`) 기준으로 monolith 제거 시점 결정
 - [x] EIMAS adapter 작성: 실패 시 HOLD fallback 보장
 
 ### B2. 분리 후보 2: Reporting Intelligence
@@ -87,8 +91,8 @@
 - [ ] AI 검증 병렬화: validation call fan-out
 
 ### C2. 신뢰성
-- [ ] `sys.path.insert` 제거 계획 수립 (활성 트리 기준 63건)
-- [ ] 절대경로 제거 (`/home/tj/projects/autoai/eimas` 하드코딩)
+- [ ] `sys.path.insert` 제거 계획 수립 (활성 트리 기준 13건)
+- [x] 절대경로 제거 (`/home/tj/projects/autoai/eimas` 하드코딩, 실행 코드 기준)
 - [x] `Close`/`close` 컬럼 편차에 대한 backtest/전략배분 로직 내성 강화
 - [ ] `pytest` 실행 가능한 테스트 환경 정비
 
@@ -97,8 +101,9 @@
 ## Track D - 문서/운영 프로세스 재설계
 
 - [x] `FULL_EXECUTION_PROCESS.md` 신설
-- [ ] `README.md`에 full-mode refactor 문서 링크 추가
-- [ ] `CURRENT_STATUS.md`를 refactor 진행 기준으로 업데이트
+- [x] `README.md`에 full-mode refactor 문서 링크 추가 (`FULL_EXECUTION_PROCESS`, `CURRENT_STATUS`, `TODO`)
+- [x] `CURRENT_STATUS.md`를 refactor 진행 기준으로 업데이트
+- [x] 구버전 archive 제거 + 문서 참조 정리
 
 ---
 
@@ -120,9 +125,9 @@
    - `bash scripts/check_execution_contract.sh`
 3. 다음 클리닝:
    - `docs/architecture/*`의 legacy 명령/엔트리 참조 정리
-   - `archive/docs`, `docs/session_artifacts` 보존 기준 확정 후 pruning
+   - `sys.path.insert`/절대경로 하드코딩 2차 축소
 4. 구조 리팩토링 재개:
-   - `execution_intelligence` 2차 이동 (`tactical_allocation`, `stress_test`)
+   - `execution_intelligence` 운영결정 이동 정리 (`operational_engine`, `operational/`)
 
 ---
 

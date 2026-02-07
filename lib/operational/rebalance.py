@@ -13,7 +13,7 @@ from enum import Enum
 import logging
 
 # Import from same package
-from .config import OperationalConfig
+from .config import OperationalConfig, ASSET_CLASS_MAP
 from .enums import FinalStance, ReasonCode, TriggerType, SignalType
 
 logger = logging.getLogger(__name__)
@@ -545,4 +545,3 @@ def generate_rebalance_plan(
         turnover_cap_applied=turnover_cap_applied,
         original_turnover=original_turnover,
     )
-

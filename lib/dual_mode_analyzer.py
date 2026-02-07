@@ -14,13 +14,9 @@ Dual Mode Analyzer
     comparison = analyzer.compare_results(results)
 """
 
-import sys
-import os
 from dataclasses import dataclass, field
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.schemas import (
     AnalysisMode,

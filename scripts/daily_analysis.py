@@ -17,13 +17,16 @@ Usage:
 """
 
 import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import argparse
 from datetime import datetime, date, timedelta
 from typing import Dict, Any
 import json
-from pathlib import Path
 
 from lib.trading_db import TradingDB
 from lib.signal_pipeline import SignalPipeline, PortfolioGenerator

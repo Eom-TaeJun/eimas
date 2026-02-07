@@ -71,6 +71,25 @@ def _extract_close_series(data):
     return None
 
 
+def _get_metric(obj: Any, primary_key: str, legacy_key: Optional[str] = None) -> Optional[Any]:
+    """Read value from dict/object with primary -> legacy fallback."""
+    if obj is None:
+        return None
+
+    if isinstance(obj, dict):
+        if primary_key in obj:
+            return obj[primary_key]
+        if legacy_key and legacy_key in obj:
+            return obj[legacy_key]
+        return None
+
+    if hasattr(obj, primary_key):
+        return getattr(obj, primary_key)
+    if legacy_key and hasattr(obj, legacy_key):
+        return getattr(obj, legacy_key)
+    return None
+
+
 def analyze_enhanced(
     result: EIMASResult,
     market_data: Dict[str, Any],
@@ -194,8 +213,14 @@ def calculate_strategic_allocation_analysis(
 
     try:
         bond_yields = {"us_10y": 0.042, "korea_10y": 0.035}
-        if hasattr(result, "fred_summary") and result.fred_summary and "DGS10" in result.fred_summary:
-            bond_yields["us_10y"] = result.fred_summary["DGS10"] / 100
+        us_10y = _get_metric(getattr(result, "fred_summary", None), "treasury_10y", "DGS10")
+        if us_10y is not None:
+            try:
+                us_10y_value = float(us_10y)
+                if us_10y_value > 0:
+                    bond_yields["us_10y"] = us_10y_value / 100.0
+            except (TypeError, ValueError):
+                pass
 
         mode = "quick" if quick_mode else "comprehensive"
         fair_value_results = calculate_fair_values(

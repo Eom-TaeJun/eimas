@@ -26,12 +26,8 @@ Examples:
 import argparse
 import json
 import sys
-import os
 from pathlib import Path
 from typing import Optional
-
-# Add parent to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.schemas.insight_schema import InsightRequest, AnalysisFrame
 from agent.core.orchestrator import EconomicInsightOrchestrator

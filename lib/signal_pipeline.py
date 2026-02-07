@@ -12,9 +12,6 @@ Usage:
     pipeline.print_summary()
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass

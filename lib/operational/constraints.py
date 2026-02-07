@@ -13,7 +13,7 @@ from enum import Enum
 import logging
 
 # Import from same package
-from .config import OperationalConfig
+from .config import OperationalConfig, ASSET_CLASS_MAP
 from .enums import FinalStance, ReasonCode, TriggerType, SignalType
 
 logger = logging.getLogger(__name__)
@@ -579,4 +579,3 @@ def repair_constraints(
             result.force_hold_reason = "Repair unsuccessful"
 
     return result
-

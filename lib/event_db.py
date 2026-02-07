@@ -31,9 +31,6 @@ EIMAS Event Database
         # 종료 시 자동 저장
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import sqlite3
 import json
 import atexit

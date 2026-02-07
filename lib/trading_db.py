@@ -13,9 +13,6 @@ Usage:
     db.update_performance(portfolio_id, actual_returns)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import sqlite3
 import json
 from datetime import datetime, date, timedelta

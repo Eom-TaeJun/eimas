@@ -17,15 +17,14 @@ Usage:
     rg.generate_daily_report()
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 import json
 
 from lib.trading_db import TradingDB
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 # ============================================================================
@@ -231,8 +230,8 @@ class ReportGenerator:
 
     def __init__(self, db: TradingDB = None, output_dir: str = None):
         self.db = db or TradingDB()
-        self.output_dir = Path(output_dir or '/home/tj/projects/autoai/eimas/outputs')
-        self.output_dir.mkdir(exist_ok=True)
+        self.output_dir = Path(output_dir) if output_dir else PROJECT_ROOT / "outputs"
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_color_class(self, value: float, thresholds: tuple = (0, 0)) -> str:
         """값에 따른 색상 클래스"""

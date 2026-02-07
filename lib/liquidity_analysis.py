@@ -11,9 +11,6 @@ RRP/TGA/Fed Assets와 시장 변수의 인과관계 분석
 기존 causal_network.py의 Granger Causality를 활용
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta

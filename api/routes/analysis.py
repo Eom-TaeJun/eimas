@@ -8,7 +8,7 @@ Active Endpoints:
 - GET /latest: Get the most recent integrated analysis result (for dashboard)
 
 Archived Endpoints:
-- POST /analyze: Moved to pipeline/archive/ (used full_pipeline.py)
+- POST /analyze: Removed from active API surface
 """
 
 from datetime import datetime
@@ -83,9 +83,7 @@ async def run_analysis_deprecated():
     - CLI: python main.py --short
     - Dashboard: GET /latest for cached results
 
-    To restore this endpoint, see:
-    - pipeline/archive/full_pipeline.py
-    - agents/archive/
+    This endpoint was permanently removed from active API surface.
     """
     raise HTTPException(
         status_code=410,  # Gone
@@ -95,6 +93,6 @@ async def run_analysis_deprecated():
                 "CLI: python main.py --short",
                 "Dashboard: GET /latest",
             ],
-            "restore_info": "See pipeline/archive/ and agents/archive/"
+            "restore_info": "Use main pipeline entrypoint (`python main.py`)."
         }
     )

@@ -18,9 +18,6 @@ Usage:
     print(trader.get_portfolio_summary())
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import json
 import sqlite3
 import yfinance as yf
@@ -35,7 +32,8 @@ from pathlib import Path
 # Constants
 # ============================================================================
 
-DB_PATH = Path('/home/tj/projects/autoai/eimas/data/paper_trading.db')
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = PROJECT_ROOT / "data" / "paper_trading.db"
 COMMISSION_RATE = 0.0  # 무수수료 (실제로는 0.001 등)
 SLIPPAGE_RATE = 0.001  # 0.1% 슬리피지
 

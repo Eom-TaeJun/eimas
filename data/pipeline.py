@@ -17,9 +17,6 @@ Usage:
     data = pipeline.run()
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -43,7 +40,8 @@ logger = logging.getLogger(__name__)
 # Constants
 # ============================================================================
 
-DATA_DIR = Path('/home/tj/projects/autoai/eimas/data')
+BASE_DIR = Path(__file__).resolve().parents[1]
+DATA_DIR = BASE_DIR / "data"
 CACHE_DIR = DATA_DIR / 'cache'
 DB_PATH = DATA_DIR / 'eimas_data.db'
 

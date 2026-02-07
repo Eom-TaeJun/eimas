@@ -120,11 +120,16 @@ Failure fallback:
 - `trade_plan` <- derived from operational/rebalance
 - `operational_controls` <- operational bundle
 - `audit_metadata` <- operational bundle
+  - `audit_metadata.execution_backend_source` <- runtime backend provenance
+  - `audit_metadata.execution_backend_fallback_reason` <- fallback trace (when present)
 - `approval_status` <- operational bundle
+- `backend_source` <- operational bundle provenance (`local_package`/`local_monolith`/`external`)
 
 ## 5. Adapter Runtime Policy
 - selector env:
   - `EIMAS_EXECUTION_BACKEND=local|external`
+- local operational selector (optional):
+  - `EIMAS_LOCAL_OPERATIONAL_BACKEND=package|monolith|package_strict`
 - external 실패 시 local fallback
 - fallback 시 `warnings` 또는 `reason`을 통해 trace 남김
 

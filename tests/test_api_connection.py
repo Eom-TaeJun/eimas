@@ -9,12 +9,8 @@ Author: EIMAS Team
 
 import asyncio
 import os
-import sys
 from datetime import datetime
 from typing import Dict, Tuple
-
-# 프로젝트 경로 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.debate_framework import (
     AIClient,

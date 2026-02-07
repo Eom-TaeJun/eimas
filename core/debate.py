@@ -11,15 +11,10 @@ Multi-Agent System - Debate Protocol
 - 최대 3라운드: 효율성과 철저함의 균형
 """
 
-import sys
-import os
 from typing import List, Dict, Optional, Tuple
 from collections import Counter
 import numpy as np
 from datetime import datetime
-
-# 프로젝트 루트를 sys.path에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.schemas import (
     AgentOpinion,

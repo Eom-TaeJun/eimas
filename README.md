@@ -75,8 +75,7 @@ eimas/
 │   └── ...                 #    LASSO, HRP, GARCH, VPIN, etc.
 ├── frontend/               # 🌐 Next.js dashboard
 ├── outputs/                # 📁 Analysis results
-├── docs/                   # 📖 Extended documentation
-└── archive/                # 📦 Historical code & docs
+└── docs/                   # 📖 Extended documentation
 ```
 
 ---
@@ -91,17 +90,19 @@ eimas/
 | **Version History** | [`CHANGELOG.md`](./CHANGELOG.md) - All version changes |
 | **Detailed Workflow** | [`WORKFLOW.md`](./WORKFLOW.md) - 796-line comprehensive guide |
 | **Claude Code Guide** | [`CLAUDE.md`](./CLAUDE.md) - Quick reference for AI assistants |
+| **Full Pipeline Process** | [`FULL_EXECUTION_PROCESS.md`](./FULL_EXECUTION_PROCESS.md) - canonical `main.py --full` flow & gates |
+| **Current Refactor Status** | [`CURRENT_STATUS.md`](./CURRENT_STATUS.md) - latest migration state & next actions |
+| **Refactor Task Board** | [`TODO.md`](./TODO.md) - active checklist for split/cleanup waves |
 | **Economic Insight Agent** | [`agent/README.md`](./agent/README.md) - Causal analysis module |
 | **API Endpoints** | [`api/`](./api/) - FastAPI server documentation |
 | **Frontend Components** | [`frontend/`](./frontend/) - React dashboard |
 | **Backtest Methodology** | [`docs/BACKTEST_METHODOLOGY.md`](./docs/BACKTEST_METHODOLOGY.md) |
-| **Historical Development** | [`archive/docs/`](./archive/docs/) - Phase reports, TODO lists |
 
 ---
 
 ## 🚧 Unimplemented Features (Roadmap)
 
-> Full details in [`archive/docs/notcompleted.md`](./archive/docs/notcompleted.md)
+> Full details in [`TODO.md`](./TODO.md)
 
 ### 🔴 Not Started (0%)
 

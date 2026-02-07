@@ -5,17 +5,6 @@ Signal-Action Framework Integration Test
 기존 Market Anomaly Detector의 Signal과 연동 테스트
 """
 
-import sys
-import os
-
-# 경로 설정 (절대 경로 사용)
-EIMAS_DIR = '/home/tj/projects/autoai/eimas'
-AUTOAI_DIR = '/home/tj/projects/autoai'
-if EIMAS_DIR not in sys.path:
-    sys.path.insert(0, EIMAS_DIR)
-if AUTOAI_DIR not in sys.path:
-    sys.path.insert(0, AUTOAI_DIR)
-
 from core.signal_action import (
     SignalActionMapper,
     RiskProfile,

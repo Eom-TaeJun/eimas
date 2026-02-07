@@ -24,22 +24,32 @@ Pipeline:
 """
 
 from typing import Dict, List, Optional, Any
-from dataclasses import asdict
+from datetime import datetime
 import logging
 
 # Import from same package
 from .config import OperationalConfig
-from .enums import FinalStance
-from .signal import SignalHierarchyReport
-from .hold_policy import HoldPolicyReport
-from .risk_metrics import ScoreDefinitions
-from .decision import DecisionPolicy, DecisionInputs
-from .final_decision import resolve_final_decision, FinalDecisionInputs
+from .enums import ReasonCode, TriggerType, SignalType
+from .signal import SignalHierarchyReport, SignalClassification
+from .hold_policy import HoldPolicyReport, evaluate_hold_conditions
+from .risk_metrics import ScoreDefinitions, AuxiliaryRiskMetric
+from .decision import DecisionPolicy, DecisionInputs, resolve_decision
 from .constraints import repair_constraints, ConstraintRepairResult
 from .rebalance import generate_rebalance_plan, RebalancePlan
 from .reports import OperationalReport, AuditMetadata
 
 logger = logging.getLogger(__name__)
+
+# Core signal names allowed in decision layer.
+CORE_SIGNALS = frozenset([
+    'regime_signal',
+    'regime_confidence',
+    'canonical_risk_score',
+    'agent_consensus_stance',
+    'agent_consensus_confidence',
+    'constraint_status',
+    'client_profile_status',
+])
 
 
 class OperationalEngine:
@@ -510,4 +520,3 @@ class OperationalEngine:
             validation_passed=validation_passed,
             validation_errors=validation_errors,
         )
-

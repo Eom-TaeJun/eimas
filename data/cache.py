@@ -24,9 +24,6 @@ Usage:
     data = cache_mgr.get('key')
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import json
 import pickle
 import hashlib
@@ -49,7 +46,8 @@ logger = logging.getLogger(__name__)
 # Constants
 # ============================================================================
 
-CACHE_DIR = Path('/home/tj/projects/autoai/eimas/data/cache')
+BASE_DIR = Path(__file__).resolve().parents[1]
+CACHE_DIR = BASE_DIR / "data" / "cache"
 DEFAULT_TTL = 3600  # 1시간
 MAX_MEMORY_ITEMS = 1000  # 메모리 캐시 최대 항목
 

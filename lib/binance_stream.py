@@ -17,9 +17,6 @@ Binance WebSocket Streaming Module
 Author: EIMAS Team
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import asyncio
 import json
 import websockets

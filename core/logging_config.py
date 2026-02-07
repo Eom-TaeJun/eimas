@@ -18,9 +18,6 @@ Usage:
     logger.info("Hello", extra={'user_id': 123})
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import os
 import json
 import logging
@@ -38,7 +35,8 @@ import traceback
 # Constants
 # ============================================================================
 
-LOG_DIR = Path('/home/tj/projects/autoai/eimas/logs')
+BASE_DIR = Path(__file__).resolve().parents[1]
+LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # 로그 파일 경로

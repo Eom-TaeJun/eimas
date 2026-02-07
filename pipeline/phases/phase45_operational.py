@@ -56,6 +56,14 @@ def generate_operational_report(result: EIMASResult, current_weights: Optional[D
         result.audit_metadata = op_bundle.get("audit_metadata", {})
         result.approval_status = op_bundle.get("approval_status", {})
 
+        backend_source = op_bundle.get("backend_source")
+        backend_fallback_reason = op_bundle.get("backend_fallback_reason")
+        if isinstance(result.audit_metadata, dict):
+            if backend_source:
+                result.audit_metadata["execution_backend_source"] = backend_source
+            if backend_fallback_reason:
+                result.audit_metadata["execution_backend_fallback_reason"] = backend_fallback_reason
+
         constraint_repair = getattr(op_report, "constraint_repair", None)
         if constraint_repair is not None and not constraint_repair.constraints_satisfied:
             violations = constraint_repair.violations_found

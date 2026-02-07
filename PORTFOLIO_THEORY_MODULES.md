@@ -174,7 +174,7 @@ REGIME_PROFILES = {
 
 **사용 예시:**
 ```python
-from lib.tactical_allocation import TacticalAssetAllocator, VolatilityTargeting, MomentumOverlay
+from lib.adapters import TacticalAssetAllocator, VolatilityTargeting, MomentumOverlay
 
 # Tactical Allocation
 taa = TacticalAssetAllocator(
@@ -240,7 +240,7 @@ asset_shocks = {
 
 **사용 예시:**
 ```python
-from lib.stress_test import StressTestEngine, HISTORICAL_SCENARIOS, HYPOTHETICAL_SCENARIOS
+from lib.adapters import StressTestEngine
 
 # Engine
 engine = StressTestEngine(
@@ -323,7 +323,7 @@ if 'benchmark_weights' in config:
 
 ```python
 # Phase 2.11: Tactical Overlay (after allocation)
-from lib.tactical_allocation import TacticalAssetAllocator
+from lib.adapters import TacticalAssetAllocator
 
 taa = TacticalAssetAllocator(
     strategic_weights=allocation_result.weights,
@@ -343,7 +343,7 @@ integrated_result['tactical_weights'] = tactical_weights
 
 ```python
 # Phase 7: Stress Testing
-from lib.stress_test import StressTestEngine
+from lib.adapters import StressTestEngine
 
 stress_engine = StressTestEngine(
     portfolio_weights=final_weights,

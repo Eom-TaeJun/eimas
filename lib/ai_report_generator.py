@@ -18,12 +18,8 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
-
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.config import APIConfig, AGENT_CONFIG
 

@@ -17,9 +17,6 @@ FRED 유동성 + 시장 마이크로스트럭처 통합 파이프라인
 Author: EIMAS Team
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Callable

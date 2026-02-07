@@ -110,11 +110,6 @@ eimas/
 │   ├── eimas_*.md         #    Markdown summaries
 │   └── reports/           #    AI-generated reports
 │
-├── archive/                # 📦 Archived code (not active)
-│   ├── legacy/            #    Legacy main files
-│   ├── deprecated/        #    Deprecated modules
-│   └── README.md          #    Archive documentation
-│
 ├── docs/                   # 📖 Documentation
 │   ├── architecture/      #    Design documents
 │   ├── features/          #    Feature specifications

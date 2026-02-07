@@ -18,9 +18,6 @@ Usage:
     print(status)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import os
 import psutil
 import sqlite3
@@ -43,7 +40,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 
 # 경로
-BASE_DIR = Path('/home/tj/projects/autoai/eimas')
+BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_DIR = BASE_DIR / 'data'
 LOGS_DIR = BASE_DIR / 'logs'
 CACHE_DIR = DATA_DIR / 'cache'

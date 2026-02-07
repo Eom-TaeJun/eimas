@@ -22,7 +22,11 @@ Endpoints:
 """
 
 import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,14 +74,14 @@ app.add_middleware(
 )
 
 # Import routers
-from api.routes import analysis_router
+from api.routes.analysis import router as analysis_router
 
 # Include routers
 app.include_router(analysis_router, prefix="")
 
 
 @app.get("/health")
-def health_check():
+def root_health_check():
     """Health check endpoint for frontend dashboard"""
     return {
         "status": "healthy",
@@ -225,7 +229,7 @@ async def root():
 
 
 @app.get("/api/health")
-async def health_check():
+async def api_health_check():
     """헬스 체크"""
     return {
         "status": "healthy",

@@ -12,12 +12,8 @@ Usage:
 """
 
 import argparse
-import sys
-import os
 from typing import List, Tuple
 from dataclasses import dataclass
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from agent.schemas.insight_schema import InsightRequest, EconomicInsightReport
 from agent.core.orchestrator import EconomicInsightOrchestrator

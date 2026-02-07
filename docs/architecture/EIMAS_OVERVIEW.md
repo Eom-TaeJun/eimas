@@ -81,6 +81,6 @@ The goal is to split `main.py` into smaller, focused scripts based on the phases
 | `run_storage.py` | Handles Phase 5. Saves results to SQL/SQLite databases. |
 | `run_reporting.py` | Handles Phase 6 & 7. Generates reports and performs QA. |
 | `run_standalone.py` | Handles Phase 8. Executes independent utility scripts. |
-| `main_orchestrator.py` | The new entry point. Imports and runs the above scripts sequentially based on arguments (Quick/Full/Report modes). |
+| `main.py` (`run_integrated_pipeline`) | Canonical entry point. Orchestrates the above phases based on arguments (Quick/Full/Report modes). |
 
 This structure will make the codebase more maintainable, testable, and easier to understand.

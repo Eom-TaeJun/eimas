@@ -9,9 +9,6 @@ Usage:
     python tests/test_lib.py  # 직접 실행
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import unittest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta

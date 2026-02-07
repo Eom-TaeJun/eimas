@@ -20,9 +20,6 @@ Usage:
     size = sizer.kelly_criterion(win_rate, avg_win, avg_loss)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import yfinance as yf
 import pandas as pd
 import numpy as np

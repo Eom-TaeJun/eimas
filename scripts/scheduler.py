@@ -18,7 +18,14 @@ Requires: schedule (pip install schedule)
 """
 
 import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+OUTPUT_DIR = PROJECT_ROOT / "outputs"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 import time
 import logging
@@ -44,7 +51,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/home/tj/projects/autoai/eimas/outputs/scheduler.log'),
+        logging.FileHandler(str(OUTPUT_DIR / "scheduler.log")),
     ]
 )
 logger = logging.getLogger('EIMAS-Scheduler')

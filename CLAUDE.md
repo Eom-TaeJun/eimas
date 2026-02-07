@@ -266,16 +266,13 @@ eimas/
 │   └── ...
 ├── api/                 # FastAPI 서버
 │   ├── main.py
-│   └── routes/ (health, analysis, regime, debate)
+│   └── routes/ (analysis)
 ├── frontend/            # Next.js 16 대시보드
 │   ├── app/
 │   ├── components/
 │   └── lib/
 ├── outputs/             # 결과 JSON/MD
 ├── data/                # Database (events.db, signals.db)
-├── archive/             # 아카이브 (53개)
-│   ├── future_experimental/ (28개)
-│   └── deprecated/ (25개)
 └── configs/             # YAML 설정
 ```
 

@@ -4,14 +4,11 @@
 
 `frontend_steps/step1-5`의 모든 파일이 `frontend/` 디렉토리에 병합되었습니다.
 
-### merge_frontend.sh 스크립트
+### 병합 스크립트 상태
 
-```bash
-rsync -av --ignore-existing frontend_steps/step*/ frontend/
-```
-
-이 명령으로 step1 → step2 → step3 → step4 → step5 순서로 병합했습니다.
-중복 파일은 먼저 복사된 것을 유지합니다.
+`scripts/merge_frontend.sh`는 과거 1회성 병합용 스크립트였고,
+현재는 입력 원본(`frontend_steps/`)이 제거되어 더 이상 사용하지 않습니다.
+2026-02-07 기준으로 해당 스크립트는 삭제되었습니다.
 
 ---
 

@@ -30,15 +30,13 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-# 경로 설정
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 from core.signal_action import (
     EnhancedSignal,
     PositionDirection,
 )
 from core.database import DatabaseManager
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 # ============================================================================
@@ -223,7 +221,7 @@ class ARKHoldingsCollector:
             data_dir: 데이터 저장 디렉토리
         """
         if data_dir is None:
-            data_dir = "/home/tj/projects/autoai/eimas/data/ark_holdings"
+            data_dir = PROJECT_ROOT / "data" / "ark_holdings"
 
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)

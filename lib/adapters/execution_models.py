@@ -30,6 +30,12 @@ def _local_exports() -> ModelExports:
         RebalancingPolicy,
         TradingCostModel,
     )
+    from lib.stress_test import StressTestEngine, generate_stress_test_report
+    from lib.tactical_allocation import (
+        MomentumOverlay,
+        TacticalAssetAllocator,
+        VolatilityTargeting,
+    )
 
     return {
         "AllocationConstraints": AllocationConstraints,
@@ -42,7 +48,12 @@ def _local_exports() -> ModelExports:
         "RebalanceFrequency": RebalanceFrequency,
         "RebalancePolicy": RebalancePolicy,
         "RebalancingPolicy": RebalancingPolicy,
+        "StressTestEngine": StressTestEngine,
+        "TacticalAssetAllocator": TacticalAssetAllocator,
         "TradingCostModel": TradingCostModel,
+        "VolatilityTargeting": VolatilityTargeting,
+        "MomentumOverlay": MomentumOverlay,
+        "generate_stress_test_report": generate_stress_test_report,
     }
 
 
@@ -67,7 +78,14 @@ def _external_exports() -> Optional[ModelExports]:
             RebalanceFrequency,
             RebalancePolicy,
             RebalancingPolicy,
+            StressTestEngine,
+            TacticalAssetAllocator,
             TradingCostModel,
+            generate_stress_test_report,
+        )
+        from execution_intelligence.models.tactical_allocation import (
+            MomentumOverlay,
+            VolatilityTargeting,
         )
     except Exception:
         return None
@@ -83,7 +101,12 @@ def _external_exports() -> Optional[ModelExports]:
         "RebalanceFrequency": RebalanceFrequency,
         "RebalancePolicy": RebalancePolicy,
         "RebalancingPolicy": RebalancingPolicy,
+        "StressTestEngine": StressTestEngine,
+        "TacticalAssetAllocator": TacticalAssetAllocator,
         "TradingCostModel": TradingCostModel,
+        "VolatilityTargeting": VolatilityTargeting,
+        "MomentumOverlay": MomentumOverlay,
+        "generate_stress_test_report": generate_stress_test_report,
     }
 
 
@@ -109,7 +132,12 @@ RebalanceDecision = _EXPORTS["RebalanceDecision"]
 RebalanceFrequency = _EXPORTS["RebalanceFrequency"]
 RebalancePolicy = _EXPORTS["RebalancePolicy"]
 RebalancingPolicy = _EXPORTS["RebalancingPolicy"]
+StressTestEngine = _EXPORTS["StressTestEngine"]
+TacticalAssetAllocator = _EXPORTS["TacticalAssetAllocator"]
 TradingCostModel = _EXPORTS["TradingCostModel"]
+VolatilityTargeting = _EXPORTS["VolatilityTargeting"]
+MomentumOverlay = _EXPORTS["MomentumOverlay"]
+generate_stress_test_report = _EXPORTS["generate_stress_test_report"]
 
 __all__ = [
     "AllocationConstraints",
@@ -122,5 +150,10 @@ __all__ = [
     "RebalanceFrequency",
     "RebalancePolicy",
     "RebalancingPolicy",
+    "StressTestEngine",
+    "TacticalAssetAllocator",
     "TradingCostModel",
+    "VolatilityTargeting",
+    "MomentumOverlay",
+    "generate_stress_test_report",
 ]

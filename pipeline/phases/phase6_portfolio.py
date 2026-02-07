@@ -11,11 +11,9 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, Any
 
-from lib.adapters import TradingCostModel
+from lib.adapters import StressTestEngine, TacticalAssetAllocator, TradingCostModel
 from lib.backtest import BacktestEngine, BacktestConfig
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
-from lib.tactical_allocation import TacticalAssetAllocator
-from lib.stress_test import StressTestEngine, generate_stress_test_report
 from lib.trading_db import TradingDB
 from pipeline.schemas import EIMASResult
 

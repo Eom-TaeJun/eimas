@@ -27,9 +27,6 @@ OFI (Order Flow Imbalance) 및 VPIN (Volume-Synchronized PIT) 계산
 Author: EIMAS Team
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta

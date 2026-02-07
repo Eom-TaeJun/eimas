@@ -58,6 +58,11 @@ echo "Compiling execution contract files..."
 FILES_TO_COMPILE=(
     "lib/adapters/execution_backend.py"
     "lib/adapters/execution_models.py"
+    "lib/operational/config.py"
+    "lib/operational/enums.py"
+    "lib/operational/constraints.py"
+    "lib/operational/rebalance.py"
+    "lib/operational/engine.py"
     "pipeline/analyzers.py"
     "main.py"
 )
@@ -104,16 +109,50 @@ try:
     import pipeline.analyzers
     importlib.reload(pipeline.analyzers)
 
-    from lib.adapters import AllocationEngine, RebalancingPolicy
+    from lib.adapters import (
+        AllocationEngine,
+        RebalancingPolicy,
+        StressTestEngine,
+        TacticalAssetAllocator,
+        generate_operational_bundle,
+    )
 
     alloc_module = AllocationEngine.__module__
     rebal_module = RebalancingPolicy.__module__
+    tactical_module = TacticalAssetAllocator.__module__
+    stress_module = StressTestEngine.__module__
+    sample = {
+        'risk_score': 50.0,
+        'base_risk_score': 50.0,
+        'full_mode_position': 'NEUTRAL',
+        'confidence': 0.5,
+        'modes_agree': True,
+        'regime': {'regime': 'Neutral', 'confidence': 0.5},
+        'portfolio_weights': {'SPY': 0.6, 'TLT': 0.4},
+        'allocation_result': {'weights': {'SPY': 0.6, 'TLT': 0.4}},
+    }
+    op_bundle = generate_operational_bundle(sample, current_weights={'SPY': 0.6, 'TLT': 0.4})
+    op_module = op_bundle['op_report'].__class__.__module__
+    op_source = op_bundle.get('backend_source', 'unknown')
 
     print(f"AllocationEngine: {alloc_module}")
     print(f"RebalancingPolicy: {rebal_module}")
+    print(f"TacticalAssetAllocator: {tactical_module}")
+    print(f"StressTestEngine: {stress_module}")
+    print(f"OperationalReport: {op_module}")
+    print(f"OperationalBackendSource: {op_source}")
 
     # Check if modules are from lib (local)
-    if 'lib.' in alloc_module and 'lib.' in rebal_module:
+    if (
+        'lib.' in alloc_module
+        and 'lib.' in rebal_module
+        and 'lib.' in tactical_module
+        and 'lib.' in stress_module
+        and (
+            op_module.startswith('lib.operational.')
+            or op_module.startswith('lib.operational_engine')
+        )
+    ):
         print("STATUS:PASS")
     else:
         print("STATUS:FAIL")
@@ -147,16 +186,47 @@ try:
     import pipeline.analyzers
     importlib.reload(pipeline.analyzers)
 
-    from lib.adapters import AllocationEngine, RebalancingPolicy
+    from lib.adapters import (
+        AllocationEngine,
+        RebalancingPolicy,
+        StressTestEngine,
+        TacticalAssetAllocator,
+        generate_operational_bundle,
+    )
 
     alloc_module = AllocationEngine.__module__
     rebal_module = RebalancingPolicy.__module__
+    tactical_module = TacticalAssetAllocator.__module__
+    stress_module = StressTestEngine.__module__
+    sample = {
+        'risk_score': 50.0,
+        'base_risk_score': 50.0,
+        'full_mode_position': 'NEUTRAL',
+        'confidence': 0.5,
+        'modes_agree': True,
+        'regime': {'regime': 'Neutral', 'confidence': 0.5},
+        'portfolio_weights': {'SPY': 0.6, 'TLT': 0.4},
+        'allocation_result': {'weights': {'SPY': 0.6, 'TLT': 0.4}},
+    }
+    op_bundle = generate_operational_bundle(sample, current_weights={'SPY': 0.6, 'TLT': 0.4})
+    op_module = op_bundle['op_report'].__class__.__module__
+    op_source = op_bundle.get('backend_source', 'unknown')
 
     print(f"AllocationEngine: {alloc_module}")
     print(f"RebalancingPolicy: {rebal_module}")
+    print(f"TacticalAssetAllocator: {tactical_module}")
+    print(f"StressTestEngine: {stress_module}")
+    print(f"OperationalReport: {op_module}")
+    print(f"OperationalBackendSource: {op_source}")
 
     # Check if modules are from execution_intelligence (external)
-    if 'execution_intelligence.' in alloc_module and 'execution_intelligence.' in rebal_module:
+    if (
+        'execution_intelligence.' in alloc_module
+        and 'execution_intelligence.' in rebal_module
+        and 'execution_intelligence.' in tactical_module
+        and 'execution_intelligence.' in stress_module
+        and op_module.startswith('execution_intelligence.operational.')
+    ):
         print("STATUS:PASS")
     else:
         print("STATUS:PASS_WITH_FALLBACK")  # Fallback to local is acceptable

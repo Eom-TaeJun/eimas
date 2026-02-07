@@ -13,15 +13,10 @@ Multi-Agent System - Base Agent
 import asyncio
 import time
 import logging
-import sys
-import os
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
-
-# 프로젝트 루트를 sys.path에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.schemas import (
     AgentRequest,

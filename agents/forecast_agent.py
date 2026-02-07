@@ -11,18 +11,12 @@ LASSO 회귀를 사용하여 Fed 금리 기대 변화를 예측.
 - Treasury 제외: Simultaneity bias 방지
 """
 
-import sys
-import os
 import logging
-from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
-
-# eimas 프로젝트 루트를 path에 추가
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.schemas import (
     AgentRequest, 

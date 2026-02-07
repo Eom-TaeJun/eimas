@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 """Test Economic Ontology Implementation - Direct Import"""
 
-import sys
-import os
-
-# Direct import without going through lib/__init__.py
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
 def main():
     print("=" * 60)
     print("Economic Ontology Test")

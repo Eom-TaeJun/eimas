@@ -18,7 +18,7 @@
 
 ## 2. 시스템 아키텍처 (System Architecture)
 
-`main_orchestrator.py`가 지휘자가 되어 8단계의 전문 파이프라인을 실행합니다.
+`main.py`의 `run_integrated_pipeline`가 지휘자가 되어 8단계의 전문 파이프라인을 실행합니다.
 
 | 단계 | 모듈명 (`pipeline/`) | 역할 | 주요 기술 |
 | :--- | :--- | :--- | :--- |

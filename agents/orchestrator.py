@@ -11,15 +11,10 @@ Multi-Agent System - Meta Orchestrator
 - Nash Equilibrium 탐색 (Debate를 통한 균형점 도달)
 """
 
-import sys
-import os
 import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import uuid
-
-# 프로젝트 루트를 sys.path에 추가
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.schemas import (
     AgentRequest,

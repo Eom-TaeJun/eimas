@@ -1,11 +1,11 @@
-# EIMAS Full Execution Process - 2026-02-06
+# EIMAS Full Execution Process - 2026-02-07
 
 ## Scope
 이 문서는 `python main.py --full` 기준의 실행/개선 프로세스를 정의합니다.
 목표는 "실행 가능한 full 파이프라인 유지"와 "기능 분리"를 동시에 달성하는 것입니다.
 상세 구조 설계는 `STRUCTURE_REDESIGN_MASTERPLAN.md`를 기준으로 합니다.
 
-## Progress Update (2026-02-06)
+## Progress Update (2026-02-07)
 - `main_integrated.py` shim removed (canonical entrypoint unified to `main.py`)
 - `pipeline/runner.py` now delegates to canonical `main.run_integrated_pipeline`
 - `pipeline/runner.py` legacy `run_pipeline` alias restored
@@ -16,6 +16,17 @@
 - `execution_intelligence` now includes local `operational` package and runs in `EXIS_BACKEND=local` mode
 - `allocation_engine`/`rebalancing_policy` moved to `execution_intelligence/models` (1차)
 - `pipeline/analyzers.py` now resolves allocation/rebalancing classes via `lib/adapters/execution_models.py`
+- `tactical_allocation`/`stress_test` backend switch connected (Wave 1-B)
+  - `lib.adapters` exports extended for tactical/stress models
+  - `phase6_portfolio.py` now imports tactical/stress via `lib.adapters`
+  - `scripts/check_execution_contract.sh` verifies tactical/stress backend module sources
+- `operational` path connected as package-first (Wave 1-C initial)
+  - `lib/operational/*` synced with EXIS operational package baseline
+  - `lib/adapters/execution_backend.py` local path now prefers `lib.operational.*`
+  - local operational failure deterministically falls back to `lib.operational_engine`
+  - fallback observability fields added: `backend_source`, `backend_fallback_reason`
+  - `phase45_operational.py` writes backend provenance into `audit_metadata`
+  - `scripts/check_execution_contract.sh` now verifies operational backend source in local/external modes
 - backend switch verified:
   - `EIMAS_EXECUTION_BACKEND=local` -> `lib.*`
   - `EIMAS_EXECUTION_BACKEND=external` -> `execution_intelligence.models.*`
@@ -115,6 +126,6 @@ Wave 1 (Execution) -> Wave 2 (Reporting) -> Wave 3 (Realtime)
 ## 6) Immediate Next Actions
 
 1. `STRUCTURE_REDESIGN_MASTERPLAN.md` 기준으로 분리 단위를 고정
-2. `execution_intelligence` Wave 1-B (`tactical_allocation`, `stress_test`) 진행
-3. `lib/operational_engine.py` 의존 지점을 adapter로 감싸기
+2. `execution_intelligence` Wave 1-C (`operational_engine`, `operational/`) 진행
+3. `lib/operational_engine.py` 의존 지점을 adapter로 감싸고 local copy 정리 계획 수립
 4. milestone 후보에서 full mode 회귀 (`python main.py --full`) 실행

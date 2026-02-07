@@ -17,14 +17,10 @@ Integration:
 - 신규 질문은 템플릿 기반 인과 그래프 생성
 """
 
-import sys
-import os
 import time
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 import asyncio
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from agent.schemas.insight_schema import (
     InsightRequest, EconomicInsightReport, InsightMeta, AnalysisFrame,

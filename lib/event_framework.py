@@ -15,9 +15,6 @@ Author: EIMAS Team
 Created: 2026-01-01
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta

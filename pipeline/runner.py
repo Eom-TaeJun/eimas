@@ -1,17 +1,12 @@
 """
 Pipeline runner (compatibility wrapper).
 
-Historically this module tried to import `pipeline.collection.runner`,
-`pipeline.analysis.runner`, etc., but those modules were archived.
-To keep one canonical execution path for full mode, this runner now
-delegates to `main.run_integrated_pipeline`.
+Legacy split runners were archived. To keep one canonical execution path
+for full mode, this wrapper delegates to `main.run_integrated_pipeline`.
 """
 
 from __future__ import annotations
 
-import importlib.util
-import sys
-from pathlib import Path
 from typing import Awaitable, Callable
 
 from pipeline.schemas import EIMASResult
@@ -20,24 +15,14 @@ _RUN_MAIN_PIPELINE: Callable[..., Awaitable[EIMASResult]] | None = None
 
 
 def _get_main_pipeline_runner() -> Callable[..., Awaitable[EIMASResult]]:
-    """Load canonical `main.py` by file path (independent of current cwd)."""
+    """Load canonical runner from top-level `main.py`."""
     global _RUN_MAIN_PIPELINE
     if _RUN_MAIN_PIPELINE is not None:
         return _RUN_MAIN_PIPELINE
 
-    root_path = Path(__file__).resolve().parents[1]
-    root_str = str(root_path)
-    if root_str not in sys.path:
-        sys.path.insert(0, root_str)
+    from main import run_integrated_pipeline as run_main_pipeline
 
-    main_path = root_path / "main.py"
-    spec = importlib.util.spec_from_file_location("eimas_main_canonical", main_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Failed to load canonical main module from {main_path}")
-
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    _RUN_MAIN_PIPELINE = module.run_integrated_pipeline
+    _RUN_MAIN_PIPELINE = run_main_pipeline
     return _RUN_MAIN_PIPELINE
 
 

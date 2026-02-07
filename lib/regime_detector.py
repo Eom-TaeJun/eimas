@@ -19,9 +19,6 @@ Market Regime Detector
 참고: Hamilton(1989) Markov Switching Model의 간소화 버전
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import yfinance as yf
 import pandas as pd
 import numpy as np

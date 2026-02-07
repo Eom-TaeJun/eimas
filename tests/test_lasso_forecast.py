@@ -11,12 +11,6 @@ LASSOForecaster 및 ForecastAgent 테스트
 - HAC/VIF 계산 테스트
 """
 
-import sys
-from pathlib import Path
-
-# 프로젝트 루트를 path에 추가
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 import pytest
 import numpy as np
 import pandas as pd

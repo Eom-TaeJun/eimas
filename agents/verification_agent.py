@@ -18,16 +18,12 @@ Verification Agent
 - Adversarial Review (Peer Review Process)
 """
 
-import sys
-import os
 import logging
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, asdict
 import re
 import numpy as np
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agents.base_agent import BaseAgent, AgentConfig
 from core.schemas import AgentRequest, AgentRole, AgentOpinion, OpinionStrength

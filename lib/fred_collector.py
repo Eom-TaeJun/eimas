@@ -17,9 +17,6 @@ Federal Reserve Economic Data (FRED) API를 통한 거시경제 지표 수집
     collector.save_to_db(data)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import os
 import requests
 import pandas as pd

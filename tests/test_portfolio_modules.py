@@ -4,19 +4,14 @@ Portfolio Theory Modules Integration Test
 신규 구현된 모듈들의 통합 테스트
 """
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
 # Import new modules
+from lib.adapters import MomentumOverlay, StressTestEngine, TacticalAssetAllocator, VolatilityTargeting
 from lib.backtest import BacktestEngine, BacktestConfig, compare_strategies
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
-from lib.tactical_allocation import TacticalAssetAllocator, VolatilityTargeting, MomentumOverlay
-from lib.stress_test import StressTestEngine, generate_stress_test_report
 
 
 def generate_sample_data(n_days=1000):

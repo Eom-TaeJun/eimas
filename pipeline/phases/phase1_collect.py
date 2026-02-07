@@ -44,9 +44,18 @@ async def collect_data(result: EIMASResult, quick_mode: bool) -> Dict[str, Any]:
     market_data = collect_market_data(lookback_days=90 if quick_mode else 365)
     result.market_data_count = len(market_data)
 
-    collect_crypto_data()
+    crypto_data = collect_crypto_data(lookback_days=90 if quick_mode else 365)
+    result.crypto_data_count = len(crypto_data)
+    for ticker, df in crypto_data.items():
+        market_data.setdefault(ticker, df)
+
     if not quick_mode:
-        collect_market_indicators()
+        indicators = collect_market_indicators()
+        result.market_indicators = (
+            indicators.to_dict()
+            if hasattr(indicators, "to_dict")
+            else getattr(indicators, "__dict__", {})
+        )
 
     print("\n[Phase 1.4] Collecting Korea Assets...")
     korea_result = collect_korea_assets(

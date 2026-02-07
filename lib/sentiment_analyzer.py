@@ -21,9 +21,6 @@ Usage:
     print(result)
 """
 
-import sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
-
 import re
 import json
 import requests

@@ -17,7 +17,8 @@ Design Principles:
     - Explainable thresholds (각 임계값의 경제학적 근거 명시)
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from typing import Dict
 
 
 @dataclass
@@ -47,7 +48,9 @@ class OperationalConfig:
     bond_min: float = 0.0
     bond_max: float = 1.0
     cash_min: float = 0.0
-    cash_max: float = 0.50  # 현금 최대 50%
+    cash_max: float = 0.20
+    commodity_min: float = 0.0
+    commodity_max: float = 0.20
     crypto_min: float = 0.0
     crypto_max: float = 0.10  # 크립토 최대 10%
 
@@ -55,7 +58,31 @@ class OperationalConfig:
     max_single_asset_weight: float = 0.30    # 단일 자산 최대 30%
     max_sector_concentration: float = 0.40   # 섹터 집중도 최대 40%
 
-    # Trading Costs (bps)
-    commission_bps: float = 5.0              # 수수료 5bps
-    spread_bps: float = 3.0                  # 스프레드 3bps
-    impact_bps: float = 2.0                  # 시장 충격 2bps
+    # Trading Cost Model
+    commission_rate: float = 0.001
+    spread_cost: float = 0.0005
+    market_impact: float = 0.001
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'OperationalConfig':
+        return cls(**{k: v for k, v in data.items() if hasattr(cls, k)})
+
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+
+# Asset-class mapping shared across constraint repair and rebalance planning.
+# Keep this close to config so classification policy is centralized.
+ASSET_CLASS_MAP = {
+    'SPY': 'equity', 'QQQ': 'equity', 'IWM': 'equity', 'DIA': 'equity',
+    'VTI': 'equity', 'VOO': 'equity', 'XLK': 'equity', 'XLF': 'equity',
+    'XLV': 'equity', 'XLE': 'equity', 'XLI': 'equity', 'XLY': 'equity',
+    'XLP': 'equity', 'XLU': 'equity', 'XLB': 'equity', 'XLRE': 'equity',
+    'VNQ': 'equity', 'COIN': 'equity',
+    'TLT': 'bond', 'IEF': 'bond', 'SHY': 'bond', 'LQD': 'bond',
+    'HYG': 'bond', 'AGG': 'bond', 'BND': 'bond', 'GOVT': 'bond', 'UUP': 'bond',
+    'GLD': 'commodity', 'SLV': 'commodity', 'USO': 'commodity',
+    'DBC': 'commodity', 'PAXG-USD': 'commodity',
+    'BTC-USD': 'crypto', 'ETH-USD': 'crypto', 'ONDO-USD': 'crypto',
+    'SHV': 'cash', 'BIL': 'cash', 'SGOV': 'cash',
+}

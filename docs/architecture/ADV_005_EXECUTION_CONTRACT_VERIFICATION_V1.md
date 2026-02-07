@@ -11,12 +11,18 @@
 - expected module source:
   - allocation: `lib.allocation_engine`
   - rebalancing: `lib.rebalancing_policy`
+  - tactical: `lib.tactical_allocation`
+  - stress: `lib.stress_test`
+  - operational report: `lib.operational.*` (fallback 허용: `lib.operational_engine*`)
 
 ### Case B: external backend
 - env: `EIMAS_EXECUTION_BACKEND=external`
 - expected module source:
   - allocation: `execution_intelligence.models.allocation_engine`
   - rebalancing: `execution_intelligence.models.rebalancing_policy`
+  - tactical: `execution_intelligence.models.tactical_allocation`
+  - stress: `execution_intelligence.models.stress_test`
+  - operational report: `execution_intelligence.operational.*` (fallback 허용)
 
 ## 3. Required Assertions
 
@@ -47,6 +53,7 @@
   - `operational_controls`
   - `audit_metadata`
   - `approval_status`
+  - `backend_source`
 
 ## 4. Test Commands (Per-Change)
 
@@ -55,6 +62,11 @@
 python3 -m py_compile \
   lib/adapters/execution_backend.py \
   lib/adapters/execution_models.py \
+  lib/operational/config.py \
+  lib/operational/enums.py \
+  lib/operational/constraints.py \
+  lib/operational/rebalance.py \
+  lib/operational/engine.py \
   pipeline/analyzers.py \
   main.py
 ```
@@ -69,7 +81,31 @@ for b in ('local', 'external'):
     import importlib
     import pipeline.analyzers as a
     importlib.reload(a)
-    print(b, a.AllocationEngine.__module__, a.RebalancingPolicy.__module__)
+    from lib.adapters import (
+        AllocationEngine, RebalancingPolicy,
+        TacticalAssetAllocator, StressTestEngine,
+        generate_operational_bundle,
+    )
+    sample = {
+        'risk_score': 50.0,
+        'base_risk_score': 50.0,
+        'full_mode_position': 'NEUTRAL',
+        'confidence': 0.5,
+        'modes_agree': True,
+        'regime': {'regime': 'Neutral', 'confidence': 0.5},
+        'portfolio_weights': {'SPY': 0.6, 'TLT': 0.4},
+        'allocation_result': {'weights': {'SPY': 0.6, 'TLT': 0.4}},
+    }
+    op = generate_operational_bundle(sample, current_weights={'SPY': 0.6, 'TLT': 0.4})
+    print(
+        b,
+        AllocationEngine.__module__,
+        RebalancingPolicy.__module__,
+        TacticalAssetAllocator.__module__,
+        StressTestEngine.__module__,
+        op['op_report'].__class__.__module__,
+        op.get('backend_source', 'unknown'),
+    )
 PY
 ```
 

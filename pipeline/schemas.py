@@ -269,8 +269,11 @@ class EIMASResult:
 
     # 데이터 수집
     fred_summary: Dict = field(default_factory=dict)
+    market_indicators: Dict = field(default_factory=dict)
     market_data_count: int = 0
     crypto_data_count: int = 0
+    korea_data: Dict = field(default_factory=dict)
+    korea_summary: Dict = field(default_factory=dict)
 
     # 분석 결과
     regime: Dict = field(default_factory=dict)
@@ -398,6 +401,8 @@ class EIMASResult:
     rebalance_decision: Dict = field(default_factory=dict)     # RebalanceDecision.to_dict()
     allocation_strategy: str = "risk_parity"                   # 사용된 배분 전략
     allocation_config: Dict = field(default_factory=dict)      # 배분 설정 (bounds, cost model)
+    fair_value_analysis: Dict = field(default_factory=dict)    # Fair value model outputs
+    strategic_allocation: Dict = field(default_factory=dict)   # Strategic allocation outputs
 
     # NEW: Operational Report (2026-02-03)
     operational_report: Dict = field(default_factory=dict)     # OperationalReport.to_dict()
