@@ -1073,6 +1073,11 @@ class AIReportGenerator:
     ) -> str:
         """Investment Banking Style Report (Memorandum) 생성"""
         self._log("Generating IB-style memorandum...")
+
+        llm_skip_reason = self._llm_fetch_reason()
+        if llm_skip_reason:
+            self._log(f"Skipping IB-style memorandum LLM generation ({llm_skip_reason})")
+            return f"IB memorandum skipped: {llm_skip_reason}"
         
         # 1. 데이터 추출
         explanation = analysis_result.get('market_explanation', {})

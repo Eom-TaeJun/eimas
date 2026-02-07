@@ -12,6 +12,8 @@ Multi-Agent System - Meta Orchestrator
 """
 
 import logging
+import os
+import socket
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 import uuid
@@ -103,6 +105,41 @@ class MetaOrchestrator:
             logger.addHandler(handler)
 
         return logger
+
+    @staticmethod
+    def _env_flag(name: str, default: bool = False) -> bool:
+        value = os.getenv(name)
+        if value is None:
+            return default
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+
+    def _enhanced_debate_skip_reason(self) -> str:
+        if self._env_flag("EIMAS_SKIP_ENHANCED_DEBATE", default=False):
+            return "EIMAS_SKIP_ENHANCED_DEBATE"
+
+        fail_fast_default = self._env_flag("EIMAS_REPORT_FAIL_FAST_NETWORK", default=False)
+        if not self._env_flag("EIMAS_DEBATE_FAIL_FAST_NETWORK", default=fail_fast_default):
+            return ""
+
+        hosts_raw = os.getenv(
+            "EIMAS_DEBATE_NETWORK_PROBE_HOSTS",
+            "api.openai.com,api.anthropic.com,generativelanguage.googleapis.com",
+        )
+        hosts = [item.strip() for item in hosts_raw.split(",") if item.strip()]
+        if not hosts:
+            hosts = [
+                "api.openai.com",
+                "api.anthropic.com",
+                "generativelanguage.googleapis.com",
+            ]
+
+        for host in hosts:
+            try:
+                socket.getaddrinfo(host, 443)
+                return ""
+            except OSError:
+                continue
+        return f"dns_unavailable:{','.join(hosts)}"
 
     async def run_with_debate(
         self,
@@ -260,32 +297,37 @@ class MetaOrchestrator:
         self.logger.info("Step 4.5: Running Enhanced Multi-LLM Debate...")
 
         enhanced_debate_results = {}
-        try:
-            # Interpretation Debate: 경제학파별 해석
-            interpretation_result = await self._run_interpretation_debate(combined_context)
-            enhanced_debate_results['interpretation'] = interpretation_result
+        enhanced_skip_reason = self._enhanced_debate_skip_reason()
+        if enhanced_skip_reason:
+            self.logger.info(f"Skipping enhanced debate ({enhanced_skip_reason})")
+            enhanced_debate_results = {"skipped": True, "reason": enhanced_skip_reason}
+        else:
+            try:
+                # Interpretation Debate: 경제학파별 해석
+                interpretation_result = await self._run_interpretation_debate(combined_context)
+                enhanced_debate_results['interpretation'] = interpretation_result
 
-            # Methodology Debate: 방법론 토론
-            methodology_result = await self._run_methodology_debate(query, combined_context)
-            enhanced_debate_results['methodology'] = methodology_result
+                # Methodology Debate: 방법론 토론
+                methodology_result = await self._run_methodology_debate(query, combined_context)
+                enhanced_debate_results['methodology'] = methodology_result
 
-            self.logger.info(
-                f"Enhanced debate complete: Interpretation={interpretation_result.get('recommended_action', 'N/A')}, "
-                f"Methodology={methodology_result.get('selected_methodology', 'N/A')}"
-            )
+                self.logger.info(
+                    f"Enhanced debate complete: Interpretation={interpretation_result.get('recommended_action', 'N/A')}, "
+                    f"Methodology={methodology_result.get('selected_methodology', 'N/A')}"
+                )
 
-            # Track in reasoning chain
-            self.reasoning_chain.add_step(
-                agent='MultiLLMDebate',
-                input_summary='Analysis results + Economic schools',
-                output_summary=f"Interpretation: {interpretation_result.get('recommended_action', 'N/A')}, Methodology: {methodology_result.get('selected_methodology', 'N/A')}",
-                confidence=((interpretation_result.get('confidence', 0.5) + methodology_result.get('confidence', 0.5)) / 2) * 100,
-                key_factors=['Claude (Economist)', 'GPT-4 (Devil\'s Advocate)', 'Gemini (Risk Manager)']
-            )
+                # Track in reasoning chain
+                self.reasoning_chain.add_step(
+                    agent='MultiLLMDebate',
+                    input_summary='Analysis results + Economic schools',
+                    output_summary=f"Interpretation: {interpretation_result.get('recommended_action', 'N/A')}, Methodology: {methodology_result.get('selected_methodology', 'N/A')}",
+                    confidence=((interpretation_result.get('confidence', 0.5) + methodology_result.get('confidence', 0.5)) / 2) * 100,
+                    key_factors=['Claude (Economist)', 'GPT-4 (Devil\'s Advocate)', 'Gemini (Risk Manager)']
+                )
 
-        except Exception as e:
-            self.logger.warning(f"Enhanced debate failed (non-critical): {e}")
-            enhanced_debate_results = {'error': str(e)}
+            except Exception as e:
+                self.logger.warning(f"Enhanced debate failed (non-critical): {e}")
+                enhanced_debate_results = {'error': str(e)}
 
         # ============================================================
         # Step 5: Synthesize Report
@@ -665,7 +707,11 @@ class MetaOrchestrator:
                 'total_opinions': len(all_opinions),
                 'total_debates': len([c for c in consensus_results.values() if c.debate_rounds > 0]),
                 'avg_confidence': sum(c.confidence for c in consensus_results.values()) / max(len(consensus_results), 1),
-                'enhanced_debate_enabled': bool(enhanced_debate_results and 'error' not in enhanced_debate_results),
+                'enhanced_debate_enabled': bool(
+                    enhanced_debate_results
+                    and 'error' not in enhanced_debate_results
+                    and not enhanced_debate_results.get('skipped', False)
+                ),
                 'reasoning_chain_steps': len(self.reasoning_chain.to_dict()),
                 'institutional_methodology_enabled': True  # NEW
             }
