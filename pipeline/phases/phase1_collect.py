@@ -36,6 +36,22 @@ from pipeline.korea_integration import collect_korea_assets
 from lib.extended_data_sources import ExtendedDataCollector
 
 
+def _resolve_probe_hosts(env_name: str, default_hosts: str) -> list[str]:
+    raw = os.getenv(env_name, default_hosts)
+    hosts = [item.strip() for item in raw.split(",") if item.strip()]
+    return hosts
+
+
+def _is_dns_available(hosts: list[str]) -> bool:
+    for host in hosts:
+        try:
+            socket.getaddrinfo(host, 443)
+            return True
+        except OSError:
+            continue
+    return False
+
+
 async def collect_data(result: EIMASResult, quick_mode: bool) -> Dict[str, Any]:
     """[Phase 1] Collect FRED/market/crypto/extended/Korea datasets."""
     print("\n[Phase 1] Collecting Data...")
@@ -154,27 +170,128 @@ async def collect_data(result: EIMASResult, quick_mode: bool) -> Dict[str, Any]:
             )
 
     # Avoid BTC/ETH duplicate download: crypto set is collected in phase 1.3.
-    market_started = perf_counter()
-    market_data = collect_market_data(lookback_days=lookback_days, include_crypto=False)
-    _record_component_timing("market_data", market_started, status="ok")
+    skip_market_data = os.getenv(
+        "EIMAS_SKIP_MARKET_DATA",
+        "false",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    market_fail_fast = os.getenv(
+        "EIMAS_MARKET_DATA_FAIL_FAST_NETWORK",
+        "false",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    if skip_market_data:
+        market_data = {}
+        phase1_component_timings["market_data"] = {
+            "duration_sec": 0.0,
+            "status": "skipped_env",
+        }
+        print("  [Phase 1] Market data skipped by EIMAS_SKIP_MARKET_DATA")
+    elif market_fail_fast:
+        probe_hosts = _resolve_probe_hosts(
+            "EIMAS_MARKET_DATA_PROBE_HOSTS",
+            "guce.yahoo.com,query1.finance.yahoo.com",
+        )
+        if not _is_dns_available(probe_hosts):
+            market_data = {}
+            phase1_component_timings["market_data"] = {
+                "duration_sec": 0.0,
+                "status": "skipped_network",
+            }
+            print("  [Phase 1] Market data fail-fast: DNS unavailable, skipping")
+        else:
+            market_started = perf_counter()
+            market_data = collect_market_data(lookback_days=lookback_days, include_crypto=False)
+            _record_component_timing("market_data", market_started, status="ok")
+    else:
+        market_started = perf_counter()
+        market_data = collect_market_data(lookback_days=lookback_days, include_crypto=False)
+        _record_component_timing("market_data", market_started, status="ok")
     result.market_data_count = len(market_data)
 
-    crypto_started = perf_counter()
-    crypto_data = collect_crypto_data(lookback_days=lookback_days)
-    _record_component_timing("crypto_data", crypto_started, status="ok")
+    skip_crypto_data = os.getenv(
+        "EIMAS_SKIP_CRYPTO_DATA",
+        "false",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    crypto_fail_fast = os.getenv(
+        "EIMAS_CRYPTO_DATA_FAIL_FAST_NETWORK",
+        "false",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    if skip_crypto_data:
+        crypto_data = {}
+        phase1_component_timings["crypto_data"] = {
+            "duration_sec": 0.0,
+            "status": "skipped_env",
+        }
+        print("  [Phase 1] Crypto data skipped by EIMAS_SKIP_CRYPTO_DATA")
+    elif crypto_fail_fast:
+        probe_hosts = _resolve_probe_hosts(
+            "EIMAS_CRYPTO_DATA_PROBE_HOSTS",
+            "guce.yahoo.com,query1.finance.yahoo.com",
+        )
+        if not _is_dns_available(probe_hosts):
+            crypto_data = {}
+            phase1_component_timings["crypto_data"] = {
+                "duration_sec": 0.0,
+                "status": "skipped_network",
+            }
+            print("  [Phase 1] Crypto data fail-fast: DNS unavailable, skipping")
+        else:
+            crypto_started = perf_counter()
+            crypto_data = collect_crypto_data(lookback_days=lookback_days)
+            _record_component_timing("crypto_data", crypto_started, status="ok")
+    else:
+        crypto_started = perf_counter()
+        crypto_data = collect_crypto_data(lookback_days=lookback_days)
+        _record_component_timing("crypto_data", crypto_started, status="ok")
     result.crypto_data_count = len(crypto_data)
     for ticker, df in crypto_data.items():
         market_data.setdefault(ticker, df)
 
     if not quick_mode:
-        indicators_started = perf_counter()
-        indicators = collect_market_indicators()
-        _record_component_timing("market_indicators", indicators_started, status="ok")
-        result.market_indicators = (
-            indicators.to_dict()
-            if hasattr(indicators, "to_dict")
-            else getattr(indicators, "__dict__", {})
-        )
+        skip_market_indicators = os.getenv(
+            "EIMAS_SKIP_MARKET_INDICATORS",
+            "false",
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        market_indicators_fail_fast = os.getenv(
+            "EIMAS_MARKET_INDICATORS_FAIL_FAST_NETWORK",
+            "false",
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if skip_market_indicators:
+            result.market_indicators = {}
+            phase1_component_timings["market_indicators"] = {
+                "duration_sec": 0.0,
+                "status": "skipped_env",
+            }
+            print("  [Phase 1] Market indicators skipped by EIMAS_SKIP_MARKET_INDICATORS")
+        elif market_indicators_fail_fast:
+            probe_hosts = _resolve_probe_hosts(
+                "EIMAS_MARKET_INDICATORS_PROBE_HOSTS",
+                "guce.yahoo.com,query1.finance.yahoo.com",
+            )
+            if not _is_dns_available(probe_hosts):
+                result.market_indicators = {}
+                phase1_component_timings["market_indicators"] = {
+                    "duration_sec": 0.0,
+                    "status": "skipped_network",
+                }
+                print("  [Phase 1] Market indicators fail-fast: DNS unavailable, skipping")
+            else:
+                indicators_started = perf_counter()
+                indicators = collect_market_indicators()
+                _record_component_timing("market_indicators", indicators_started, status="ok")
+                result.market_indicators = (
+                    indicators.to_dict()
+                    if hasattr(indicators, "to_dict")
+                    else getattr(indicators, "__dict__", {})
+                )
+        else:
+            indicators_started = perf_counter()
+            indicators = collect_market_indicators()
+            _record_component_timing("market_indicators", indicators_started, status="ok")
+            result.market_indicators = (
+                indicators.to_dict()
+                if hasattr(indicators, "to_dict")
+                else getattr(indicators, "__dict__", {})
+            )
     else:
         phase1_component_timings["market_indicators"] = {
             "duration_sec": 0.0,

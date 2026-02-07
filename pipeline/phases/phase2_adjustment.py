@@ -52,6 +52,11 @@ def _network_probe_hosts() -> list[str]:
     return hosts or ["guce.yahoo.com", "query1.finance.yahoo.com"]
 
 
+def _resolve_hosts(value: str, fallback: list[str]) -> list[str]:
+    hosts = [item.strip() for item in value.split(",") if item.strip()]
+    return hosts or fallback
+
+
 def _is_network_available(hosts: list[str]) -> bool:
     for host in hosts:
         try:
@@ -65,12 +70,63 @@ def _is_network_available(hosts: list[str]) -> bool:
 def analyze_sentiment_bubble(result: EIMASResult, market_data: Dict[str, Any], quick_mode: bool):
     """[Phase 2.3] Run bubble risk (full) and sentiment (always)."""
     if not quick_mode:
-        try:
-            bubble_res = analyze_bubble_risk(market_data)
-            if bubble_res:
-                result.bubble_risk = BubbleRiskMetrics(**bubble_res)
-        except Exception as e:
-            print(f"⚠️ Bubble Risk Error: {e}")
+        skip_bubble = _env_flag("EIMAS_SKIP_BUBBLE_ANALYSIS", default=False)
+        bubble_fail_fast = _env_flag("EIMAS_BUBBLE_FAIL_FAST_NETWORK", default=False)
+        bubble_reason = ""
+
+        if skip_bubble:
+            bubble_reason = "EIMAS_SKIP_BUBBLE_ANALYSIS"
+        elif bubble_fail_fast:
+            bubble_hosts = _resolve_hosts(
+                os.getenv(
+                    "EIMAS_BUBBLE_NETWORK_PROBE_HOSTS",
+                    "guce.yahoo.com,query1.finance.yahoo.com",
+                ),
+                ["guce.yahoo.com", "query1.finance.yahoo.com"],
+            )
+            if not _is_network_available(bubble_hosts):
+                bubble_reason = f"dns_unavailable:{','.join(bubble_hosts)}"
+
+        if bubble_reason:
+            result.bubble_risk = BubbleRiskMetrics(
+                overall_status="SKIPPED",
+                methodology_notes=f"Skipped: {bubble_reason}",
+            )
+            print(f"      i Bubble analysis skip ({bubble_reason})")
+        else:
+            try:
+                bubble_res = analyze_bubble_risk(market_data)
+                if bubble_res:
+                    result.bubble_risk = BubbleRiskMetrics(**bubble_res)
+            except Exception as e:
+                print(f"⚠️ Bubble Risk Error: {e}")
+
+    skip_sentiment = _env_flag("EIMAS_SKIP_SENTIMENT_ANALYSIS", default=False)
+    sentiment_fail_fast = _env_flag("EIMAS_SENTIMENT_FAIL_FAST_NETWORK", default=False)
+    if skip_sentiment:
+        result.sentiment_analysis = {
+            "skipped": True,
+            "reason": "EIMAS_SKIP_SENTIMENT_ANALYSIS",
+        }
+        print("      i Sentiment analysis skipped by EIMAS_SKIP_SENTIMENT_ANALYSIS")
+        return
+
+    if sentiment_fail_fast:
+        hosts = _resolve_hosts(
+            os.getenv(
+                "EIMAS_SENTIMENT_NETWORK_PROBE_HOSTS",
+                "production.dataviz.cnn.io,guce.yahoo.com",
+            ),
+            ["production.dataviz.cnn.io", "guce.yahoo.com"],
+        )
+        if not _is_network_available(hosts):
+            reason = f"dns_unavailable:{','.join(hosts)}"
+            result.sentiment_analysis = {
+                "skipped": True,
+                "reason": reason,
+            }
+            print(f"      i Sentiment analysis fail-fast skip ({reason})")
+            return
 
     try:
         result.sentiment_analysis = analyze_sentiment()
@@ -184,6 +240,10 @@ def analyze_institutional_frameworks(result: EIMASResult, market_data: Dict[str,
         network_available = _is_network_available(hosts)
         if not network_available:
             network_reason = f"dns_unavailable:{','.join(hosts)}"
+
+    if network_available and not market_data:
+        network_available = False
+        network_reason = "market_data_unavailable"
 
     if not network_available:
         print(f"      i Institutional network analysis skipped ({network_reason})")

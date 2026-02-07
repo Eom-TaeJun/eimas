@@ -17,7 +17,10 @@ Usage:
 import asyncio
 import json
 import logging
+import os
+import socket
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, field, asdict
 
@@ -679,6 +682,94 @@ class AIReportGenerator:
         if self.verbose:
             print(f"[AIReportGenerator] {msg}")
 
+    @staticmethod
+    def _env_flag(name: str, default: bool = False) -> bool:
+        value = os.getenv(name)
+        if value is None:
+            return default
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+
+    def _global_market_fetch_reason(self) -> str:
+        """
+        Return empty string when global market network fetch is allowed.
+        Non-empty string indicates why fetch should be skipped.
+        """
+        if self._env_flag("EIMAS_REPORT_SKIP_GLOBAL_MARKETS", default=False):
+            return "EIMAS_REPORT_SKIP_GLOBAL_MARKETS"
+
+        if not self._env_flag("EIMAS_REPORT_FAIL_FAST_NETWORK", default=False):
+            return ""
+
+        hosts_raw = os.getenv(
+            "EIMAS_REPORT_NETWORK_PROBE_HOSTS",
+            "guce.yahoo.com,query1.finance.yahoo.com",
+        )
+        hosts = [item.strip() for item in hosts_raw.split(",") if item.strip()]
+        if not hosts:
+            hosts = ["guce.yahoo.com", "query1.finance.yahoo.com"]
+
+        for host in hosts:
+            try:
+                socket.getaddrinfo(host, 443)
+                return ""
+            except OSError:
+                continue
+        return f"dns_unavailable:{','.join(hosts)}"
+
+    def _options_sentiment_fetch_reason(self) -> str:
+        """
+        Return empty string when options/sentiment fetch should run.
+        Non-empty string indicates why fetch should be skipped.
+        """
+        if self._env_flag("EIMAS_REPORT_SKIP_OPTIONS_SENTIMENT", default=False):
+            return "EIMAS_REPORT_SKIP_OPTIONS_SENTIMENT"
+
+        if not self._env_flag("EIMAS_REPORT_FAIL_FAST_NETWORK", default=False):
+            return ""
+
+        hosts_raw = os.getenv(
+            "EIMAS_REPORT_OPTIONS_NETWORK_PROBE_HOSTS",
+            "guce.yahoo.com,production.dataviz.cnn.io",
+        )
+        hosts = [item.strip() for item in hosts_raw.split(",") if item.strip()]
+        if not hosts:
+            hosts = ["guce.yahoo.com", "production.dataviz.cnn.io"]
+
+        for host in hosts:
+            try:
+                socket.getaddrinfo(host, 443)
+                return ""
+            except OSError:
+                continue
+        return f"dns_unavailable:{','.join(hosts)}"
+
+    def _llm_fetch_reason(self) -> str:
+        """
+        Return empty string when LLM/news enrichment should run.
+        Non-empty string indicates why it should be skipped.
+        """
+        if self._env_flag("EIMAS_REPORT_SKIP_LLM_ENRICHMENT", default=False):
+            return "EIMAS_REPORT_SKIP_LLM_ENRICHMENT"
+
+        if not self._env_flag("EIMAS_REPORT_FAIL_FAST_NETWORK", default=False):
+            return ""
+
+        hosts_raw = os.getenv(
+            "EIMAS_REPORT_LLM_NETWORK_PROBE_HOSTS",
+            "api.openai.com,api.anthropic.com,api.perplexity.ai",
+        )
+        hosts = [item.strip() for item in hosts_raw.split(",") if item.strip()]
+        if not hosts:
+            hosts = ["api.openai.com", "api.anthropic.com", "api.perplexity.ai"]
+
+        for host in hosts:
+            try:
+                socket.getaddrinfo(host, 443)
+                return ""
+            except OSError:
+                continue
+        return f"dns_unavailable:{','.join(hosts)}"
+
     def _load_previous_report(self, output_dir: str = "outputs") -> Optional[Dict]:
         """이전 리포트 JSON 로드"""
         output_path = Path(output_dir)
@@ -882,30 +973,38 @@ class AIReportGenerator:
         self._log("Fetching global market data...")
         report.global_market = await self._fetch_global_markets()
 
-        # 6. Perplexity로 최신 뉴스 검색
-        if self.has_perplexity:
-            self._log("Fetching latest news with Perplexity...")
-            report.perplexity_news = await self._search_news(analysis_result, report.notable_stocks)
+        llm_skip_reason = self._llm_fetch_reason()
+        if llm_skip_reason:
+            self._log(f"Skipping LLM/news enrichment ({llm_skip_reason})")
+            report.perplexity_news = f"LLM enrichment skipped: {llm_skip_reason}"
+            report.claude_analysis = f"LLM enrichment skipped: {llm_skip_reason}"
+            report.gpt_recommendations = f"LLM enrichment skipped: {llm_skip_reason}"
+            report.sector_recommendations = self._get_default_sector_recommendations(analysis_result)
+        else:
+            # 6. Perplexity로 최신 뉴스 검색
+            if self.has_perplexity:
+                self._log("Fetching latest news with Perplexity...")
+                report.perplexity_news = await self._search_news(analysis_result, report.notable_stocks)
 
-        # 7. GPT로 특정 종목 심층 분석
-        if self.has_gpt and report.notable_stocks:
-            self._log("Running deep analysis with GPT...")
-            await self._deep_analyze_stocks(report.notable_stocks, analysis_result)
+            # 7. GPT로 특정 종목 심층 분석
+            if self.has_gpt and report.notable_stocks:
+                self._log("Running deep analysis with GPT...")
+                await self._deep_analyze_stocks(report.notable_stocks, analysis_result)
 
-        # 8. Claude로 종합 분석 및 제안서 작성
-        if self.has_claude:
-            self._log("Generating comprehensive analysis with Claude...")
-            report.claude_analysis = await self._claude_analysis(analysis_result, report)
+            # 8. Claude로 종합 분석 및 제안서 작성
+            if self.has_claude:
+                self._log("Generating comprehensive analysis with Claude...")
+                report.claude_analysis = await self._claude_analysis(analysis_result, report)
 
-        # 9. GPT로 최종 권고 생성
-        if self.has_gpt:
-            self._log("Generating recommendations with GPT...")
-            report.gpt_recommendations = await self._gpt_recommendations(analysis_result, report)
+            # 9. GPT로 최종 권고 생성
+            if self.has_gpt:
+                self._log("Generating recommendations with GPT...")
+                report.gpt_recommendations = await self._gpt_recommendations(analysis_result, report)
 
-        # 10. 섹터/산업군 추천 생성
-        if self.has_gpt:
-            self._log("Generating sector recommendations with GPT...")
-            report.sector_recommendations = await self._generate_sector_recommendations(analysis_result, report)
+            # 10. 섹터/산업군 추천 생성
+            if self.has_gpt:
+                self._log("Generating sector recommendations with GPT...")
+                report.sector_recommendations = await self._generate_sector_recommendations(analysis_result, report)
 
         # 11. 최종 제안 종합
         report.final_recommendation = self._synthesize_final_recommendation(analysis_result, report)
@@ -941,13 +1040,19 @@ class AIReportGenerator:
 
         # 14. 옵션/센티먼트 분석 (NEW)
         self._log("Analyzing options and sentiment...")
-        try:
-            report.options_analysis, report.sentiment_analysis = await self._analyze_options_sentiment()
-            self._log("Options/Sentiment analysis completed")
-        except Exception as e:
-            self._log(f"Options/Sentiment analysis failed: {e}")
-            report.options_analysis = None
-            report.sentiment_analysis = None
+        options_skip_reason = self._options_sentiment_fetch_reason()
+        if options_skip_reason:
+            self._log(f"Skipping options/sentiment analysis ({options_skip_reason})")
+            report.options_analysis = {"skipped": True, "reason": options_skip_reason}
+            report.sentiment_analysis = {"skipped": True, "reason": options_skip_reason}
+        else:
+            try:
+                report.options_analysis, report.sentiment_analysis = await self._analyze_options_sentiment()
+                self._log("Options/Sentiment analysis completed")
+            except Exception as e:
+                self._log(f"Options/Sentiment analysis failed: {e}")
+                report.options_analysis = None
+                report.sentiment_analysis = None
 
         # 15. 데이터 소스 설정
         report.data_sources = [
@@ -1884,7 +1989,6 @@ class AIReportGenerator:
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
 
-            import json
             sector_data = json.loads(response_text.strip())
 
             return sector_data
@@ -2142,6 +2246,12 @@ class AIReportGenerator:
         import yfinance as yf
 
         gm = GlobalMarketData()
+        skip_reason = self._global_market_fetch_reason()
+        if skip_reason:
+            self._log(f"Skipping global market fetch ({skip_reason})")
+            gm.correlation_with_us = "N/A (global market fetch skipped)"
+            gm.key_risks = [f"Global market fetch skipped: {skip_reason}"]
+            return gm
 
         try:
             # 심볼 정의
@@ -2163,13 +2273,21 @@ class AIReportGenerator:
                     ticker = yf.Ticker(symbol)
                     hist = ticker.history(period='5d')
 
-                    if len(hist) >= 2:
-                        current = hist['Close'].iloc[-1]
-                        previous = hist['Close'].iloc[-2]
-                        change = ((current - previous) / previous) * 100
+                    if hist is None or hist.empty or 'Close' not in hist.columns:
+                        continue
 
-                        setattr(gm, name, current)
-                        setattr(gm, f'{name}_change', change)
+                    close = hist['Close'].dropna()
+                    if len(close) < 2:
+                        continue
+
+                    current = float(close.iloc[-1])
+                    previous = float(close.iloc[-2])
+                    if previous == 0:
+                        continue
+                    change = ((current - previous) / previous) * 100
+
+                    setattr(gm, name, current)
+                    setattr(gm, f'{name}_change', change)
                 except Exception as e:
                     self._log(f"Failed to fetch {name}: {e}")
 
