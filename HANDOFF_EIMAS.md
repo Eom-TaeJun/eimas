@@ -22,7 +22,7 @@ Owner context: EIMAS bloat-reduction and structure redesign for `main.py --full`
   - `pipeline/analyzers_quant.py`
   - `pipeline/analyzers_sentiment.py`
   - `pipeline/analyzers_governance.py`
-- `pipeline/analyzers_extension.py` converted to deprecated compatibility shim.
+- `pipeline/analyzers_extension.py` removed (direct analyzer imports/facade usage).
 
 ### 2.2 Main orchestration and execution contract fixes
 
@@ -97,20 +97,18 @@ Owner context: EIMAS bloat-reduction and structure redesign for `main.py --full`
   - `api/main.py`
 - Removed legacy runtime trees:
   - `lib/deprecated/`
-  - `archive/legacy/`
+  - `archive/` (entire tree)
 
 ## 3. Validation Status
 
 Validated in this workspace:
 
-- `python3 -m py_compile main.py pipeline/runner.py cli/eimas.py pipeline/analyzers_extension.py`
+- `python3 -m py_compile main.py pipeline/runner.py cli/eimas.py`
 - `python3 -m py_compile pipeline/phases/__init__.py pipeline/phases/common.py pipeline/phases/phase1_collect.py pipeline/phases/phase2_basic.py pipeline/phases/phase2_enhanced.py pipeline/phases/phase2_adjustment.py pipeline/phases/phase3_debate.py pipeline/phases/phase4_realtime.py pipeline/phases/phase45_operational.py pipeline/phases/phase5_storage.py pipeline/phases/phase6_portfolio.py pipeline/phases/phase7_report.py pipeline/phases/phase8_validation.py`
 - `python3 -m py_compile pipeline/storage.py`
 - `bash -n scripts/check_execution_contract.sh`
 - `bash scripts/check_execution_contract.sh` -> PASS (3/3)
-- shim alias check:
-  - `from pipeline.analyzers_extension import analyze_volume_anomalies`
-  - confirms alias maps to facade export.
+- analyzer extension shim removed; use direct facade/imports from active modules.
 
 Not validated here:
 
@@ -139,8 +137,8 @@ Observed high-signal changed/new areas include:
 - Active runtime backup files (`*_backup_*`, `.backup_*`) removed from live paths.
 - Legacy runtime trees removed:
   - `lib/deprecated/`
-  - `archive/legacy/`
-- Remaining cleanup target is historical docs/scripts under `archive/docs` and `docs/session_artifacts`.
+  - `archive/` (entire tree)
+- Remaining cleanup target is stale handoff/changelog references to removed archive paths.
 - Large parallel change set increases merge/regression risk without stricter contract checks.
 
 ## 6. Recommended Next Steps (for next AI)
@@ -149,7 +147,7 @@ Observed high-signal changed/new areas include:
    - Keep `run_integrated_pipeline(...)` signature and behavior compatibility.
    - Add focused smoke checks for any moved phase function.
 2. Backup/archive cleanup:
-   - Continue cleanup for `archive/docs` + `docs/session_artifacts` (keep only audit-meaningful artifacts).
+   - Continue cleanup for stale archive references in docs (`HANDOFF`, `CHANGELOG`, legacy notes).
 3. Final integration pass:
    - Run one full pipeline execution after structural migration stabilizes.
 4. Testing hardening:
@@ -179,9 +177,9 @@ bash scripts/check_execution_contract.sh
   - `main_integrated.py`
   - `api/server.py`
   - `lib/deprecated/`
-  - `archive/legacy/`
+  - `archive/` (entire tree)
 - Root docs cleaned:
-  - session/result markdown moved to `docs/archive/root_legacy/`
+  - stale archive references are being removed from active docs
   - root markdown count reduced (`31 -> 17`)
 
 ## 10. Morning Restart Checklist
@@ -191,4 +189,4 @@ bash scripts/check_execution_contract.sh
 3. `bash scripts/check_execution_contract.sh`
 4. Start Wave-N:
    - clean stale references in `docs/architecture/*` (`main_orchestrator`, `run_full_analysis`)
-   - decide retention policy for `archive/docs` and prune low-value files
+   - clean stale `archive/*` references in handoff/changelog docs
