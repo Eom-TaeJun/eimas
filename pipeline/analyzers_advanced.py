@@ -6,6 +6,7 @@ Purpose: Advanced market analysis functions (Phase 2.7-2.13)
 Functions: analyze_genius_act, analyze_theme_etf, analyze_shock_propagation, optimize_portfolio_mst, analyze_volume_anomalies, track_events_with_news (async), run_adaptive_portfolio
 """
 
+import os
 from typing import Dict, List, Any
 from datetime import datetime
 import pandas as pd
@@ -129,7 +130,7 @@ def analyze_shock_propagation(market_data: Dict[str, pd.DataFrame]) -> ShockAnal
         # returns DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 
@@ -173,7 +174,7 @@ def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioRes
         # returns DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 
@@ -262,6 +263,12 @@ def run_adaptive_portfolio(regime_result: RegimeResult) -> Dict:
     print("\n[2.13] Adaptive portfolio agents...")
     try:
         manager = AdaptiveAgentManager()
+        persist_db = os.getenv("EIMAS_ADAPTIVE_PERSIST_DB", "true").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
         # RegimeResult -> MarketCondition 변환
         condition = MarketCondition(
@@ -278,7 +285,9 @@ def run_adaptive_portfolio(regime_result: RegimeResult) -> Dict:
         # 가상의 가격 데이터 (실제 데이터 연동 필요하나 여기선 간소화)
         prices = {"SPY": 500.0, "QQQ": 400.0, "TLT": 95.0, "GLD": 200.0}
 
-        results = manager.run_all(condition, prices)
+        results = manager.run_all(condition, prices, persist=persist_db)
+        if not persist_db:
+            print("      i Adaptive DB persistence disabled (EIMAS_ADAPTIVE_PERSIST_DB=false)")
 
         # 결과 요약
         summary = {name: res['action'] for name, res in results.items()}

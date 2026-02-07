@@ -87,13 +87,29 @@
 
 ### C1. 성능 예산
 - [ ] FULL 총 실행 시간: `249s -> 150s -> 120s`
-- [ ] Phase 2 분석 병목: 캐시 도입 (`1h TTL`)
-- [ ] AI 검증 병렬화: validation call fan-out
+- [x] Phase 2 분석 병목 1차 캐시 도입 (`1h TTL`, 무인자 고비용 분석 결과 파일 캐시)
+- [x] Phase 2 캐시 hit/miss 텔레메트리 (`result.phase2_cache_stats`) 추가
+- [x] AI 검증 병렬화 1차: `ValidationAgentManager.validate_all` thread fan-out 적용 (`EIMAS_VALIDATION_AGENT_TIMEOUT_SEC`)
+- [x] AI 검증 병렬화 2차: timeout/재시도/백오프 기본 정책 적용 (`EIMAS_VALIDATION_RETRY_COUNT`, `EIMAS_VALIDATION_RETRY_BACKOFF_SEC`)
+- [x] AI 검증 병렬화 3차: agent별 정책 차등화 + 실패 유형별 selective retry (`EIMAS_VALIDATION_RETRY_POLICY_OVERRIDES`)
+- [x] AI 검증 관측성 보강: `validation_runtime_stats`(agent별 attempts/retries/failure_type) 추가
+- [x] 파이프라인 phase 타이밍 텔레메트리 추가 (`result.pipeline_phase_timings`, `result.pipeline_elapsed_sec`)
+- [x] Phase 1 컴포넌트 타이밍 텔레메트리 추가 (`audit_metadata.phase1_component_timings`, `audit_metadata.phase1_elapsed_sec`)
+- [x] Phase 1 market/crypto 중복 다운로드 제거 (`collect_market_data(..., include_crypto=False)` 적용)
+- [x] Extended data 네트워크 fail-fast 스킵 옵션 추가 (`EIMAS_EXTENDED_FAIL_FAST_NETWORK`, `EIMAS_SKIP_EXTENDED_DATA`)
+- [x] Institutional frameworks 네트워크 fail-fast/스킵 옵션 추가 (`EIMAS_INSTITUTIONAL_FAIL_FAST_NETWORK`, `EIMAS_SKIP_INSTITUTIONAL_NETWORK_ANALYSIS`)
+- [x] Institutional frameworks 컴포넌트 타이밍 텔레메트리 추가 (`audit_metadata.phase2_institutional_components`)
+- [x] Adaptive portfolio DB I/O 배치 최적화 (`AdaptiveAgentManager.run_all` 단일 트랜잭션)
 
 ### C2. 신뢰성
-- [ ] `sys.path.insert` 제거 계획 수립 (활성 트리 기준 13건)
+- [x] `sys.path.insert` 1차 축소 (`13 -> 6`, `scripts/_project_bootstrap.py`로 스크립트 경로부트스트랩 통합)
+- [x] `sys.path.insert` 2차 축소 (`6 -> 4`, `lib/path_bootstrap.py`로 동적 외부경로 주입 통합)
+- [x] `api/main.py`, `cli/eimas.py` module-first + direct-script fallback 가드 적용
+- [x] `sys.path.insert` 제거 계획 문서화 (`docs/session_artifacts/SYSPATH_INSERT_REDUCTION_PLAN_20260207.md`)
+- [ ] 잔여 `sys.path.insert` 4건 정리 (`api/main.py`, `cli/eimas.py`, `scripts/_project_bootstrap.py`, `lib/path_bootstrap.py`)
 - [x] 절대경로 제거 (`/home/tj/projects/autoai/eimas` 하드코딩, 실행 코드 기준)
 - [x] `Close`/`close` 컬럼 편차에 대한 backtest/전략배분 로직 내성 강화
+- [x] `calculate_strategic_allocation`의 `us_fair_gap`/`korea_fair_gap` 미초기화 예외 수정
 - [ ] `pytest` 실행 가능한 테스트 환경 정비
 
 ---

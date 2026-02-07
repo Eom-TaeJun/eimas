@@ -23,6 +23,10 @@ Architecture:
     - Stage: M2 (Logic migrated from main.py)
 """
 
+import os
+import socket
+from datetime import datetime
+from time import perf_counter
 from typing import Any, Dict
 
 from lib.bubble_framework import FiveStageBubbleFramework
@@ -30,6 +34,32 @@ from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 from lib.gap_analyzer import MarketModelGapAnalyzer
 from pipeline.analyzers import analyze_bubble_risk, analyze_sentiment, run_adaptive_portfolio
 from pipeline.schemas import BubbleRiskMetrics, EIMASResult
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _network_probe_hosts() -> list[str]:
+    raw = os.getenv(
+        "EIMAS_INSTITUTIONAL_NETWORK_PROBE_HOSTS",
+        "guce.yahoo.com,query1.finance.yahoo.com",
+    )
+    hosts = [item.strip() for item in raw.split(",") if item.strip()]
+    return hosts or ["guce.yahoo.com", "query1.finance.yahoo.com"]
+
+
+def _is_network_available(hosts: list[str]) -> bool:
+    for host in hosts:
+        try:
+            socket.getaddrinfo(host, 443)
+            return True
+        except OSError:
+            continue
+    return False
 
 
 def analyze_sentiment_bubble(result: EIMASResult, market_data: Dict[str, Any], quick_mode: bool):
@@ -121,24 +151,102 @@ def apply_extended_data_adjustment(result: EIMASResult):
 def analyze_institutional_frameworks(result: EIMASResult, market_data: Dict[str, Any], quick_mode: bool):
     """Run institutional framework analyses (Bubble/Gap/FOMC)."""
     print("\n[Phase 2.Institutional] Running Institutional Frameworks...")
+    component_timings: Dict[str, Dict[str, Any]] = {}
 
-    try:
-        bubble_fw = FiveStageBubbleFramework()
-        bubble_result = bubble_fw.analyze(market_data, sector="tech")
-        result.bubble_framework = bubble_result.to_dict()
-        print(f"      ✓ 5-Stage Bubble: {bubble_result.stage} (Score: {bubble_result.total_score:.1f}/100)")
-    except Exception as e:
-        print(f"      ⚠️ 5-Stage Bubble Error: {e}")
+    def _record_component_timing(
+        name: str,
+        started_at: float,
+        status: str = "ok",
+        error: str = "",
+    ) -> None:
+        duration = perf_counter() - started_at
+        entry: Dict[str, Any] = {
+            "duration_sec": round(duration, 3),
+            "status": status,
+        }
+        if error:
+            entry["error"] = error[:200]
+        component_timings[name] = entry
 
-    try:
-        gap_analyzer = MarketModelGapAnalyzer()
-        gap_result = gap_analyzer.analyze()
-        result.gap_analysis = gap_result.to_dict()
-        print(f"      ✓ Market-Model Gap: {gap_result.overall_signal} ({gap_result.opportunity[:40]}...)")
-    except Exception as e:
-        print(f"      ⚠️ Gap Analysis Error: {e}")
+    skip_all = _env_flag("EIMAS_SKIP_INSTITUTIONAL_FRAMEWORKS", default=False)
+    skip_network = _env_flag("EIMAS_SKIP_INSTITUTIONAL_NETWORK_ANALYSIS", default=False)
+    fail_fast_network = _env_flag("EIMAS_INSTITUTIONAL_FAIL_FAST_NETWORK", default=False)
+    network_available = True
+    network_reason = ""
+    if skip_all:
+        network_available = False
+        network_reason = "EIMAS_SKIP_INSTITUTIONAL_FRAMEWORKS"
+    elif skip_network:
+        network_available = False
+        network_reason = "EIMAS_SKIP_INSTITUTIONAL_NETWORK_ANALYSIS"
+    elif fail_fast_network:
+        hosts = _network_probe_hosts()
+        network_available = _is_network_available(hosts)
+        if not network_available:
+            network_reason = f"dns_unavailable:{','.join(hosts)}"
+
+    if not network_available:
+        print(f"      i Institutional network analysis skipped ({network_reason})")
+        now_iso = datetime.now().isoformat()
+        result.bubble_framework = {
+            "timestamp": now_iso,
+            "sector": "tech",
+            "stage": "SKIPPED_NETWORK",
+            "total_score": 0.0,
+            "stage_results": [],
+            "warning_flags": [],
+            "skipped": True,
+            "skip_reason": network_reason,
+        }
+        result.gap_analysis = {
+            "timestamp": now_iso,
+            "overall_signal": "NEUTRAL",
+            "opportunity": "Institutional network analysis skipped",
+            "market_too_pessimistic": False,
+            "market_too_optimistic": False,
+            "confidence": 0.0,
+            "gaps": [],
+            "skipped": True,
+            "skip_reason": network_reason,
+        }
+        component_timings["bubble_framework"] = {"duration_sec": 0.0, "status": "skipped_network"}
+        component_timings["gap_analysis"] = {"duration_sec": 0.0, "status": "skipped_network"}
+
+    if network_available:
+        bubble_started = perf_counter()
+        try:
+            bubble_fw = FiveStageBubbleFramework()
+            bubble_result = bubble_fw.analyze(market_data, sector="tech")
+            result.bubble_framework = bubble_result.to_dict()
+            print(f"      ✓ 5-Stage Bubble: {bubble_result.stage} (Score: {bubble_result.total_score:.1f}/100)")
+            _record_component_timing("bubble_framework", bubble_started, status="ok")
+        except Exception as e:
+            print(f"      ⚠️ 5-Stage Bubble Error: {e}")
+            _record_component_timing(
+                "bubble_framework",
+                bubble_started,
+                status="error",
+                error=str(e),
+            )
+
+        gap_started = perf_counter()
+        try:
+            gap_analyzer = MarketModelGapAnalyzer()
+            gap_result = gap_analyzer.analyze()
+            result.gap_analysis = gap_result.to_dict()
+            print(f"      ✓ Market-Model Gap: {gap_result.overall_signal} ({gap_result.opportunity[:40]}...)")
+            _record_component_timing("gap_analysis", gap_started, status="ok")
+        except Exception as e:
+            print(f"      ⚠️ Gap Analysis Error: {e}")
+            _record_component_timing(
+                "gap_analysis",
+                gap_started,
+                status="error",
+                error=str(e),
+            )
 
     if not quick_mode:
+        fomc_started = perf_counter()
         try:
             fomc_analyzer = FOMCDotPlotAnalyzer()
             fomc_result = fomc_analyzer.analyze("2026")
@@ -147,8 +255,19 @@ def analyze_institutional_frameworks(result: EIMASResult, market_data: Dict[str,
                 f"      ✓ FOMC Analysis: {fomc_result.stance} "
                 f"(Uncertainty: {fomc_result.policy_uncertainty_index:.0f}/100)"
             )
+            _record_component_timing("fomc_analysis", fomc_started, status="ok")
         except Exception as e:
             print(f"      ⚠️ FOMC Analysis Error: {e}")
+            _record_component_timing(
+                "fomc_analysis",
+                fomc_started,
+                status="error",
+                error=str(e),
+            )
+    else:
+        component_timings["fomc_analysis"] = {"duration_sec": 0.0, "status": "skipped_quick_mode"}
+
+    result.audit_metadata["phase2_institutional_components"] = component_timings
 
 
 def run_adaptive_portfolio_phase(result: EIMASResult, regime_res: Any, quick_mode: bool):

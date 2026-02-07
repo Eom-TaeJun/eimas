@@ -53,7 +53,11 @@ def generate_operational_report(result: EIMASResult, current_weights: Optional[D
             result.trade_plan = result.rebalance_decision["trade_plan"]
 
         result.operational_controls = op_bundle.get("operational_controls", {})
-        result.audit_metadata = op_bundle.get("audit_metadata", {})
+        existing_audit = result.audit_metadata if isinstance(result.audit_metadata, dict) else {}
+        bundle_audit = op_bundle.get("audit_metadata", {})
+        if not isinstance(bundle_audit, dict):
+            bundle_audit = {}
+        result.audit_metadata = {**existing_audit, **bundle_audit}
         result.approval_status = op_bundle.get("approval_status", {})
 
         backend_source = op_bundle.get("backend_source")

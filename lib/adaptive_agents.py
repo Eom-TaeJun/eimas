@@ -894,36 +894,51 @@ class AdaptiveAgentManager:
     def run_all(
         self,
         market: MarketCondition,
-        prices: Dict[str, float]
+        prices: Dict[str, float],
+        persist: bool = True,
     ) -> Dict[str, Dict]:
         """모든 에이전트 실행"""
         results = {}
+        conn = None
+        cursor = None
+        if persist:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
 
-        for name, agent in self.agents.items():
-            action, orders, rationale = agent.analyze_and_decide(market, prices)
+        try:
+            for name, agent in self.agents.items():
+                action, orders, rationale = agent.analyze_and_decide(market, prices)
 
-            # 주문 실행
-            executed = agent.execute_orders(orders, prices)
+                # 주문 실행
+                executed = agent.execute_orders(orders, prices)
 
-            # DB 저장
-            self._save_decision(agent, action, market, len(orders), rationale)
-            for order in executed:
-                self._save_order(order)
-            self._save_snapshot(agent, prices)
+                # DB 저장 (batched transaction when persist=True)
+                if persist:
+                    self._save_decision(agent, action, market, len(orders), rationale, cursor=cursor)
+                    for order in executed:
+                        self._save_order(order, cursor=cursor)
+                    self._save_snapshot(agent, prices, cursor=cursor)
 
-            results[name] = {
-                'action': action,
-                'orders': len(executed),
-                'risk_level': agent.state.current_risk_level,
-                'portfolio_value': agent.state.portfolio_value(prices),
-                'rationale': rationale
-            }
+                results[name] = {
+                    'action': action,
+                    'orders': len(executed),
+                    'risk_level': agent.state.current_risk_level,
+                    'portfolio_value': agent.state.portfolio_value(prices),
+                    'rationale': rationale
+                }
+            if conn is not None:
+                conn.commit()
+        finally:
+            if conn is not None:
+                conn.close()
 
         return results
 
-    def _save_order(self, order: TradeOrder):
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+    def _save_order(self, order: TradeOrder, cursor=None):
+        own_conn = None
+        if cursor is None:
+            own_conn = sqlite3.connect(str(self.db_path))
+            cursor = own_conn.cursor()
         cursor.execute("""
         INSERT OR REPLACE INTO orders VALUES (NULL,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
@@ -932,12 +947,15 @@ class AdaptiveAgentManager:
             order.rationale, order.urgency, order.status, order.fill_price,
             order.fill_time, order.slippage
         ))
-        conn.commit()
-        conn.close()
+        if own_conn is not None:
+            own_conn.commit()
+            own_conn.close()
 
-    def _save_decision(self, agent, action, market, orders_count, rationale):
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+    def _save_decision(self, agent, action, market, orders_count, rationale, cursor=None):
+        own_conn = None
+        if cursor is None:
+            own_conn = sqlite3.connect(str(self.db_path))
+            cursor = own_conn.cursor()
         cursor.execute("""
         INSERT INTO decisions VALUES (NULL,?,?,?,?,?,?,?,?,?)
         """, (
@@ -945,12 +963,15 @@ class AdaptiveAgentManager:
             agent.state.current_risk_level, market.urgency_score(),
             market.opportunity_score(), orders_count, rationale
         ))
-        conn.commit()
-        conn.close()
+        if own_conn is not None:
+            own_conn.commit()
+            own_conn.close()
 
-    def _save_snapshot(self, agent, prices):
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
+    def _save_snapshot(self, agent, prices, cursor=None):
+        own_conn = None
+        if cursor is None:
+            own_conn = sqlite3.connect(str(self.db_path))
+            cursor = own_conn.cursor()
 
         # 미실현 손익 계산
         unrealized = sum(
@@ -971,8 +992,9 @@ class AdaptiveAgentManager:
             agent.state.current_risk_level,
             agent.state.current_strategy
         ))
-        conn.commit()
-        conn.close()
+        if own_conn is not None:
+            own_conn.commit()
+            own_conn.close()
 
     def get_comparison(self, prices: Dict[str, float]) -> str:
         """에이전트 비교"""

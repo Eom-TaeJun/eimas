@@ -36,6 +36,7 @@ import pandas as pd
 from lib.fred_collector import FREDCollector
 from lib.data_collector import DataManager
 from lib.market_indicators import MarketIndicatorsCollector
+from lib.path_bootstrap import ensure_path
 from pipeline.schemas import FREDSummary, IndicatorsSummary
 from pipeline.exceptions import get_logger, log_error, CollectionError
 
@@ -103,8 +104,7 @@ def _load_financial_indicators() -> Dict[str, Any]:
         return {}
 
     try:
-        if str(fi_root) not in sys.path:
-            sys.path.insert(0, str(fi_root))
+        ensure_path(fi_root)
 
         config_module_name = "_eimas_fi_config"
         if config_module_name in sys.modules:
@@ -159,8 +159,11 @@ def _load_financial_indicators() -> Dict[str, Any]:
         return {}
 
 
-def _collect_market_data_via_financial_indicators(lookback_days: int) -> Dict[str, pd.DataFrame]:
-    """Collect core market + BTC/ETH via financial_indicators collectors."""
+def _collect_market_data_via_financial_indicators(
+    lookback_days: int,
+    include_crypto: bool = True,
+) -> Dict[str, pd.DataFrame]:
+    """Collect market data via financial_indicators collectors."""
     classes = _load_financial_indicators()
     market_cls = classes.get("MarketCollector")
     crypto_cls = classes.get("CryptoCollector")
@@ -180,7 +183,10 @@ def _collect_market_data_via_financial_indicators(lookback_days: int) -> Dict[st
         if data is not None and not data.empty:
             collected[ticker] = data
 
-    include_market_crypto = _env_flag("EIMAS_INCLUDE_MARKET_CRYPTO", default=not alpha_probe_mode)
+    include_market_crypto = include_crypto and _env_flag(
+        "EIMAS_INCLUDE_MARKET_CRYPTO",
+        default=not alpha_probe_mode,
+    )
     if include_market_crypto and crypto_cls is not None:
         crypto_collector = crypto_cls(lookback_days=lookback_days)
         for ticker in _FI_MARKET_CRYPTO_TICKERS:
@@ -249,11 +255,14 @@ def collect_fred_data() -> FREDSummary:
         log_error(logger, "FRED collection failed", e)
         return FREDSummary(timestamp=datetime.now().isoformat())
 
-def collect_market_data(lookback_days: int = 365) -> Dict[str, pd.DataFrame]:
+def collect_market_data(lookback_days: int = 365, include_crypto: bool = True) -> Dict[str, pd.DataFrame]:
     """시장 데이터 수집"""
     print("\n[1.2] Collecting market data...")
     try:
-        fi_data = _collect_market_data_via_financial_indicators(lookback_days)
+        fi_data = _collect_market_data_via_financial_indicators(
+            lookback_days,
+            include_crypto=include_crypto,
+        )
         if fi_data:
             print(f"      ✓ Collected {len(fi_data)} tickers (financial_indicators)")
             return fi_data
@@ -264,11 +273,12 @@ def collect_market_data(lookback_days: int = 365) -> Dict[str, pd.DataFrame]:
                 {'ticker': 'SPY'}, {'ticker': 'QQQ'}, {'ticker': 'IWM'},
                 {'ticker': 'DIA'}, {'ticker': 'TLT'}, {'ticker': 'GLD'},
                 {'ticker': 'USO'}, {'ticker': 'UUP'}, {'ticker': '^VIX'}
-            ],
-            'crypto': [
-                {'ticker': 'BTC-USD'}, {'ticker': 'ETH-USD'}
             ]
         }
+        if include_crypto:
+            tickers_config['crypto'] = [
+                {'ticker': 'BTC-USD'}, {'ticker': 'ETH-USD'}
+            ]
         market_data, _ = dm.collect_all(tickers_config)
         print(f"      ✓ Collected {len(market_data)} tickers")
         return market_data
