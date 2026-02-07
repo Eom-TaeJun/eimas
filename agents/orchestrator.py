@@ -231,24 +231,54 @@ class MetaOrchestrator:
         
         forecast_response = await self.forecast_agent.execute(forecast_request)
         forecast_result = {}
-        if forecast_response.is_success() and forecast_response.result.get('forecast_results'):
+        forecast_payload = forecast_response.result if forecast_response.is_success() else {}
+        has_legacy_forecast = bool(forecast_payload.get('forecast_results'))
+        has_modern_forecast = bool(forecast_payload.get('forecasts'))
+        if has_legacy_forecast or has_modern_forecast:
             forecast_result = forecast_response.result
+            if has_legacy_forecast:
+                first_forecast = forecast_result['forecast_results'][0] if forecast_result['forecast_results'] else {}
+                point_forecast = first_forecast.get('point_forecast', 0.0)
+                r2_score = forecast_result.get('model_metrics', {}).get('r2_score', 0.0)
+            else:
+                forecasts = forecast_result.get('forecasts', [])
+                long_forecast = next(
+                    (item for item in forecasts if item.get('horizon') == 'Long'),
+                    forecasts[0] if forecasts else {},
+                )
+                point_forecast = long_forecast.get('predicted_change', 0.0) or 0.0
+                r2_score = long_forecast.get('r_squared', forecast_result.get('confidence', 0.0))
             self.logger.info(
-                f"Forecast complete: Point={forecast_result['forecast_results'][0]['point_forecast']:.2f}% "
-                f"(R2={forecast_result['model_metrics']['r2_score']:.2f})"
+                f"Forecast complete: Point={point_forecast:.4f} "
+                f"(R2={r2_score:.2f})"
             )
         else:
             self.logger.warning(f"Forecast results empty or failed: {forecast_response.error or 'No results'}")
 
         # Track in reasoning chain
         if forecast_result:
-            forecast_summary = forecast_result.get('forecast_results', [{}])[0]
+            if forecast_result.get('forecast_results'):
+                forecast_summary = forecast_result.get('forecast_results', [{}])[0]
+                confidence_r2 = forecast_result.get('model_metrics', {}).get('r2_score', 0.5)
+            else:
+                forecast_rows = forecast_result.get('forecasts', [])
+                forecast_summary = next(
+                    (item for item in forecast_rows if item.get('horizon') == 'Long'),
+                    forecast_rows[0] if forecast_rows else {},
+                )
+                confidence_r2 = forecast_summary.get('r_squared', forecast_result.get('confidence', 0.5))
+            key_drivers = forecast_result.get('key_drivers', [])
+            if not key_drivers and isinstance(forecast_summary, dict):
+                key_drivers = forecast_summary.get('selected_variables', [])
             self.reasoning_chain.add_step(
                 agent='ForecastAgent',
                 input_summary='Market data + LASSO model',
-                output_summary=f"Point forecast: {forecast_summary.get('point_forecast', 'N/A')}",
-                confidence=forecast_result.get('model_metrics', {}).get('r2_score', 0.5) * 100,
-                key_factors=forecast_result.get('key_drivers', [])[:3]
+                output_summary=(
+                    f"Point forecast: "
+                    f"{forecast_summary.get('point_forecast', forecast_summary.get('predicted_change', 'N/A'))}"
+                ),
+                confidence=confidence_r2 * 100,
+                key_factors=key_drivers[:3]
             )
 
         # Merge results for topic detection and opinion collection
@@ -445,7 +475,7 @@ class MetaOrchestrator:
             self.logger.debug(f"Added 'crypto_correlation' (crypto data available)")
 
         # Rule 6: 금리 예측 데이터 존재 → rate_direction 토론 추가
-        if 'forecast_results' in analysis_result:
+        if 'forecast_results' in analysis_result or 'forecasts' in analysis_result:
             topics.append("rate_direction")
             topics.append("rate_magnitude")
             self.logger.debug("Added 'rate_direction', 'rate_magnitude' (forecast data available)")
