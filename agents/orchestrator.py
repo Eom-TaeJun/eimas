@@ -95,6 +95,7 @@ class MetaOrchestrator:
         """로거 설정"""
         logger = logging.getLogger("MetaOrchestrator")
         logger.setLevel(logging.DEBUG if self.verbose else logging.INFO)
+        logger.propagate = False
 
         if not logger.handlers:
             handler = logging.StreamHandler()
