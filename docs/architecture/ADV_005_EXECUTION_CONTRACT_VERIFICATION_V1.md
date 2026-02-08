@@ -75,7 +75,10 @@ python3 -m py_compile \
 ```bash
 python3 - <<'PY'
 import os, sys
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+from pathlib import Path
+project_root = Path.cwd().resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 for b in ('local', 'external'):
     os.environ['EIMAS_EXECUTION_BACKEND'] = b
     import importlib
@@ -113,7 +116,10 @@ PY
 ```bash
 python3 - <<'PY'
 import os, sys, numpy as np, pandas as pd
-sys.path.insert(0, '/home/tj/projects/autoai/eimas')
+from pathlib import Path
+project_root = Path.cwd().resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 os.environ['EIMAS_EXECUTION_BACKEND'] = 'external'
 from pipeline.analyzers import run_allocation_engine
 idx = pd.date_range('2025-01-01', periods=40, freq='D')

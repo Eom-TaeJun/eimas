@@ -427,6 +427,8 @@ class EIMASResult:
     performance_attribution: Dict = field(default_factory=dict)  # AttributionResult.to_dict()
     tactical_weights: Dict[str, float] = field(default_factory=dict)  # Tactical allocation weights
     stress_test_results: Dict = field(default_factory=dict)    # StressTestResult list
+    paper_execution: Dict = field(default_factory=dict)         # Auto paper execution summary
+    paper_execution_backtest: Dict = field(default_factory=dict)  # Auto execution backtest summary
 
     # NEW: Quick Mode AI Validation (2026-02-04)
     quick_validation: Dict = field(default_factory=dict)       # QuickOrchestrator validation result
@@ -762,6 +764,21 @@ class EIMASResult:
                     f"- PostgreSQL: enabled={postgres.get('enabled')}, "
                     f"stored_rows={postgres.get('stored_rows', 0)}"
                 )
+            internal_sql = ra.get('internal_sql', {}) if isinstance(ra, dict) else {}
+            if isinstance(internal_sql, dict) and internal_sql:
+                company_sql = internal_sql if "upserted_rows" in internal_sql else internal_sql.get("company", internal_sql)
+                if isinstance(company_sql, dict) and company_sql:
+                    md.append(
+                        f"- Internal SQL(SQLite): enabled={company_sql.get('enabled')}, "
+                        f"upserted_rows={company_sql.get('upserted_rows', 0)}, "
+                        f"total_rows={company_sql.get('total_rows', 0)}"
+                    )
+                phase6_sql = internal_sql.get("phase6_backtest", {}) if isinstance(internal_sql.get("phase6_backtest", {}), dict) else {}
+                if phase6_sql:
+                    md.append(
+                        f"- Backtest SQL Sync: total_runs={phase6_sql.get('total_runs', 0)}, "
+                        f"saved_run_id={phase6_sql.get('saved_run_id')}"
+                    )
             work = ra.get('ra_work_support', {}) if isinstance(ra, dict) else {}
             if isinstance(work, dict) and work.get('research_tasks'):
                 md.append(f"- Research Tasks: {len(work.get('research_tasks', []))}")

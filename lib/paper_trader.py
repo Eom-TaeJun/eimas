@@ -20,7 +20,9 @@ Usage:
 
 import json
 import sqlite3
+import os
 import yfinance as yf
+import pandas as pd
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field, asdict
@@ -36,6 +38,25 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = PROJECT_ROOT / "data" / "paper_trading.db"
 COMMISSION_RATE = 0.0  # 무수수료 (실제로는 0.001 등)
 SLIPPAGE_RATE = 0.001  # 0.1% 슬리피지
+
+
+def _configure_yfinance_cache_dir() -> None:
+    cache_dir = os.getenv("EIMAS_YFINANCE_CACHE_DIR", "/tmp/eimas_yfinance_cache").strip()
+    if not cache_dir or cache_dir.lower() in {"off", "none", "disable", "false", "0"}:
+        return
+    target = Path(cache_dir).expanduser()
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        return
+    try:
+        if hasattr(yf, "set_tz_cache_location"):
+            yf.set_tz_cache_location(str(target))
+    except Exception:
+        return
+
+
+_configure_yfinance_cache_dir()
 
 
 # ============================================================================
@@ -255,14 +276,66 @@ class PaperTrader:
         conn.commit()
         conn.close()
 
+    def _lookup_local_price(self, ticker: str) -> float:
+        """로컬 시장 CSV 캐시에서 최근 가격 조회"""
+        market_dir = PROJECT_ROOT / "data" / "market"
+        if not market_dir.exists():
+            return 0.0
+
+        normalized = (
+            ticker.replace("-", "_")
+            .replace("^", "")
+            .replace("/", "_")
+        )
+        candidates = [
+            market_dir / f"yfinance_{normalized}_1d.csv",
+            market_dir / f"yfinance_{normalized}_1h.csv",
+            market_dir / f"cryptocompare_{normalized}_1d.csv",
+            market_dir / f"cryptocompare_{normalized}_1h.csv",
+        ]
+
+        for path in candidates:
+            if not path.exists():
+                continue
+            try:
+                df = pd.read_csv(path)
+            except Exception:
+                continue
+            if df.empty:
+                continue
+            close_col = None
+            for col in ("Close", "close", "Adj Close", "adj_close"):
+                if col in df.columns:
+                    close_col = col
+                    break
+            if close_col is None:
+                continue
+            try:
+                value = float(df[close_col].dropna().iloc[-1])
+            except Exception:
+                continue
+            if value > 0:
+                return value
+
+        return 0.0
+
     def get_current_price(self, ticker: str) -> float:
         """현재 가격 조회"""
+        local_first = os.getenv("EIMAS_PAPER_LOCAL_FIRST", "true").strip().lower()
+        if local_first not in {"0", "false", "off", "no"}:
+            local_price = self._lookup_local_price(ticker)
+            if local_price > 0:
+                return local_price
+
         try:
-            data = yf.download(ticker, period="1d", progress=False)
+            data = yf.download(ticker, period="1d", progress=False, threads=False)
             if len(data) > 0:
                 return float(data['Close'].iloc[-1])
         except Exception:
             pass
+        local_price = self._lookup_local_price(ticker)
+        if local_price > 0:
+            return local_price
         return 0.0
 
     def get_current_prices(self, tickers: List[str]) -> Dict[str, float]:
@@ -270,14 +343,12 @@ class PaperTrader:
         if not tickers:
             return {}
 
-        try:
-            data = yf.download(tickers, period="1d", progress=False)['Close']
-            if isinstance(data, pd.Series):
-                return {tickers[0]: float(data.iloc[-1])}
-            else:
-                return {t: float(data[t].iloc[-1]) for t in tickers if t in data.columns}
-        except Exception:
-            return {}
+        prices: Dict[str, float] = {}
+        for ticker in tickers:
+            px = self.get_current_price(ticker)
+            if px > 0:
+                prices[ticker] = px
+        return prices
 
     # ========================================================================
     # Order Execution
@@ -294,6 +365,15 @@ class PaperTrader:
         """주문 실행"""
         side = OrderSide(side.lower())
         order_type = OrderType(order_type.lower())
+        quantity = float(quantity)
+        if quantity <= 0:
+            return Order(
+                ticker=ticker,
+                side=side,
+                order_type=order_type,
+                quantity=quantity,
+                status=OrderStatus.REJECTED,
+            )
 
         # 현재 가격 조회
         current_price = self.get_current_price(ticker)
@@ -307,12 +387,6 @@ class PaperTrader:
             )
             return order
 
-        # 슬리피지 적용
-        if side == OrderSide.BUY:
-            fill_price = current_price * (1 + SLIPPAGE_RATE)
-        else:
-            fill_price = current_price * (1 - SLIPPAGE_RATE)
-
         # 리밋 주문 체크
         if order_type == OrderType.LIMIT and limit_price:
             if side == OrderSide.BUY and current_price > limit_price:
@@ -325,6 +399,11 @@ class PaperTrader:
                     status=OrderStatus.PENDING,
                 )
                 self.orders.append(order)
+                order.id = self._save_order(order)
+                print(
+                    f"Order pending: {side.value.upper()} {quantity} {ticker} "
+                    f"@ LIMIT ${float(limit_price):.4f} (current ${current_price:.4f})"
+                )
                 return order
             elif side == OrderSide.SELL and current_price < limit_price:
                 order = Order(
@@ -336,7 +415,19 @@ class PaperTrader:
                     status=OrderStatus.PENDING,
                 )
                 self.orders.append(order)
+                order.id = self._save_order(order)
+                print(
+                    f"Order pending: {side.value.upper()} {quantity} {ticker} "
+                    f"@ LIMIT ${float(limit_price):.4f} (current ${current_price:.4f})"
+                )
                 return order
+
+        fill_price = self._compute_fill_price(
+            side=side,
+            current_price=current_price,
+            order_type=order_type,
+            limit_price=limit_price,
+        )
 
         # 주문 금액 계산
         order_value = fill_price * quantity
@@ -426,14 +517,33 @@ class PaperTrader:
         self.trades.append(trade)
 
         # DB 저장
-        self._save_order(order)
+        order.id = self._save_order(order)
         self._save_trade(trade)
         self._save_account()
 
         print(f"Order filled: {side.value.upper()} {quantity} {ticker} @ ${fill_price:.2f}")
         return order
 
-    def _save_order(self, order: Order):
+    def _compute_fill_price(
+        self,
+        side: OrderSide,
+        current_price: float,
+        order_type: OrderType,
+        limit_price: Optional[float],
+    ) -> float:
+        """현재가/슬리피지/리밋을 반영한 체결가 계산"""
+        if side == OrderSide.BUY:
+            slipped = current_price * (1 + SLIPPAGE_RATE)
+            if order_type == OrderType.LIMIT and limit_price is not None:
+                return min(slipped, float(limit_price))
+            return slipped
+
+        slipped = current_price * (1 - SLIPPAGE_RATE)
+        if order_type == OrderType.LIMIT and limit_price is not None:
+            return max(slipped, float(limit_price))
+        return slipped
+
+    def _save_order(self, order: Order) -> int:
         """주문 DB 저장"""
         conn = sqlite3.connect(str(DB_PATH))
         c = conn.cursor()
@@ -449,10 +559,12 @@ class PaperTrader:
              order.created_at, order.filled_at)
         )
 
+        order_id = c.lastrowid
         conn.commit()
         conn.close()
+        return order_id
 
-    def _save_trade(self, trade: Trade):
+    def _save_trade(self, trade: Trade) -> int:
         """거래 DB 저장"""
         conn = sqlite3.connect(str(DB_PATH))
         c = conn.cursor()
@@ -465,8 +577,227 @@ class PaperTrader:
              trade.price, trade.commission, trade.realized_pnl, trade.timestamp)
         )
 
+        trade_id = c.lastrowid
         conn.commit()
         conn.close()
+        return trade_id
+
+    def _update_order_fill(self, order_id: int, order: Order):
+        """기존 대기 주문을 체결 상태로 업데이트"""
+        conn = sqlite3.connect(str(DB_PATH))
+        c = conn.cursor()
+        c.execute(
+            """UPDATE orders
+               SET status = ?, filled_price = ?, filled_quantity = ?, commission = ?, filled_at = ?
+               WHERE id = ? AND account_name = ?""",
+            (
+                order.status.value,
+                order.filled_price,
+                order.filled_quantity,
+                order.commission,
+                order.filled_at,
+                order_id,
+                self.account_name,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def _update_order_status(self, order_id: int, status: OrderStatus):
+        """기존 주문 상태 업데이트"""
+        conn = sqlite3.connect(str(DB_PATH))
+        c = conn.cursor()
+        c.execute(
+            "UPDATE orders SET status = ? WHERE id = ? AND account_name = ?",
+            (status.value, order_id, self.account_name),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_pending_orders(self, limit: int = 200) -> List[Order]:
+        """대기 중인 주문 조회"""
+        conn = sqlite3.connect(str(DB_PATH))
+        c = conn.cursor()
+        c.execute(
+            """SELECT id, ticker, side, order_type, quantity, limit_price, stop_price,
+                      status, filled_price, filled_quantity, commission, created_at, filled_at
+               FROM orders
+               WHERE account_name = ? AND status = ?
+               ORDER BY created_at ASC
+               LIMIT ?""",
+            (self.account_name, OrderStatus.PENDING.value, int(limit)),
+        )
+        rows = c.fetchall()
+        conn.close()
+
+        pending: List[Order] = []
+        for row in rows:
+            pending.append(
+                Order(
+                    id=row[0],
+                    ticker=row[1],
+                    side=OrderSide(row[2]),
+                    order_type=OrderType(row[3]),
+                    quantity=float(row[4]),
+                    limit_price=float(row[5]) if row[5] is not None else None,
+                    stop_price=float(row[6]) if row[6] is not None else None,
+                    status=OrderStatus(row[7]),
+                    filled_price=float(row[8] or 0.0),
+                    filled_quantity=float(row[9] or 0.0),
+                    commission=float(row[10] or 0.0),
+                    created_at=datetime.fromisoformat(row[11]) if isinstance(row[11], str) else datetime.now(),
+                    filled_at=datetime.fromisoformat(row[12]) if isinstance(row[12], str) and row[12] else None,
+                )
+            )
+        return pending
+
+    def process_pending_orders(self) -> Dict[str, Any]:
+        """
+        대기 주문 폴링 및 자동 체결.
+        LIMIT 조건을 만족하면 즉시 모의 체결한다.
+        """
+        conn = sqlite3.connect(str(DB_PATH))
+        c = conn.cursor()
+        c.execute(
+            """SELECT id, ticker, side, order_type, quantity, limit_price
+               FROM orders
+               WHERE account_name = ? AND status = ?
+               ORDER BY created_at ASC""",
+            (self.account_name, OrderStatus.PENDING.value),
+        )
+        rows = c.fetchall()
+        conn.close()
+
+        processed = 0
+        filled = 0
+        rejected = 0
+        filled_orders: List[Order] = []
+
+        for row in rows:
+            processed += 1
+            order_id, ticker, side_raw, order_type_raw, quantity, limit_price = row
+            side = OrderSide(side_raw)
+            order_type = OrderType(order_type_raw)
+            qty = float(quantity)
+            limit = float(limit_price) if limit_price is not None else None
+
+            current_price = self.get_current_price(ticker)
+            if current_price <= 0:
+                continue
+
+            is_triggered = True
+            if order_type == OrderType.LIMIT and limit is not None:
+                if side == OrderSide.BUY:
+                    is_triggered = current_price <= limit
+                else:
+                    is_triggered = current_price >= limit
+
+            if not is_triggered:
+                continue
+
+            fill_price = self._compute_fill_price(
+                side=side,
+                current_price=current_price,
+                order_type=order_type,
+                limit_price=limit,
+            )
+
+            order_value = fill_price * qty
+            commission = order_value * COMMISSION_RATE
+
+            if side == OrderSide.BUY:
+                total_cost = order_value + commission
+                if total_cost > self.cash:
+                    self._update_order_status(order_id, OrderStatus.REJECTED)
+                    rejected += 1
+                    continue
+            else:
+                current_qty = self.positions.get(ticker, {}).get("quantity", 0.0)
+                if qty > current_qty + 1e-9:
+                    self._update_order_status(order_id, OrderStatus.REJECTED)
+                    rejected += 1
+                    continue
+
+            realized_pnl = 0.0
+            if side == OrderSide.BUY:
+                self.cash -= (order_value + commission)
+                if ticker in self.positions:
+                    old_qty = self.positions[ticker]["quantity"]
+                    old_cost = self.positions[ticker]["avg_cost"]
+                    new_qty = old_qty + qty
+                    new_cost = (old_qty * old_cost + qty * fill_price) / new_qty
+                    self.positions[ticker] = {"quantity": new_qty, "avg_cost": new_cost}
+                else:
+                    self.positions[ticker] = {"quantity": qty, "avg_cost": fill_price}
+            else:
+                self.cash += (order_value - commission)
+                avg_cost = self.positions[ticker]["avg_cost"]
+                realized_pnl = (fill_price - avg_cost) * qty - commission
+                new_qty = self.positions[ticker]["quantity"] - qty
+                if new_qty <= 0.0001:
+                    del self.positions[ticker]
+                else:
+                    self.positions[ticker]["quantity"] = new_qty
+
+            fill_ts = datetime.now()
+            order = Order(
+                id=int(order_id),
+                ticker=ticker,
+                side=side,
+                order_type=order_type,
+                quantity=qty,
+                limit_price=limit,
+                status=OrderStatus.FILLED,
+                filled_price=fill_price,
+                filled_quantity=qty,
+                commission=commission,
+                filled_at=fill_ts,
+            )
+            self._update_order_fill(int(order_id), order)
+
+            trade = Trade(
+                id=len(self.trades) + 1,
+                ticker=ticker,
+                side=side.value,
+                quantity=qty,
+                price=fill_price,
+                commission=commission,
+                realized_pnl=realized_pnl,
+                timestamp=fill_ts,
+            )
+            self.trades.append(trade)
+            self._save_trade(trade)
+
+            filled += 1
+            filled_orders.append(order)
+            print(f"Pending order filled: {side.value.upper()} {qty} {ticker} @ ${fill_price:.2f}")
+
+        if filled > 0:
+            self._save_account()
+
+        return {
+            "account": self.account_name,
+            "processed": processed,
+            "filled": filled,
+            "rejected": rejected,
+            "filled_orders": [
+                {
+                    "id": o.id,
+                    "ticker": o.ticker,
+                    "side": o.side.value,
+                    "order_type": o.order_type.value,
+                    "quantity": o.quantity,
+                    "limit_price": o.limit_price,
+                    "status": o.status.value,
+                    "filled_price": o.filled_price,
+                    "filled_quantity": o.filled_quantity,
+                    "commission": o.commission,
+                    "created_at": o.created_at.isoformat() if o.created_at else None,
+                    "filled_at": o.filled_at.isoformat() if o.filled_at else None,
+                }
+                for o in filled_orders
+            ],
+        }
 
     # ========================================================================
     # Portfolio Management
@@ -481,16 +812,7 @@ class PaperTrader:
         prices = {}
 
         # 가격 조회
-        try:
-            data = yf.download(tickers, period="1d", progress=False)['Close']
-            if len(tickers) == 1:
-                prices = {tickers[0]: float(data.iloc[-1])}
-            else:
-                for t in tickers:
-                    if t in data.columns:
-                        prices[t] = float(data[t].iloc[-1])
-        except Exception:
-            pass
+        prices = self.get_current_prices(tickers)
 
         positions = []
         for ticker, pos in self.positions.items():
@@ -597,17 +919,7 @@ class PaperTrader:
 
         # 현재 가격 조회
         all_tickers = list(set(list(target_weights.keys()) + list(current_weights.keys())))
-        prices = {}
-        try:
-            data = yf.download(all_tickers, period="1d", progress=False)['Close']
-            if len(all_tickers) == 1:
-                prices = {all_tickers[0]: float(data.iloc[-1])}
-            else:
-                for t in all_tickers:
-                    if t in data.columns:
-                        prices[t] = float(data[t].iloc[-1])
-        except Exception:
-            pass
+        prices = self.get_current_prices(all_tickers)
 
         # 매도 먼저 (현금 확보)
         for ticker, current in current_weights.items():
@@ -693,8 +1005,6 @@ class PaperTrader:
 # ============================================================================
 # Convenience Functions
 # ============================================================================
-
-import pandas as pd
 
 
 def quick_paper_trade(

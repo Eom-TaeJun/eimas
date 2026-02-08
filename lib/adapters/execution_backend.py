@@ -8,10 +8,11 @@ separate project (`execution_intelligence`) in phases.
 from __future__ import annotations
 
 import os
-import sys
 import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
+
+from lib.path_bootstrap import ensure_path
 
 Bundle = Dict[str, Any]
 logger = logging.getLogger(__name__)
@@ -149,9 +150,7 @@ def _load_external_builder() -> Optional[Callable[..., Bundle]]:
     if not external_root.exists():
         return None
 
-    external_path = str(external_root)
-    if external_path not in sys.path:
-        sys.path.insert(0, external_path)
+    ensure_path(external_root)
 
     try:
         from execution_intelligence.bridge import generate_operational_bundle as external_builder

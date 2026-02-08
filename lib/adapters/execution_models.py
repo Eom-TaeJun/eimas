@@ -7,9 +7,10 @@ modules so they can be externalized to `execution_intelligence` gradually.
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from lib.path_bootstrap import ensure_path
 
 ModelExports = Dict[str, Any]
 
@@ -62,9 +63,7 @@ def _external_exports() -> Optional[ModelExports]:
     if not external_root.exists():
         return None
 
-    external_path = str(external_root)
-    if external_path not in sys.path:
-        sys.path.insert(0, external_path)
+    ensure_path(external_root)
 
     try:
         from execution_intelligence.models import (

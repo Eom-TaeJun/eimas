@@ -141,6 +141,7 @@ npm run dev -- --port 3000
 ### 데이터 수집 오류
 - **yfinance 에러**: 일시적인 API 제한일 수 있음. 잠시 후 재시도.
 - **FRED 키**: `.env` 파일에 `FRED_API_KEY`가 올바른지 확인.
+- **재부팅 후 RA SQL 적재 실패**: [`RA_POSTGRES_REBOOT_RUNBOOK.md`](./RA_POSTGRES_REBOOT_RUNBOOK.md) 순서대로 PostgreSQL 재기동 후 실행.
 
 ### 웹 페이지 로딩 실패
 - 백엔드 서버가 켜져 있는지 확인 (`curl http://localhost:8000/api/health`)

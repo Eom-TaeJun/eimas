@@ -302,6 +302,8 @@ class VolumeAnalyzer:
 
     def _validate_data(self, df: pd.DataFrame) -> bool:
         """데이터 유효성 검사"""
+        if not isinstance(df, pd.DataFrame):
+            return False
         if df is None or len(df) < self.lookback + 5:
             return False
         if 'Volume' not in df.columns or 'Close' not in df.columns:
@@ -614,6 +616,8 @@ class VolumeAnalyzer:
         try:
             total_volumes = []
             for ticker, df in market_data.items():
+                if not isinstance(df, pd.DataFrame):
+                    continue
                 if 'Volume' in df.columns and len(df) >= self.lookback:
                     # 최근 거래량 / 평균 거래량
                     current = df['Volume'].iloc[-1]

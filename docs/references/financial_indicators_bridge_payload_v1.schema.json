@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eimas.local/schemas/financial_indicators_bridge_payload_v1.schema.json",
+  "title": "FinancialIndicatorsBridgePayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source",
+    "kind",
+    "generated_at",
+    "series"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "fi_bridge_v1"
+    },
+    "source": {
+      "type": "string",
+      "const": "financial_indicators"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "market",
+        "crypto"
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lookback_days": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "series": {
+      "type": "object",
+      "description": "Ticker -> OHLCV rows in ascending date order",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/ohlcv_point"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ohlcv_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "close"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "open": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "high": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "low": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "close": {
+          "type": "number"
+        },
+        "volume": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "provider": {
+          "type": "string",
+          "description": "Optional source label (alpha_vantage, yfinance, binance, coingecko, etc.)"
+        }
+      }
+    }
+  }
+}

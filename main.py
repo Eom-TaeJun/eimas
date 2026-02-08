@@ -135,6 +135,9 @@ from pipeline.phases.phase4_realtime import run_realtime as phase4_run_realtime
 from pipeline.phases.phase45_operational import (
     generate_operational_report as phase45_generate_operational_report,
 )
+from pipeline.phases.phase46_paper_execution import (
+    run_paper_execution as phase46_run_paper_execution,
+)
 from pipeline.phases.phase5_storage import save_results as phase5_save_results
 from pipeline.phases.phase6_portfolio import (
     run_backtest as phase6_run_backtest,
@@ -178,6 +181,7 @@ _run_adaptive_portfolio = phase2_run_adaptive_portfolio
 _run_debate = phase3_run_debate
 _run_realtime = phase4_run_realtime
 _generate_operational_report = phase45_generate_operational_report
+_run_paper_execution = phase46_run_paper_execution
 _save_results = phase5_save_results
 _run_backtest = phase6_run_backtest
 _run_performance_attribution = phase6_run_performance_attribution
@@ -205,6 +209,12 @@ async def run_integrated_pipeline(
     quick_validation_mode: str = None,
     output_dir: str = "outputs",
     cron_mode: bool = False,
+    enable_paper_auto: bool = False,
+    paper_account: str = "ra_auto",
+    paper_capital: float = 100000.0,
+    paper_poll_only: bool = False,
+    paper_backtest: bool = False,
+    paper_enforce_approval: bool = False,
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -241,6 +251,12 @@ async def run_integrated_pipeline(
                           결과 저장 디렉토리. Default: 'outputs'.
         cron_mode (bool): Scheduled mode; skips AI report generation.
                           스케줄 모드일 때 AI 리포트 생성을 생략. Default: False.
+        enable_paper_auto (bool): Enable auto paper execution from trade plan.
+        paper_account (str): Paper account name.
+        paper_capital (float): Initial paper capital for account bootstrap.
+        paper_poll_only (bool): Poll pending LIMIT orders only.
+        paper_backtest (bool): Run allocation backtest after auto execution.
+        paper_enforce_approval (bool): Block auto execution when human approval is required.
     
     Returns:
         EIMASResult: Comprehensive analysis result object containing:
@@ -407,6 +423,17 @@ async def run_integrated_pipeline(
         _generate_operational_report,
         result,
     )
+    _run_timed_sync(
+        "phase46_paper_execution",
+        _run_paper_execution,
+        result,
+        enable=enable_paper_auto,
+        account_name=paper_account,
+        initial_capital=paper_capital,
+        poll_only=paper_poll_only,
+        run_backtest=paper_backtest,
+        enforce_human_approval=paper_enforce_approval,
+    )
 
     # Phase 5: Storage
     output_file = _run_timed_sync(
@@ -554,6 +581,12 @@ def main():
     parser.add_argument('--backtest', action='store_true', help='Run backtest engine (5-year historical)')
     parser.add_argument('--attribution', action='store_true', help='Performance attribution (Brinson)')
     parser.add_argument('--stress-test', action='store_true', help='Stress testing (historical + hypothetical)')
+    parser.add_argument('--paper-auto', action='store_true', help='Enable auto paper LIMIT orders from trade_plan')
+    parser.add_argument('--paper-account', default='ra_auto', help='Paper trading account name')
+    parser.add_argument('--paper-capital', type=float, default=100000.0, help='Initial capital for paper account')
+    parser.add_argument('--paper-poll-only', action='store_true', help='Poll pending paper LIMIT orders only')
+    parser.add_argument('--paper-backtest', action='store_true', help='Run allocation backtest after auto paper execution')
+    parser.add_argument('--paper-enforce-approval', action='store_true', help='Require human approval gate for auto paper execution')
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
 
@@ -580,6 +613,12 @@ def main():
         quick_validation_mode=market_focus,
         output_dir=args.output_dir,
         cron_mode=args.cron_mode,
+        enable_paper_auto=args.paper_auto,
+        paper_account=args.paper_account,
+        paper_capital=args.paper_capital,
+        paper_poll_only=args.paper_poll_only,
+        paper_backtest=args.paper_backtest,
+        paper_enforce_approval=args.paper_enforce_approval,
     ))
 
 

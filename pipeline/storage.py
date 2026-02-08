@@ -251,6 +251,8 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
 
         # ============ BACKTEST ============
         ('event_backtest_results', '39. Backtest Results'),
+        ('paper_execution', '40. Auto Paper Execution'),
+        ('paper_execution_backtest', '41. Auto Execution Backtest'),
         ('integrated_signals', None),
     ]
 

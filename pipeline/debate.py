@@ -43,12 +43,24 @@ async def run_single_mode(mode_name: str, lookback: int, query: str,
     filtered_data = {}
     if market_data:
         for ticker, df in market_data.items():
-            if not df.empty:
+            if isinstance(df, pd.DataFrame) and not df.empty:
                 # 최근 n일 데이터만 슬라이싱
                 filtered_data[ticker] = df.tail(lookback)
     else:
         print(f"      ⚠ No market data provided for {mode_name}")
         filtered_data = {}
+
+    if not filtered_data:
+        print(f"      ⚠ {mode_name} skipped: insufficient DataFrame market data")
+        mode_result = ModeResult(
+            mode=AnalysisMode.FULL if mode_name == "FULL" else AnalysisMode.REFERENCE,
+            consensus=None,
+            confidence=0.5,
+            position="NEUTRAL",
+            dissent_count=0,
+            has_strong_dissent=False,
+        )
+        return mode_result, {}
 
     try:
         orchestrator = MetaOrchestrator(verbose=False)

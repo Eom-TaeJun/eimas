@@ -24,6 +24,22 @@ from lib.evidence_based_allocator import EvidenceBasedAllocator
 logger = logging.getLogger(__name__)
 
 
+def _extract_valuation_gap(valuation_block: Dict) -> float:
+    """Extract valuation gap percentage from fair value block with safe fallback."""
+    if not isinstance(valuation_block, dict):
+        return 0.0
+
+    try:
+        if "consensus" in valuation_block:
+            return float(valuation_block["consensus"].get("valuation_gap_pct", 0.0))
+        if "fed_model" in valuation_block:
+            return float(valuation_block["fed_model"].get("valuation_gap_pct", 0.0))
+    except (TypeError, ValueError):
+        return 0.0
+
+    return 0.0
+
+
 def collect_korea_assets(
     lookback_days: int = 365,
     use_parallel: bool = True
@@ -219,6 +235,9 @@ def calculate_strategic_allocation(
         }
     """
     results = {}
+    # Keep these initialized for both evidence-based and fallback paths.
+    us_fair_gap = _extract_valuation_gap(fair_value_results.get("spx", {}))
+    korea_fair_gap = _extract_valuation_gap(fair_value_results.get("kospi", {}))
 
     try:
         # NEW: Evidence-Based Allocation (Full 모드 JSON 활용)
@@ -269,13 +288,6 @@ def calculate_strategic_allocation(
             allocator = StrategicAssetAllocator()
 
             # 1. Stock/Bond Allocation
-            us_fair_gap = 0
-            if 'spx' in fair_value_results:
-                if 'consensus' in fair_value_results['spx']:
-                    us_fair_gap = fair_value_results['spx']['consensus']['valuation_gap_pct']
-                elif 'fed_model' in fair_value_results['spx']:
-                    us_fair_gap = fair_value_results['spx']['fed_model']['valuation_gap_pct']
-
             stock_bond_result = allocator.calculate_stock_bond_allocation(
                 expected_stock_return=market_stats.get('stock_return', 0.08),
                 expected_bond_return=market_stats.get('bond_return', 0.04),
@@ -290,12 +302,6 @@ def calculate_strategic_allocation(
 
         # 2. Global Allocation (US + Korea)
         if include_korea and 'kospi' in fair_value_results:
-            korea_fair_gap = 0
-            if 'consensus' in fair_value_results['kospi']:
-                korea_fair_gap = fair_value_results['kospi']['consensus']['valuation_gap_pct']
-            elif 'fed_model' in fair_value_results['kospi']:
-                korea_fair_gap = fair_value_results['kospi']['fed_model']['valuation_gap_pct']
-
             global_allocator = GlobalAssetAllocator()
             global_result = global_allocator.allocate_global_portfolio(
                 us_expected_return=market_stats.get('stock_return', 0.08),

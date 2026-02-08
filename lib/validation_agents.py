@@ -13,6 +13,8 @@ AI Validation Agents - 적응형 에이전트 검증 시스템
 import os
 import json
 import asyncio
+import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field, asdict
@@ -87,6 +89,9 @@ class ConsensusResult:
 
     # 요약
     summary: str = ""
+
+    # 런타임 텔레메트리 (fan-out/retry observability)
+    validation_runtime_stats: Dict[str, Any] = field(default_factory=dict)
 
 
 # ============================================================================
@@ -703,12 +708,53 @@ class ConsensusEngine:
 # 검증 매니저
 # ============================================================================
 
+RETRYABLE_FAILURE_TYPES = (
+    "timeout",
+    "rate_limit",
+    "transient_network",
+    "server_overload",
+)
+
+
+@dataclass(frozen=True)
+class AgentRetryPolicy:
+    """Agent-specific retry policy for transient failures."""
+
+    max_retries: int
+    base_backoff_sec: float
+    retry_on: Tuple[str, ...]
+
+
+@dataclass
+class AgentValidationRunTrace:
+    """Execution trace for a single agent validation run."""
+
+    attempts: int = 0
+    retries: int = 0
+    backoff_seconds: float = 0.0
+    last_failure_type: str = ""
+    failure_history: List[str] = field(default_factory=list)
+
+
 class ValidationAgentManager:
     """검증 에이전트 통합 관리"""
 
     def __init__(self):
         self.agents = {}
         self.consensus_engine = ConsensusEngine()
+        self.agent_timeout_sec = float(
+            os.getenv("EIMAS_VALIDATION_AGENT_TIMEOUT_SEC", "90")
+        )
+        self.agent_retry_count = max(
+            0,
+            int(os.getenv("EIMAS_VALIDATION_RETRY_COUNT", "1")),
+        )
+        self.agent_retry_backoff_sec = max(
+            0.0,
+            float(os.getenv("EIMAS_VALIDATION_RETRY_BACKOFF_SEC", "1.0")),
+        )
+        self.retry_policy_overrides = self._load_retry_policy_overrides()
+        self.retry_policies = self._build_retry_policies()
 
         # 사용 가능한 에이전트 초기화
         self._init_agents()
@@ -738,6 +784,165 @@ class ValidationAgentManager:
         if not self.agents:
             print("[Validation] Warning: No API keys configured!")
 
+    @staticmethod
+    def _normalize_policy_name(name: str) -> str:
+        alias = {
+            "default": "default",
+            "claude": "Claude",
+            "perplexity": "Perplexity",
+            "gemini": "Gemini",
+            "gpt": "GPT",
+            "openai": "GPT",
+        }
+        return alias.get(name.strip().lower(), name.strip())
+
+    def _load_retry_policy_overrides(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Optional env override (JSON):
+        EIMAS_VALIDATION_RETRY_POLICY_OVERRIDES='{
+          "default": {"max_retries": 1, "base_backoff_sec": 1.0, "retry_on": ["timeout"]},
+          "Perplexity": {"max_retries": 2, "base_backoff_sec": 1.5}
+        }'
+        """
+        raw = os.getenv("EIMAS_VALIDATION_RETRY_POLICY_OVERRIDES", "").strip()
+        if not raw:
+            return {}
+
+        try:
+            parsed = json.loads(raw)
+        except Exception as e:
+            print(f"[Validation] Invalid retry policy override JSON: {e}")
+            return {}
+
+        if not isinstance(parsed, dict):
+            print("[Validation] Retry policy override ignored (not a JSON object)")
+            return {}
+
+        normalized: Dict[str, Dict[str, Any]] = {}
+        for key, value in parsed.items():
+            if not isinstance(value, dict):
+                continue
+            normalized[self._normalize_policy_name(str(key))] = value
+        return normalized
+
+    @staticmethod
+    def _sanitize_retry_on(values: Any, fallback: Tuple[str, ...]) -> Tuple[str, ...]:
+        if not isinstance(values, list):
+            return fallback
+
+        normalized: List[str] = []
+        for item in values:
+            if isinstance(item, str):
+                token = item.strip()
+                if token:
+                    normalized.append(token)
+        return tuple(normalized) if normalized else fallback
+
+    def _apply_retry_override(
+        self,
+        base: AgentRetryPolicy,
+        override: Dict[str, Any],
+    ) -> AgentRetryPolicy:
+        max_retries = base.max_retries
+        if "max_retries" in override:
+            try:
+                max_retries = max(0, int(override["max_retries"]))
+            except (TypeError, ValueError):
+                pass
+
+        base_backoff_sec = base.base_backoff_sec
+        if "base_backoff_sec" in override:
+            try:
+                base_backoff_sec = max(0.0, float(override["base_backoff_sec"]))
+            except (TypeError, ValueError):
+                pass
+
+        retry_on = self._sanitize_retry_on(override.get("retry_on"), base.retry_on)
+
+        return AgentRetryPolicy(
+            max_retries=max_retries,
+            base_backoff_sec=base_backoff_sec,
+            retry_on=retry_on,
+        )
+
+    def _build_retry_policies(self) -> Dict[str, AgentRetryPolicy]:
+        """Build differentiated retry policies by agent type."""
+        base_policy = AgentRetryPolicy(
+            max_retries=self.agent_retry_count,
+            base_backoff_sec=self.agent_retry_backoff_sec,
+            retry_on=RETRYABLE_FAILURE_TYPES,
+        )
+
+        if "default" in self.retry_policy_overrides:
+            base_policy = self._apply_retry_override(
+                base_policy,
+                self.retry_policy_overrides["default"],
+            )
+
+        policies = {
+            "default": base_policy,
+            # 실시간 검색 기반 API는 순간적인 네트워크/429 오류 빈도가 높아 1회 추가 retry
+            "Perplexity": AgentRetryPolicy(
+                max_retries=base_policy.max_retries + 1,
+                base_backoff_sec=base_policy.base_backoff_sec * 1.5,
+                retry_on=base_policy.retry_on,
+            ),
+            "Claude": base_policy,
+            "Gemini": base_policy,
+            "GPT": base_policy,
+        }
+
+        for name, override in self.retry_policy_overrides.items():
+            if name == "default":
+                continue
+            current = policies.get(name, base_policy)
+            policies[name] = self._apply_retry_override(current, override)
+
+        return policies
+
+    def _get_retry_policy(self, agent_name: str) -> AgentRetryPolicy:
+        return self.retry_policies.get(agent_name, self.retry_policies["default"])
+
+    @staticmethod
+    def _extract_error_message(result: AIValidation) -> Optional[str]:
+        if result.result != ValidationResult.NEEDS_INFO:
+            return None
+
+        reason = (result.reasoning or "").strip()
+        if not reason.lower().startswith("error:"):
+            return None
+
+        return reason.split(":", 1)[1].strip() or reason
+
+    @staticmethod
+    def _classify_failure_type(error_message: str) -> str:
+        message = error_message.lower()
+
+        if any(token in message for token in ("timeout", "timed out", "deadline exceeded", "read timeout")):
+            return "timeout"
+        if any(token in message for token in ("rate limit", "too many requests", "429", "quota exceeded")):
+            return "rate_limit"
+        if any(token in message for token in ("api key", "authentication", "unauthorized", "forbidden", "401", "403")):
+            return "auth"
+        if any(token in message for token in ("invalid request", "bad request", "400", "unsupported", "schema")):
+            return "bad_request"
+        if any(
+            token in message
+            for token in (
+                "name resolution",
+                "dns",
+                "connection",
+                "network",
+                "temporarily unavailable",
+                "connection reset",
+                "remote disconnected",
+            )
+        ):
+            return "transient_network"
+        if any(token in message for token in ("500", "502", "503", "504", "server error", "overloaded", "unavailable")):
+            return "server_overload"
+        return "unknown"
+
     async def validate_decision(
         self,
         agent_decision: Dict,
@@ -750,17 +955,15 @@ class ValidationAgentManager:
                 summary="No validation agents available"
             )
 
-        # 병렬 검증
+        # Async fan-out (note: individual SDK calls are blocking in practice).
         tasks = []
         agent_names = []
-
         for name, agent in self.agents.items():
             tasks.append(agent.validate(agent_decision, market_condition))
             agent_names.append(name)
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 결과 수집
         validations = {}
         for name, result in zip(agent_names, results):
             if isinstance(result, Exception):
@@ -778,22 +981,162 @@ class ValidationAgentManager:
         # 합의 도출
         return self.consensus_engine.reach_consensus(validations)
 
+    @staticmethod
+    def _run_agent_validation_sync(
+        agent: BaseValidationAgent,
+        agent_decision: Dict,
+        market_condition: Dict,
+    ) -> AIValidation:
+        """Run async agent validator in an isolated loop (thread target)."""
+        return asyncio.run(agent.validate(agent_decision, market_condition))
+
+    def _run_agent_validation_with_retry(
+        self,
+        agent_name: str,
+        agent: BaseValidationAgent,
+        agent_decision: Dict,
+        market_condition: Dict,
+    ) -> Tuple[AIValidation, AgentValidationRunTrace]:
+        """Retry only classified transient failures with per-agent policy."""
+        policy = self._get_retry_policy(agent_name)
+        attempts = policy.max_retries + 1
+        last_result: Optional[AIValidation] = None
+        trace = AgentValidationRunTrace()
+
+        for attempt in range(1, attempts + 1):
+            trace.attempts = attempt
+            result = self._run_agent_validation_sync(agent, agent_decision, market_condition)
+            last_result = result
+
+            error_message = self._extract_error_message(result)
+            if error_message is None:
+                return result, trace
+
+            failure_type = self._classify_failure_type(error_message)
+            trace.last_failure_type = failure_type
+            trace.failure_history.append(failure_type)
+            if failure_type not in policy.retry_on:
+                return result, trace
+
+            if attempt < attempts:
+                backoff = policy.base_backoff_sec * attempt
+                trace.retries += 1
+                trace.backoff_seconds += backoff
+                time.sleep(backoff)
+
+        final_result = last_result if last_result is not None else AIValidation(
+            ai_name=getattr(agent, "name", "unknown"),
+            model=getattr(agent, "model", "unknown"),
+            timestamp=datetime.now().isoformat(),
+            result=ValidationResult.NEEDS_INFO,
+            confidence=0,
+            reasoning="Error: retry pipeline produced no result",
+        )
+        return final_result, trace
+
     def validate_all(
         self,
         agent_decision: Dict,
         market_condition: Dict
     ) -> ConsensusResult:
-        """동기 래퍼: validate_decision을 동기적으로 호출"""
-        import nest_asyncio
-        nest_asyncio.apply()
-
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(
-                self.validate_decision(agent_decision, market_condition)
+        """동기 fan-out: blocking SDK 호출을 thread pool로 병렬 실행."""
+        if not self.agents:
+            return ConsensusResult(
+                timestamp=datetime.now().isoformat(),
+                summary="No validation agents available"
             )
+
+        validations: Dict[str, AIValidation] = {}
+        runtime_stats: Dict[str, Any] = {
+            "timeout_sec": self.agent_timeout_sec,
+            "total_agents": len(self.agents),
+            "total_retries": 0,
+            "retried_agents": [],
+            "failure_type_counts": {},
+            "per_agent": {},
+        }
+
+        executor = ThreadPoolExecutor(max_workers=len(self.agents))
+        try:
+            futures = {
+                executor.submit(
+                    self._run_agent_validation_with_retry,
+                    name,
+                    agent,
+                    agent_decision,
+                    market_condition,
+                ): (name, agent.model)
+                for name, agent in self.agents.items()
+            }
+            done, not_done = wait(futures, timeout=self.agent_timeout_sec)
+
+            for future in done:
+                name, model = futures[future]
+                try:
+                    validation, trace = future.result()
+                    validations[name] = validation
+                    runtime_stats["per_agent"][name] = {
+                        "attempts": trace.attempts,
+                        "retries": trace.retries,
+                        "backoff_seconds": round(trace.backoff_seconds, 3),
+                        "last_failure_type": trace.last_failure_type,
+                        "failure_history": trace.failure_history,
+                    }
+                    runtime_stats["total_retries"] += trace.retries
+                    if trace.retries > 0:
+                        runtime_stats["retried_agents"].append(name)
+                    for failure_type in trace.failure_history:
+                        runtime_stats["failure_type_counts"][failure_type] = (
+                            runtime_stats["failure_type_counts"].get(failure_type, 0) + 1
+                        )
+                except Exception as e:
+                    validations[name] = AIValidation(
+                        ai_name=name,
+                        model=model,
+                        timestamp=datetime.now().isoformat(),
+                        result=ValidationResult.NEEDS_INFO,
+                        confidence=0,
+                        reasoning=f"Error: {str(e)}",
+                    )
+                    runtime_stats["per_agent"][name] = {
+                        "attempts": 1,
+                        "retries": 0,
+                        "backoff_seconds": 0.0,
+                        "last_failure_type": "manager_exception",
+                        "failure_history": ["manager_exception"],
+                    }
+                    runtime_stats["failure_type_counts"]["manager_exception"] = (
+                        runtime_stats["failure_type_counts"].get("manager_exception", 0) + 1
+                    )
+
+            for future in not_done:
+                name, model = futures[future]
+                future.cancel()
+                validations[name] = AIValidation(
+                    ai_name=name,
+                    model=model,
+                    timestamp=datetime.now().isoformat(),
+                    result=ValidationResult.NEEDS_INFO,
+                    confidence=0,
+                    reasoning=f"Error: timeout after {self.agent_timeout_sec:.0f}s",
+                )
+                runtime_stats["per_agent"][name] = {
+                    "attempts": 1,
+                    "retries": 0,
+                    "backoff_seconds": 0.0,
+                    "last_failure_type": "manager_timeout",
+                    "failure_history": ["manager_timeout"],
+                }
+                runtime_stats["failure_type_counts"]["manager_timeout"] = (
+                    runtime_stats["failure_type_counts"].get("manager_timeout", 0) + 1
+                )
         finally:
-            loop.close()
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        consensus = self.consensus_engine.reach_consensus(validations)
+        runtime_stats["retried_agents"] = sorted(set(runtime_stats["retried_agents"]))
+        consensus.validation_runtime_stats = runtime_stats
+        return consensus
 
     def get_report(self, consensus: ConsensusResult) -> str:
         """검증 리포트 생성"""
@@ -811,6 +1154,16 @@ class ValidationAgentManager:
         lines.append(f"  Agreement: {consensus.agreement_ratio:.0%}")
         lines.append(f"  Summary: {consensus.summary}")
         lines.append("")
+
+        runtime_stats = consensus.validation_runtime_stats or {}
+        if runtime_stats:
+            lines.append("[RUNTIME]")
+            lines.append(f"  Agents: {runtime_stats.get('total_agents', 0)}")
+            lines.append(f"  Timeout: {runtime_stats.get('timeout_sec', 0)}s")
+            lines.append(f"  Total Retries: {runtime_stats.get('total_retries', 0)}")
+            retried_agents = runtime_stats.get("retried_agents", [])
+            lines.append(f"  Retried Agents: {', '.join(retried_agents) if retried_agents else 'None'}")
+            lines.append("")
 
         # 개별 AI 결과
         lines.append("[INDIVIDUAL VALIDATIONS]")

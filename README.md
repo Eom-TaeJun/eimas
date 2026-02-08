@@ -49,6 +49,9 @@ python main.py              # Default analysis
 python main.py --short      # Quick mode
 python main.py --full       # Full mode with Multi-LLM
 python main.py --realtime   # Real-time streaming
+python main.py --full --paper-auto --paper-account ra_auto  # Auto LIMIT paper execution
+python main.py --paper-auto --paper-poll-only --paper-account ra_auto  # Poll pending paper orders
+python scripts/auto_paper_execution.py --run-backtest  # Auto execution + backtest loop
 ```
 
 ### Run Web Dashboard
@@ -93,6 +96,7 @@ eimas/
 | **Full Pipeline Process** | [`FULL_EXECUTION_PROCESS.md`](./FULL_EXECUTION_PROCESS.md) - canonical `main.py --full` flow & gates |
 | **Current Refactor Status** | [`CURRENT_STATUS.md`](./CURRENT_STATUS.md) - latest migration state & next actions |
 | **Refactor Task Board** | [`TODO.md`](./TODO.md) - active checklist for split/cleanup waves |
+| **RA SQL Reboot Runbook** | [`docs/manuals/RA_POSTGRES_REBOOT_RUNBOOK.md`](./docs/manuals/RA_POSTGRES_REBOOT_RUNBOOK.md) - reboot 후 로컬 PostgreSQL 기동/검증 절차 |
 | **Economic Insight Agent** | [`agent/README.md`](./agent/README.md) - Causal analysis module |
 | **API Endpoints** | [`api/`](./api/) - FastAPI server documentation |
 | **Frontend Components** | [`frontend/`](./frontend/) - React dashboard |

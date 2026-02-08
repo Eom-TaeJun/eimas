@@ -29,6 +29,7 @@ outputs/archive/
 outputs/report_images/
 outputs/dashboards/
 outputs/reports/
+outputs/.phase_cache/
 data/*.db
 data/archive/
 data/cache/

@@ -28,6 +28,7 @@ from pathlib import Path
 
 class SignalSource(str, Enum):
     """시그널 소스"""
+    EIMAS_PIPELINE = "eimas_pipeline"
     REGIME_DETECTOR = "regime_detector"
     CRITICAL_PATH = "critical_path"
     ETF_FLOW = "etf_flow"
@@ -137,6 +138,8 @@ class Execution:
     shares: float
     commission: float = 0.0
     slippage: float = 0.0
+    external_order_id: Optional[str] = None
+    status: str = "filled"  # pending/filled/rejected/cancelled
     timestamp: datetime = field(default_factory=datetime.now)
     id: Optional[int] = None
 
@@ -252,6 +255,7 @@ class TradingDB:
             CREATE TABLE IF NOT EXISTS executions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 portfolio_id INTEGER,
+                external_order_id TEXT,
                 execution_time DATETIME NOT NULL,
                 session_type VARCHAR(20),
                 ticker VARCHAR(10) NOT NULL,
@@ -478,6 +482,7 @@ class TradingDB:
 
         # v2.1 마이그레이션: backtest_runs 새 컬럼 추가
         self._migrate_backtest_runs_v21(cursor)
+        self._migrate_executions_v22(cursor)
 
         # 인덱스 생성
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
@@ -518,6 +523,13 @@ class TradingDB:
         for col, sql in migrations.items():
             if col not in existing_cols:
                 cursor.execute(sql)
+
+    def _migrate_executions_v22(self, cursor):
+        """v2.2 마이그레이션: executions에 external_order_id 컬럼 추가"""
+        cursor.execute("PRAGMA table_info(executions)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+        if "external_order_id" not in existing_cols:
+            cursor.execute("ALTER TABLE executions ADD COLUMN external_order_id TEXT")
 
     # ========================================================================
     # Signal Methods
@@ -677,11 +689,12 @@ class TradingDB:
 
         cursor.execute("""
             INSERT INTO executions
-            (portfolio_id, execution_time, session_type, ticker, action,
-             target_price, executed_price, slippage, shares, commission)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (portfolio_id, external_order_id, execution_time, session_type, ticker, action,
+             target_price, executed_price, slippage, shares, commission, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             execution.portfolio_id,
+            execution.external_order_id,
             execution.timestamp.isoformat(),
             execution.session.value,
             execution.ticker,
@@ -691,12 +704,112 @@ class TradingDB:
             execution.slippage,
             execution.shares,
             execution.commission,
+            execution.status,
         ))
 
         exec_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return exec_id
+
+    def update_execution_status(
+        self,
+        execution_id: int,
+        status: str,
+        executed_price: Optional[float] = None,
+        slippage: Optional[float] = None,
+        commission: Optional[float] = None,
+    ) -> None:
+        """실행 상태 업데이트"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        updates = ["status = ?"]
+        params: List[Any] = [status]
+
+        if executed_price is not None:
+            updates.append("executed_price = ?")
+            params.append(executed_price)
+        if slippage is not None:
+            updates.append("slippage = ?")
+            params.append(slippage)
+        if commission is not None:
+            updates.append("commission = ?")
+            params.append(commission)
+
+        updates.append("execution_time = ?")
+        params.append(datetime.now().isoformat())
+        params.append(execution_id)
+
+        cursor.execute(
+            f"UPDATE executions SET {', '.join(updates)} WHERE id = ?",
+            params,
+        )
+        conn.commit()
+        conn.close()
+
+    def update_execution_by_external_order_id(
+        self,
+        external_order_id: str,
+        status: str,
+        executed_price: Optional[float] = None,
+        slippage: Optional[float] = None,
+        commission: Optional[float] = None,
+    ) -> None:
+        """외부 주문 ID 기준 실행 상태 업데이트"""
+        if not external_order_id:
+            return
+
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        updates = ["status = ?"]
+        params: List[Any] = [status]
+        if executed_price is not None:
+            updates.append("executed_price = ?")
+            params.append(executed_price)
+        if slippage is not None:
+            updates.append("slippage = ?")
+            params.append(slippage)
+        if commission is not None:
+            updates.append("commission = ?")
+            params.append(commission)
+        updates.append("execution_time = ?")
+        params.append(datetime.now().isoformat())
+        params.append(external_order_id)
+
+        cursor.execute(
+            f"UPDATE executions SET {', '.join(updates)} WHERE external_order_id = ?",
+            params,
+        )
+        conn.commit()
+        conn.close()
+
+    def get_execution_history(
+        self,
+        ticker: Optional[str] = None,
+        status: Optional[str] = None,
+        limit: int = 200,
+    ) -> List[Dict]:
+        """실행 기록 조회"""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM executions WHERE 1=1"
+        params: List[Any] = []
+        if ticker:
+            query += " AND ticker = ?"
+            params.append(ticker)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY execution_time DESC LIMIT ?"
+        params.append(limit)
+
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
 
     # ========================================================================
     # Performance Methods

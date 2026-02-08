@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eimas.local/schemas/onchain_intelligence_bridge_payload_v1.schema.json",
+  "title": "OnchainIntelligenceBridgePayloadV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source",
+    "generated_at",
+    "onchain_risk_signals"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "onchain_bridge_v1"
+    },
+    "source": {
+      "type": "string",
+      "const": "onchain_intelligence"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "elapsed_seconds": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "defi_tvl": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "number",
+          "null"
+        ]
+      }
+    },
+    "onchain_risk_signals": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/risk_signal"
+      }
+    }
+  },
+  "$defs": {
+    "risk_signal": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "severity",
+        "category",
+        "message"
+      ],
+      "properties": {
+        "severity": {
+          "type": "string",
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH",
+            "CRITICAL"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "stablecoin",
+            "defi",
+            "rwa",
+            "system"
+          ]
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ticker": {
+          "type": "string"
+        },
+        "metric": {
+          "type": "string"
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "threshold": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

@@ -14,6 +14,7 @@ from typing import Dict, Any
 from lib.adapters import StressTestEngine, TacticalAssetAllocator, TradingCostModel
 from lib.backtest import BacktestEngine, BacktestConfig
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
+from lib.ra_sql_store import save_backtest_metrics_to_sql
 from lib.trading_db import TradingDB
 from pipeline.schemas import EIMASResult
 
@@ -183,6 +184,28 @@ def run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
         """, (git_hash, run_id))
         conn.commit()
         conn.close()
+
+        # Internal SQL evidence (SQLite) for RA self-intro traceability
+        sql_evidence = save_backtest_metrics_to_sql(
+            metrics={
+                **result.backtest_metrics,
+                "alpha": overall_alpha,
+                "benchmark_return": overall_bm_return,
+            },
+            source="eimas.phase6.backtest",
+            strategy_name="EIMAS_Portfolio",
+            start_date=metrics.start_date,
+            end_date=metrics.end_date,
+            linked_run_id=run_id,
+            notes={
+                "benchmark": "SPY",
+                "cost_model": "TradingCostModel",
+            },
+        )
+        if not isinstance(result.company_ra_analysis, dict):
+            result.company_ra_analysis = {}
+        result.company_ra_analysis.setdefault("internal_sql", {})
+        result.company_ra_analysis["internal_sql"]["phase6_backtest"] = sql_evidence
 
         print(f"  ✅ Backtest Complete:")
         print(f"     Sharpe: {metrics.sharpe_ratio:.2f}")

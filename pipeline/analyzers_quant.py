@@ -322,7 +322,7 @@ def enhance_portfolio_with_systemic_similarity(market_data: Dict[str, pd.DataFra
         # returns DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 
@@ -392,7 +392,7 @@ def detect_outliers_with_dbscan(market_data: Dict[str, pd.DataFrame]) -> Dict[st
         # returns DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 
@@ -457,7 +457,7 @@ def analyze_dtw_similarity(market_data: Dict[str, pd.DataFrame]) -> Dict[str, An
         # returns DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 

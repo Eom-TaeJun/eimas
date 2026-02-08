@@ -17,12 +17,12 @@ Schedule:
 Requires: schedule (pip install schedule)
 """
 
-import sys
-from pathlib import Path
+try:
+    from _project_bootstrap import ensure_project_root
+except ImportError:
+    from scripts._project_bootstrap import ensure_project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+PROJECT_ROOT = ensure_project_root(__file__)
 
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

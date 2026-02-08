@@ -41,7 +41,7 @@
 
 ### B0. 완료/진행 상태
 - [x] `onchain_intelligence` 1차 분리 완료
-- [ ] `eimas`와 `onchain_intelligence` 인터페이스 계약(JSON schema) 명시
+- [x] `eimas`와 `onchain_intelligence` 인터페이스 계약(JSON schema) 명시 (`docs/architecture/ONCHAIN_INTELLIGENCE_INTERFACE_CONTRACT_V1.md`, `docs/references/onchain_intelligence_bridge_payload_v1.schema.json`)
 
 ### B1. 분리 후보 1: Execution Intelligence (우선)
 대상: 운영결정/리밸런싱/제약복구/전술배분/스트레스테스트
@@ -159,3 +159,43 @@ python main.py --full --realtime -d 30
 # Shell wrapper
 ./run_all_pipeline.sh
 ```
+
+---
+
+## Track E - RA SQL Productionization (현업형 구현/어필)
+
+### E1. RA 데이터 모델 표준화 (PostgreSQL)
+- [ ] `fi_ra` 스키마 표준 확정 (`company_fundamentals`, `macro_series`, `etf_snapshot`, `research_views`, `trade_recommendations`)
+- [ ] 공통 메타 컬럼 추가: `as_of_date`, `source`, `ingested_at`, `revision_tag`, `quality_flag`
+- [ ] PK/UK/FK 정책 확정 (ticker+as_of_date, series_id+as_of_date 등)
+- [ ] 분석/리포트 조회 인덱스 추가 (`ticker`, `as_of_date`, `regime_label`, `risk_score`)
+
+### E2. ETL/적재 파이프라인 고도화
+- [ ] 수집 -> 정제 -> 적재 분리 (`staging` -> `mart`) 구조로 리팩토링
+- [ ] upsert 정책 통일 (`ON CONFLICT DO UPDATE`) + 충돌 로그 기록
+- [ ] 배치 실행 로그 테이블 추가 (`job_name`, `started_at`, `ended_at`, `row_count`, `status`, `error`)
+- [ ] 재부팅/장애 복구 런북과 실제 커맨드 검증 체크리스트 정비
+
+### E3. SQL 검증/품질관리 (Data QA)
+- [ ] 일일 DQ 쿼리 세트 작성: 결측, 중복, 이상치, stale-data, 날짜 역행 검사
+- [ ] 핵심 지표 스냅샷 검증 (`COUNT`, `DISTINCT`, `MIN/MAX date`) 자동 리포트화
+- [ ] 품질 경고를 `quality_flag`로 저장하고 RA 리포트 본문에 경고 배지 표시
+- [ ] 소스별 수치 비교(예: 가격/재무치) 허용오차 정책 문서화
+
+### E4. RA 분석/리포트 SQL 레이어
+- [ ] RA 조회용 SQL 뷰 생성: `v_ra_macro_regime`, `v_ra_etf_signal`, `v_ra_company_valuation`
+- [ ] 리포트 생성 스크립트가 JSON+SQL 뷰를 함께 참조하도록 경로 통합
+- [ ] RA 스타일 PDF 표준 목차 고정 (요약/거시/ETF/기업/리스크/결론/부록)
+- [ ] 도표 캡션에 데이터 기준일(`as_of_date`)과 소스(`source`) 자동 표기
+
+### E5. 추천 -> 모의주문 -> 백테스트 -> 사후평가
+- [ ] `trade_recommendations` 스키마 확장 (thesis, invalidation, target_horizon, confidence)
+- [ ] 모의주문 체결모형 보강 (슬리피지/스프레드/거래세션 제약)
+- [ ] 백테스트 결과를 추천안 ID 단위로 연결 저장 (hit ratio, MDD, tracking error)
+- [ ] 추천 성과 리뷰 SQL 템플릿 작성 (주간/월간 top-bottom attribution)
+
+### E6. 현업/인사 어필용 산출물 패키지
+- [ ] "SQL로 구현한 리서치 운영 흐름" 1-page 요약 PDF 자동 생성
+- [ ] 자기소개서 첨부용 스크린샷 세트 생성 (ERD, 검증 쿼리, RA PDF 일부)
+- [ ] README/intro에 "현재 구현" vs "입사 후 확장" 매핑표 반영
+- [ ] 발표용 5분 데모 시나리오 문서화 (입력 -> SQL 적재 -> 리포트 -> 모의주문)

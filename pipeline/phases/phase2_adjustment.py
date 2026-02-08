@@ -135,8 +135,117 @@ def analyze_sentiment_bubble(result: EIMASResult, market_data: Dict[str, Any], q
         print(f"⚠️ Sentiment Error: {e}")
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _apply_microstructure_adjustment(result: EIMASResult) -> None:
+    """
+    Apply risk adjustment from HFT microstructure signals.
+    Design goal: avoid persistent 0.0 when valid microstructure evidence exists.
+    """
+    hft = getattr(result, "hft_microstructure", {})
+    if not isinstance(hft, dict) or not hft:
+        return
+
+    tick = hft.get("tick_rule", {}) if isinstance(hft.get("tick_rule"), dict) else {}
+    kyle = hft.get("kyles_lambda", {}) if isinstance(hft.get("kyles_lambda"), dict) else {}
+
+    buy_ratio = _safe_float(tick.get("buy_ratio"), default=0.5)
+    impact_label = str(kyle.get("interpretation", "NEUTRAL")).upper()
+    r_squared = _safe_float(kyle.get("r_squared"), default=0.0)
+
+    # Continuous buy/sell pressure component around 0.5 neutral line.
+    pressure_adj = -(buy_ratio - 0.5) * 10.0
+
+    impact_adj = 0.0
+    if "HIGH_IMPACT" in impact_label:
+        impact_adj = +0.9
+    elif "MEDIUM_IMPACT" in impact_label:
+        impact_adj = +0.3
+    elif "LOW_IMPACT" in impact_label:
+        impact_adj = -0.4
+
+    quality_adj = 0.0
+    if r_squared >= 0.5:
+        quality_adj = -0.2
+    elif 0.0 < r_squared < 0.2:
+        quality_adj = +0.3
+
+    raw_adj = pressure_adj + impact_adj + quality_adj
+    micro_adj = round(max(-3.0, min(3.0, raw_adj)), 1)
+
+    # If microstructure block has valid signals but near-zero due cancellation,
+    # keep minimal non-zero contribution to avoid losing evidence in report.
+    has_signal = ("buy_ratio" in tick) or ("interpretation" in kyle)
+    if has_signal and abs(micro_adj) < 0.1:
+        micro_adj = -0.5 if buy_ratio >= 0.5 else +0.5
+
+    if abs(micro_adj) < 0.1:
+        return
+
+    old_risk = result.risk_score
+    result.microstructure_adjustment = micro_adj
+    result.risk_score = max(1.0, min(100.0, result.risk_score + micro_adj))
+    result.risk_level = derive_risk_level(result.risk_score)
+    print(
+        f"      ✓ Microstructure Adjustment: {micro_adj:+.1f} "
+        f"({old_risk:.1f} -> {result.risk_score:.1f})"
+    )
+    print(
+        "        Details: "
+        f"buy_ratio={buy_ratio:.3f}, impact={impact_label or 'N/A'}, r2={r_squared:.3f}"
+    )
+
+
+def _apply_bubble_adjustment(result: EIMASResult) -> None:
+    bubble = getattr(result, "bubble_risk", {})
+    if not isinstance(bubble, dict) or not bubble:
+        return
+
+    status = str(bubble.get("overall_status", "NONE")).upper()
+    highest_score = _safe_float(bubble.get("highest_risk_score"), default=0.0)
+
+    status_map = {
+        "NONE": 0.0,
+        "LOW": -0.5,
+        "WATCH": +1.5,
+        "MODERATE": +2.5,
+        "HIGH": +4.0,
+        "EXTREME": +6.0,
+        "SKIPPED": 0.0,
+    }
+    bubble_adj = status_map.get(status, 0.0)
+    if highest_score >= 70:
+        bubble_adj += 1.0
+    elif highest_score >= 50:
+        bubble_adj += 0.5
+
+    bubble_adj = round(max(-5.0, min(8.0, bubble_adj)), 1)
+    if abs(bubble_adj) < 0.1:
+        return
+
+    old_risk = result.risk_score
+    result.bubble_risk_adjustment = bubble_adj
+    result.risk_score = max(1.0, min(100.0, result.risk_score + bubble_adj))
+    result.risk_level = derive_risk_level(result.risk_score)
+    print(
+        f"      ✓ Bubble Adjustment: {bubble_adj:+.1f} "
+        f"({old_risk:.1f} -> {result.risk_score:.1f})"
+    )
+    print(f"        Details: status={status}, highest_risk_score={highest_score:.1f}")
+
+
 def apply_extended_data_adjustment(result: EIMASResult):
-    """Apply risk score adjustments from extended data sentiment overlays."""
+    """Apply risk score adjustments from microstructure/bubble + extended overlays."""
+    # 1) Quant overlays first (HFT microstructure + bubble state)
+    _apply_microstructure_adjustment(result)
+    _apply_bubble_adjustment(result)
+
+    # 2) Extended overlays (PCR/F&G/news/credit/KRW)
     if not result.extended_data:
         return
 

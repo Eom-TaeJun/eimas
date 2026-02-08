@@ -12,6 +12,7 @@ Modules:
     - phase3_debate: AI debate
     - phase4_realtime: Realtime streaming
     - phase45_operational: Operational reporting
+    - phase46_paper_execution: Auto paper order execution
     - phase5_storage: Result storage
     - phase6_portfolio: Portfolio theory (backtest/attribution/stress)
     - phase7_report: AI report generation
@@ -31,6 +32,7 @@ from .phase2_adjustment import (
 from .phase3_debate import run_debate
 from .phase4_realtime import run_realtime
 from .phase45_operational import generate_operational_report
+from .phase46_paper_execution import run_paper_execution
 from .phase5_storage import save_results
 from .phase6_portfolio import (
     run_backtest,
@@ -53,6 +55,7 @@ __all__ = [
     "run_debate",
     "run_realtime",
     "generate_operational_report",
+    "run_paper_execution",
     "save_results",
     "run_backtest",
     "run_performance_attribution",

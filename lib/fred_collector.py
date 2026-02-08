@@ -216,12 +216,46 @@ class FREDCollector:
         if not self.api_key:
             raise ValueError("FRED_API_KEY not set. Set environment variable or pass api_key.")
         self._cache: Dict[str, pd.Series] = {}
+        self.request_timeout_sec = max(
+            1.0,
+            float(os.getenv("EIMAS_FRED_TIMEOUT_SEC", "15")),
+        )
+        self.fail_fast_network = os.getenv(
+            "EIMAS_FRED_FAIL_FAST_NETWORK",
+            "false",
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        self._network_unavailable = False
+        self._network_fail_reason = ""
+        self._failfast_notice_printed = False
+
+    @staticmethod
+    def _is_network_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return any(
+            token in message
+            for token in (
+                "failed to resolve",
+                "name or service not known",
+                "name resolution",
+                "temporary failure in name resolution",
+                "network is unreachable",
+                "connection reset",
+                "connection aborted",
+                "max retries exceeded",
+            )
+        )
 
     def _fetch_series(self, series_id: str, start_date: str = None,
                       end_date: str = None) -> Optional[pd.Series]:
         """FRED 시리즈 데이터 수집"""
         if series_id in self._cache:
             return self._cache[series_id]
+        if self._network_unavailable:
+            if not self._failfast_notice_printed:
+                reason = self._network_fail_reason or "network unavailable"
+                print(f"  FRED fail-fast active: skipping remaining requests ({reason})")
+                self._failfast_notice_printed = True
+            return None
 
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
@@ -239,7 +273,11 @@ class FREDCollector:
         }
 
         try:
-            response = requests.get(FRED_BASE_URL, params=params, timeout=15)
+            response = requests.get(
+                FRED_BASE_URL,
+                params=params,
+                timeout=self.request_timeout_sec,
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -258,6 +296,9 @@ class FREDCollector:
             return df
 
         except Exception as e:
+            if self.fail_fast_network and self._is_network_error(e):
+                self._network_unavailable = True
+                self._network_fail_reason = str(e).strip()[:200]
             print(f"  Error fetching {series_id}: {e}")
             return None
 

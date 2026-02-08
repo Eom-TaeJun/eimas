@@ -6,12 +6,12 @@ Microstructure + Bubble Detector 통합 설계 검증
 설계안을 Claude와 Perplexity로 검증
 """
 
-import sys
-from pathlib import Path
+try:
+    from _project_bootstrap import ensure_project_root
+except ImportError:
+    from scripts._project_bootstrap import ensure_project_root
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+ensure_project_root(__file__)
 
 from core.config import APIConfig
 from datetime import datetime

@@ -16,12 +16,14 @@ Usage:
     python scripts/daily_analysis.py --report-only
 """
 
-import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+try:
+    from _project_bootstrap import ensure_project_root
+except ImportError:
+    from scripts._project_bootstrap import ensure_project_root
+
+ensure_project_root(__file__)
 
 import argparse
 from datetime import datetime, date, timedelta

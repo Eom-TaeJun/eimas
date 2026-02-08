@@ -16,9 +16,17 @@ Usage:
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+
+def _ensure_project_root_for_script_mode() -> None:
+    if __package__:
+        return
+    project_root = Path(__file__).resolve().parents[1]
+    project_root_str = str(project_root)
+    if project_root_str not in sys.path:
+        sys.path.insert(0, project_root_str)
+
+
+_ensure_project_root_for_script_mode()
 
 import argparse
 from datetime import datetime, date
