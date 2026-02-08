@@ -216,6 +216,7 @@ class AIReport:
     highlights: Dict[str, Any]
     content: str = ""
     sections: Dict[str, Dict[str, str]] = field(default_factory=dict)  # 전체 MD 섹션
+    report_data: Dict[str, Any] = field(default_factory=dict)  # FinalReport.to_dict() 원본
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -374,6 +375,9 @@ class EIMASResult:
     proof_of_index: Dict = field(default_factory=dict)
     dtw_similarity: Dict = field(default_factory=dict)
     dbscan_outliers: Dict = field(default_factory=dict)
+    phase2_cache_stats: Dict = field(default_factory=dict)
+    pipeline_phase_timings: Dict = field(default_factory=dict)  # phase-level runtime timings
+    pipeline_elapsed_sec: float = 0.0                           # total runtime in seconds
     
     # Extended Data Sources (PCR, Valuation, Crypto)
     extended_data: Dict = field(default_factory=dict)

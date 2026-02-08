@@ -18,7 +18,12 @@ from datetime import datetime
 from typing import Dict, Any, List, Union
 
 # Reuse schema from MD converter
-from json_to_md_converter import SECTION_SCHEMA, TABLE_COLUMN_ORDER, format_value
+try:
+    # Package import path (e.g., from pipeline runtime)
+    from .json_to_md_converter import SECTION_SCHEMA, TABLE_COLUMN_ORDER, format_value
+except ImportError:
+    # Script execution fallback: `python lib/json_to_html_converter.py ...`
+    from json_to_md_converter import SECTION_SCHEMA, TABLE_COLUMN_ORDER, format_value
 
 
 # ============================================================================

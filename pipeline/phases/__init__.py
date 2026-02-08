@@ -16,6 +16,7 @@ Modules:
     - phase6_portfolio: Portfolio theory (backtest/attribution/stress)
     - phase7_report: AI report generation
     - phase8_validation: Multi-LLM & Quick validation
+    - phase9_artifacts: JSON->HTML/PDF export + size checks
 """
 
 from .phase1_collect import collect_data
@@ -39,6 +40,7 @@ from .phase6_portfolio import (
 )
 from .phase7_report import generate_report, validate_report
 from .phase8_validation import run_ai_validation_phase, run_quick_validation
+from .phase9_artifacts import export_artifacts
 
 __all__ = [
     "collect_data",
@@ -60,7 +62,8 @@ __all__ = [
     "validate_report",
     "run_ai_validation_phase",
     "run_quick_validation",
+    "export_artifacts",
 ]
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __stage__ = "M2-expanded"

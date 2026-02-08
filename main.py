@@ -84,9 +84,36 @@ OUTPUT | 출력물
 
 import asyncio
 import argparse
+import json
+import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from time import perf_counter
+from typing import Any, Awaitable, Callable, Dict
+
+# Runtime cache bootstrap (must run before pipeline imports that may touch yfinance).
+def _configure_yfinance_cache_dir() -> None:
+    cache_dir = os.getenv("EIMAS_YFINANCE_CACHE_DIR", "/tmp/eimas_yfinance_cache").strip()
+    if not cache_dir or cache_dir.lower() in {"off", "none", "disable", "false", "0"}:
+        return
+
+    target = Path(cache_dir).expanduser()
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        print(f"[Init] yfinance cache setup skipped: {type(exc).__name__}: {exc}")
+        return
+
+    try:
+        import yfinance as yf
+
+        if hasattr(yf, "set_tz_cache_location"):
+            yf.set_tz_cache_location(str(target))
+    except Exception as exc:
+        print(f"[Init] yfinance cache redirect failed: {type(exc).__name__}: {exc}")
+
+
+_configure_yfinance_cache_dir()
 
 # ============================================================================
 # Pipeline Imports
@@ -123,6 +150,9 @@ from pipeline.phases.phase8_validation import (
     run_ai_validation_phase as phase8_run_ai_validation_phase,
     run_quick_validation as phase8_run_quick_validation,
 )
+from pipeline.phases.phase9_artifacts import (
+    export_artifacts as phase9_export_artifacts,
+)
 # ============================================================================
 # Phase Helper Functions
 # ============================================================================
@@ -156,6 +186,7 @@ _generate_report = phase7_generate_report
 _validate_report = phase7_validate_report
 _run_ai_validation_phase = phase8_run_ai_validation_phase
 _run_quick_validation = phase8_run_quick_validation
+_export_artifacts = phase9_export_artifacts
 
 # ============================================================================
 # Main Pipeline
@@ -227,6 +258,7 @@ async def run_integrated_pipeline(
         >>> print(f"Risk Score: {result.risk_score}")
     """
     start_time = datetime.now()
+    start_perf = perf_counter()
     result = EIMASResult(timestamp=start_time.isoformat())
     raw_output_path = Path(output_dir).expanduser()
     if raw_output_path.is_absolute():
@@ -235,6 +267,67 @@ async def run_integrated_pipeline(
         # Keep legacy behavior: relative output dirs are project-root relative.
         output_path = Path(__file__).resolve().parent / raw_output_path
     should_generate_report = generate_report and not cron_mode
+    phase_timings: Dict[str, Dict[str, Any]] = {}
+    result.pipeline_phase_timings = phase_timings
+
+    def _format_error(exc: Exception) -> str:
+        return f"{type(exc).__name__}: {exc}"[:300]
+
+    def _record_phase_timing(
+        phase_name: str,
+        started_at: float,
+        status: str = "ok",
+        error: str = "",
+    ) -> None:
+        elapsed = perf_counter() - started_at
+        entry: Dict[str, Any] = {
+            "duration_sec": round(elapsed, 3),
+            "status": status,
+        }
+        if error:
+            entry["error"] = error
+        phase_timings[phase_name] = entry
+        print(f"  [Timing] {phase_name}: {elapsed:.3f}s ({status})")
+
+    def _run_timed_sync(
+        phase_name: str,
+        fn: Callable[..., Any],
+        *args,
+        **kwargs,
+    ) -> Any:
+        started = perf_counter()
+        try:
+            value = fn(*args, **kwargs)
+        except Exception as exc:
+            _record_phase_timing(
+                phase_name,
+                started,
+                status="error",
+                error=_format_error(exc),
+            )
+            raise
+        _record_phase_timing(phase_name, started, status="ok")
+        return value
+
+    async def _run_timed_async(
+        phase_name: str,
+        fn: Callable[..., Awaitable[Any]],
+        *args,
+        **kwargs,
+    ) -> Any:
+        started = perf_counter()
+        try:
+            value = await fn(*args, **kwargs)
+        except Exception as exc:
+            _record_phase_timing(
+                phase_name,
+                started,
+                status="error",
+                error=_format_error(exc),
+            )
+            raise
+        _record_phase_timing(phase_name, started, status="ok")
+        return value
 
     print("=" * 70)
     print("  EIMAS - Integrated Analysis Pipeline")
@@ -244,31 +337,108 @@ async def run_integrated_pipeline(
         print("  Cron Mode: Enabled (report generation skipped)")
 
     # Phase 1-2: Data & Analysis
-    market_data = await _collect_data(result, quick_mode)
-    events, regime_res = _analyze_basic(result, market_data)
-    _analyze_enhanced(result, market_data, quick_mode)
-    _analyze_sentiment_bubble(result, market_data, quick_mode)
-    _apply_extended_data_adjustment(result)  # PCR, Sentiment, Credit 기반 리스크 조정
-    _analyze_institutional_frameworks(result, market_data, quick_mode)  # JP Morgan, Goldman Sachs 프레임워크
-    _run_adaptive_portfolio(result, regime_res, quick_mode)
+    market_data = await _run_timed_async(
+        "phase1_collect_data",
+        _collect_data,
+        result,
+        quick_mode,
+    )
+    events, regime_res = _run_timed_sync(
+        "phase2_basic_analyze",
+        _analyze_basic,
+        result,
+        market_data,
+    )
+    _run_timed_sync(
+        "phase2_enhanced_analyze",
+        _analyze_enhanced,
+        result,
+        market_data,
+        quick_mode,
+    )
+    _run_timed_sync(
+        "phase2_sentiment_bubble",
+        _analyze_sentiment_bubble,
+        result,
+        market_data,
+        quick_mode,
+    )
+    _run_timed_sync(
+        "phase2_extended_adjustment",
+        _apply_extended_data_adjustment,
+        result,
+    )  # PCR, Sentiment, Credit 기반 리스크 조정
+    _run_timed_sync(
+        "phase2_institutional_frameworks",
+        _analyze_institutional_frameworks,
+        result,
+        market_data,
+        quick_mode,
+    )  # JP Morgan, Goldman Sachs 프레임워크
+    _run_timed_sync(
+        "phase2_adaptive_portfolio",
+        _run_adaptive_portfolio,
+        result,
+        regime_res,
+        quick_mode,
+    )
 
     # Phase 3-4: Debate & Realtime
-    await _run_debate(result, market_data)
-    await _run_realtime(result, enable_realtime, realtime_duration)
+    await _run_timed_async(
+        "phase3_debate",
+        _run_debate,
+        result,
+        market_data,
+    )
+    await _run_timed_async(
+        "phase4_realtime",
+        _run_realtime,
+        result,
+        enable_realtime,
+        realtime_duration,
+    )
 
     # Phase 4.5: Operational Report (decision governance, rebalance)
-    _generate_operational_report(result)
+    _run_timed_sync(
+        "phase45_operational_report",
+        _generate_operational_report,
+        result,
+    )
 
     # Phase 5: Storage
-    output_file = _save_results(result, events, output_path)
+    output_file = _run_timed_sync(
+        "phase5_storage",
+        _save_results,
+        result,
+        events,
+        output_path,
+    )
 
     # Phase 6: Portfolio Theory Modules (Optional, 2026-02-04)
-    _run_backtest(result, market_data, enable_backtest)
-    _run_performance_attribution(result, enable_attribution)
-    _run_stress_test(result, enable_stress_test)
+    _run_timed_sync(
+        "phase6_backtest",
+        _run_backtest,
+        result,
+        market_data,
+        enable_backtest,
+    )
+    _run_timed_sync(
+        "phase6_performance_attribution",
+        _run_performance_attribution,
+        result,
+        enable_attribution,
+    )
+    _run_timed_sync(
+        "phase6_stress_test",
+        _run_stress_test,
+        result,
+        enable_stress_test,
+    )
 
     # Phase 7: AI Report Generation
-    report_content = await _generate_report(
+    report_content = await _run_timed_async(
+        "phase7_generate_report",
+        _generate_report,
         result,
         market_data,
         should_generate_report,
@@ -277,20 +447,81 @@ async def run_integrated_pipeline(
     )
 
     # Phase 8: Validation
-    await _validate_report(
+    await _run_timed_async(
+        "phase7_validate_report",
+        _validate_report,
         result,
         report_content,
         should_generate_report,
         output_path,
         output_file=output_file,
     )
-    _run_ai_validation_phase(result, full_mode, output_path, output_file=output_file)
+    _run_timed_sync(
+        "phase8_ai_validation",
+        _run_ai_validation_phase,
+        result,
+        full_mode,
+        output_path,
+        output_file=output_file,
+    )
 
     # Phase 8.5: Quick Mode AI Validation (KOSPI/SPX 분리)
-    _run_quick_validation(result, market_data, output_file, quick_validation_mode)
+    _run_timed_sync(
+        "phase85_quick_validation",
+        _run_quick_validation,
+        result,
+        market_data,
+        output_file,
+        quick_validation_mode,
+    )
+    artifact_export = _run_timed_sync(
+        "phase9_artifact_export",
+        _export_artifacts,
+        output_file,
+        output_path,
+        full_mode,
+    )
+    if artifact_export:
+        result.audit_metadata["artifact_export"] = artifact_export
 
     # Summary
-    elapsed = (datetime.now() - start_time).total_seconds()
+    elapsed = perf_counter() - start_perf
+    phase_timings["pipeline_total"] = {
+        "duration_sec": round(elapsed, 3),
+        "status": "ok",
+    }
+    result.pipeline_elapsed_sec = round(elapsed, 3)
+    result.audit_metadata["pipeline_elapsed_sec"] = round(elapsed, 3)
+    result.audit_metadata["pipeline_phase_count"] = len(phase_timings) - 1
+    result.audit_metadata["pipeline_timing_recorded_at"] = datetime.now().isoformat()
+
+    # Persist final snapshot so runtime timing fields are reflected in final JSON.
+    if output_file:
+        try:
+            target_path = Path(output_file).expanduser()
+            target_path.parent.mkdir(exist_ok=True, parents=True)
+            with open(target_path, "w", encoding="utf-8") as f:
+                json.dump(result.to_dict(), f, indent=2, default=str)
+            print(f"  Final snapshot updated: {target_path}")
+        except Exception as exc:
+            print(f"⚠️ Final snapshot update failed: {_format_error(exc)}")
+
+    ranked = sorted(
+        (
+            (phase_name, meta)
+            for phase_name, meta in phase_timings.items()
+            if phase_name != "pipeline_total"
+        ),
+        key=lambda item: item[1].get("duration_sec", 0.0),
+        reverse=True,
+    )
+    print("\n[Pipeline Timing Summary] Top 8")
+    for phase_name, meta in ranked[:8]:
+        print(
+            f"  - {phase_name}: {meta.get('duration_sec', 0.0):.3f}s"
+            f" ({meta.get('status', 'n/a')})"
+        )
+
     print("\n" + "=" * 70)
     print(f"EIMAS PIPELINE COMPLETE ({elapsed:.1f}s)")
     print(f"Output: {output_file}")

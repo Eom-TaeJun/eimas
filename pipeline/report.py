@@ -34,48 +34,33 @@ from lib.ai_report_generator import AIReportGenerator
 
 
 def _parse_md_sections(md_path: str) -> Dict[str, Dict[str, str]]:
-    """MD 파일에서 ## N. Section 패턴으로 섹션 추출 (단조 증가하는 top-level만)"""
+    """MD 파일에서 ## N. Section 패턴으로 섹션 추출."""
     sections = {}
     try:
         with open(md_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # top-level 섹션만 매칭: 섹션 번호가 단조 증가해야 함
-        # Claude 내부의 ## 1. 등 (번호 역행)은 내용으로 처리
-        lines = content.split('\n')
-        current_section = 0  # 마지막으로 파싱된 섹션 번호
-        current_title = ""
-        current_body = []
+        header_pattern = re.compile(r'^##\s+(\d{1,2})\.\s+(.+)$', re.MULTILINE)
+        matches = list(header_pattern.finditer(content))
 
-        for line in lines:
-            # section header: "## N. Title"
-            match = re.match(r'^## (\d{1,2})\. (.+)$', line)
-            if match:
-                num = int(match.group(1))
-                # 단조 증가하는 경우만 새 섹션으로 인식 (번호가 이전보다 커야 함)
-                if num > current_section:
-                    # 이전 섹션 저장
-                    if current_section > 0:
-                        sections[f"section_{current_section}"] = {
-                            "title": current_title,
-                            "content": '\n'.join(current_body).strip()
-                        }
-                    current_section = num
-                    current_title = match.group(2).strip()
-                    current_body = []
-                    continue
-                # else: 번호가 같거나 작으면 내부 섹션으로 간주 → 내용에 포함
+        for idx, match in enumerate(matches):
+            num = int(match.group(1))
+            if num < 1 or num > 50:
+                continue
 
-            # 현재 섹션에 내용 추가
-            if current_section > 0:
-                current_body.append(line)
+            start = match.end()
+            end = matches[idx + 1].start() if idx + 1 < len(matches) else len(content)
+            body = content[start:end].strip()
+            key = f"section_{num}"
 
-        # 마지막 섹션 저장
-        if current_section > 0:
-            sections[f"section_{current_section}"] = {
-                "title": current_title,
-                "content": '\n'.join(current_body).strip()
+            candidate = {
+                "title": match.group(2).strip(),
+                "content": body,
             }
+
+            # 동일 섹션 번호가 중복될 수 있으므로, 본문이 더 긴 항목을 채택.
+            if key not in sections or len(body) > len(sections[key].get("content", "")):
+                sections[key] = candidate
 
     except Exception as e:
         print(f"      ⚠️ Section parsing error: {e}")
@@ -128,7 +113,8 @@ async def generate_ai_report(result: EIMASResult, market_data: Dict[str, pd.Data
             ib_report_path=str(ib_report_path),
             highlights=highlights,
             content=getattr(report, 'final_recommendation', ""),
-            sections=sections  # 전체 섹션 포함
+            sections=sections,  # 전체 섹션 포함
+            report_data=report.to_dict(),
         )
 
     except Exception as e:

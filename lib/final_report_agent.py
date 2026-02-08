@@ -742,6 +742,7 @@ class FinalReportAgent:
         self.integrated_data: Dict = {}
         self.ai_report_content: str = ""
         self.ai_report_sections: Dict = {}
+        self.ai_report_raw: Dict = {}
         self.ib_memo_content: str = ""
         self.timestamp = datetime.now()
 
@@ -751,6 +752,22 @@ class FinalReportAgent:
         if not files:
             return None
         return max(files, key=lambda x: x.stat().st_mtime)
+
+    def _resolve_output_path(self, path_str: str) -> Optional[Path]:
+        """상대/절대 경로를 output_dir 기준으로 안전하게 해석"""
+        if not path_str:
+            return None
+
+        candidate = Path(path_str)
+        if candidate.exists():
+            return candidate
+
+        # report_path가 outputs/xxx 형태일 수 있어 파일명 기준으로 재시도
+        candidate_by_name = self.output_dir / candidate.name
+        if candidate_by_name.exists():
+            return candidate_by_name
+
+        return None
 
     def load_latest_data(self) -> Dict:
         """outputs/에서 최신 JSON/MD 파일 로드"""
@@ -767,23 +784,71 @@ class FinalReportAgent:
         else:
             print("  [WARN] No eimas_*.json or integrated_*.json found")
 
-        # 2. AI report 섹션 로드 (JSON 우선, MD fallback)
+        # 2. AI report 섹션/원본 로드 (JSON + MD 보강)
         ai_report = self.integrated_data.get('ai_report') or {}
-        if ai_report and ai_report.get('sections'):
-            # JSON에 섹션이 있으면 사용 (통합 포맷)
-            self.ai_report_sections = ai_report['sections']
-            print(f"  [OK] AI Report sections from unified JSON ({len(self.ai_report_sections)} sections)")
-        else:
-            # Fallback: MD 파일에서 파싱
+        self.ai_report_sections = {}
+        self.ai_report_raw = {}
+
+        if isinstance(ai_report, dict):
+            unified_sections = ai_report.get('sections') or {}
+            if isinstance(unified_sections, dict):
+                self.ai_report_sections = dict(unified_sections)
+            raw_from_unified = ai_report.get('report_data') or {}
+            if isinstance(raw_from_unified, dict):
+                self.ai_report_raw = dict(raw_from_unified)
+
+        ai_md_file: Optional[Path] = None
+        ai_json_file: Optional[Path] = None
+
+        # report_path가 있으면 동일 타임스탬프의 md/json을 우선 사용
+        if isinstance(ai_report, dict):
+            report_path = ai_report.get('report_path', '')
+            resolved_md = self._resolve_output_path(report_path)
+            if resolved_md and resolved_md.suffix.lower() == '.md':
+                ai_md_file = resolved_md
+                resolved_json = resolved_md.with_suffix('.json')
+                if resolved_json.exists():
+                    ai_json_file = resolved_json
+
+        if ai_md_file is None:
             ai_md_file = self._get_latest_file("ai_report_*.md")
-            if ai_md_file:
-                with open(ai_md_file, 'r', encoding='utf-8') as f:
-                    self.ai_report_content = f.read()
-                self.ai_report_sections = self._parse_md_sections(self.ai_report_content)
-                print(f"  [OK] Loaded: {ai_md_file.name} ({len(self.ai_report_sections)} sections)")
-            else:
-                self.ai_report_sections = {}
-                print("  [WARN] No AI Report sections found")
+        if ai_json_file is None:
+            ai_json_file = self._get_latest_file("ai_report_*.json")
+
+        parsed_sections: Dict[str, Dict] = {}
+        if ai_md_file:
+            with open(ai_md_file, 'r', encoding='utf-8') as f:
+                self.ai_report_content = f.read()
+            parsed_sections = self._parse_md_sections(self.ai_report_content)
+            print(f"  [OK] Loaded: {ai_md_file.name} ({len(parsed_sections)} parsed sections)")
+
+        # 통합 JSON 섹션 + MD 파싱 섹션 병합
+        if parsed_sections:
+            for key, value in parsed_sections.items():
+                existing = self.ai_report_sections.get(key)
+                existing_content = existing.get('content', '') if isinstance(existing, dict) else ''
+                new_content = value.get('content', '') if isinstance(value, dict) else ''
+                if (not existing) or (len(new_content) > len(existing_content)):
+                    self.ai_report_sections[key] = value
+
+        if self.ai_report_sections:
+            print(f"  [OK] AI Report sections ready ({len(self.ai_report_sections)} sections)")
+        else:
+            print("  [WARN] No AI Report sections found")
+
+        # AI 리포트 원본(JSON) 로드
+        if ai_json_file:
+            try:
+                with open(ai_json_file, 'r', encoding='utf-8') as f:
+                    loaded_raw = json.load(f)
+                if isinstance(loaded_raw, dict):
+                    # 통합 report_data가 있을 때는 raw에서 빈 필드만 보강
+                    for key, value in loaded_raw.items():
+                        if key not in self.ai_report_raw or not self.ai_report_raw.get(key):
+                            self.ai_report_raw[key] = value
+                    print(f"  [OK] Loaded: {ai_json_file.name} (raw ai report)")
+            except Exception as e:
+                print(f"  [WARN] Failed to load ai_report json: {e}")
 
         # 3. Load IB memo MD (legacy)
         ib_file = self._get_latest_file("ib_memorandum_*.md")
@@ -795,6 +860,7 @@ class FinalReportAgent:
         return {
             "integrated": self.integrated_data,
             "ai_sections": self.ai_report_sections,
+            "ai_raw": self.ai_report_raw,
             "ib_memo": self.ib_memo_content
         }
 
@@ -1690,6 +1756,7 @@ class FinalReportAgent:
         """ARK Invest 상세 분석"""
         data = self.integrated_data
         ark = data.get('ark_analysis', {})
+        ai_raw = self.ai_report_raw if isinstance(self.ai_report_raw, dict) else {}
 
         if not ark:
             return ''
@@ -1698,6 +1765,45 @@ class FinalReportAgent:
         top_increases = ark.get('top_increases', [])[:5]
         top_decreases = ark.get('top_decreases', [])[:5]
         signals = ark.get('signals', [])
+
+        # ARK 데이터가 빈 경우, AI 리포트 주목 종목으로 보조 표시
+        if not top_increases and isinstance(ai_raw.get('notable_stocks'), list):
+            for stock in ai_raw.get('notable_stocks', [])[:5]:
+                if not isinstance(stock, dict):
+                    continue
+                ticker = str(stock.get('ticker', '')).strip()
+                chg = stock.get('change_1d', 0.0)
+                if not ticker:
+                    continue
+                try:
+                    chg_value = float(chg)
+                except Exception:
+                    chg_value = 0.0
+                if chg_value >= 0:
+                    top_increases.append({
+                        'ticker': ticker,
+                        'sector': 'AI Watchlist',
+                        'weight_change_1d': chg_value,
+                        'etf_count': 0,
+                    })
+                else:
+                    top_decreases.append({
+                        'ticker': ticker,
+                        'sector': 'AI Watchlist',
+                        'weight_change_1d': chg_value,
+                        'etf_count': 0,
+                    })
+                if len(top_increases) >= 5 and len(top_decreases) >= 5:
+                    break
+
+        if not signals and isinstance(ai_raw.get('notable_stocks'), list):
+            for stock in ai_raw.get('notable_stocks', [])[:3]:
+                if not isinstance(stock, dict):
+                    continue
+                ticker = stock.get('ticker')
+                reason = stock.get('notable_reason')
+                if ticker and reason:
+                    signals.append(f"{ticker}: {reason}")
 
         # 상세 테이블 생성
         inc_rows = ''
@@ -2765,14 +2871,44 @@ class FinalReportAgent:
     def _generate_watchlist_section(self) -> str:
         """주목할 종목 (NEW) - ARK 데이터 기반으로 생성"""
         data = self.integrated_data
+        ai_raw = self.ai_report_raw if isinstance(self.ai_report_raw, dict) else {}
 
         # MD 섹션 7에서 추출 시도
         section = self.ai_report_sections.get('section_7', {})
         content = section.get('content', '')
 
         items = self._extract_watchlist_items(content)
+        no_data_reason = ""
 
-        # MD에서 추출 실패 시 ARK 데이터 사용
+        # 1차 fallback: AI raw report의 notable_stocks 사용
+        if not items:
+            raw_notable = ai_raw.get('notable_stocks', [])
+            if isinstance(raw_notable, list):
+                for stock in raw_notable[:6]:
+                    if not isinstance(stock, dict):
+                        continue
+                    ticker = str(stock.get('ticker', '')).strip()
+                    if not ticker:
+                        continue
+                    d1 = stock.get('change_1d')
+                    d5 = stock.get('change_5d')
+                    d20 = stock.get('change_20d')
+
+                    items.append({
+                        'ticker': ticker,
+                        '1d': f"{float(d1):+.2f}%" if isinstance(d1, (int, float)) else 'N/A',
+                        '5d': f"{float(d5):+.2f}%" if isinstance(d5, (int, float)) else 'N/A',
+                        '20d': f"{float(d20):+.2f}%" if isinstance(d20, (int, float)) else 'N/A',
+                        'reason': str(
+                            stock.get('notable_reason')
+                            or stock.get('news_summary')
+                            or 'AI Report notable stock'
+                        ).strip(),
+                    })
+
+            no_data_reason = str(ai_raw.get('notable_stocks_reason', '')).strip()
+
+        # 2차 fallback: ARK 데이터 사용
         if not items:
             ark = data.get('ark_analysis', {})
             top_increases = ark.get('top_increases', [])[:3]
@@ -2803,7 +2939,10 @@ class FinalReportAgent:
         html_cards = ""
 
         if not items:
-            html_cards = "<p class='text-muted'>현재 주목할 종목 데이터가 없습니다. ARK 분석 섹션을 참고하세요.</p>"
+            if no_data_reason:
+                html_cards = f"<p class='text-muted'>{no_data_reason}</p>"
+            else:
+                html_cards = "<p class='text-muted'>현재 주목할 종목 데이터가 없습니다. ARK 분석 섹션을 참고하세요.</p>"
 
         for item in items[:6]:
             ticker = item['ticker']
@@ -2860,10 +2999,13 @@ class FinalReportAgent:
     def _generate_news_section(self) -> str:
         """주요 시장 뉴스 - 실시간 데이터 사용"""
         news_items = []
+        ai_raw = self.ai_report_raw if isinstance(self.ai_report_raw, dict) else {}
 
         # 1. Perplexity 뉴스 (ai_report.section_8)
         section = self.ai_report_sections.get('section_8', {})
         perplexity_content = section.get('content', '')
+        if (not perplexity_content or len(perplexity_content) < 50) and ai_raw.get('perplexity_news'):
+            perplexity_content = str(ai_raw.get('perplexity_news', ''))
 
         if perplexity_content and len(perplexity_content) > 50:
             # Perplexity 응답을 뉴스 항목으로 파싱
@@ -2878,6 +3020,26 @@ class FinalReportAgent:
                         'tag_class': tag_class,
                         'title': line[:80] + ('...' if len(line) > 80 else ''),
                         'content': line[80:160] if len(line) > 80 else ''
+                    })
+                    if len(news_items) >= 5:
+                        break
+
+        # 1.5 references 기반 보강
+        if len(news_items) < 3:
+            refs = ai_raw.get('references', [])
+            if isinstance(refs, list):
+                for ref in refs:
+                    if not isinstance(ref, str):
+                        continue
+                    line = ref.strip()
+                    if not line:
+                        continue
+                    tag, tag_class = self._infer_news_tag(line)
+                    news_items.append({
+                        'tag': tag,
+                        'tag_class': tag_class,
+                        'title': line[:80] + ('...' if len(line) > 80 else ''),
+                        'content': 'AI Report reference'
                     })
                     if len(news_items) >= 5:
                         break
