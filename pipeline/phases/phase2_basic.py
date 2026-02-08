@@ -26,6 +26,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Tuple
 
 from pipeline.analyzers import detect_regime, detect_events, analyze_critical_path
+from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import EIMASResult, RegimeResult
 
 
@@ -93,6 +94,7 @@ def analyze_basic(result: EIMASResult, market_data: Dict[str, Any]) -> Tuple[Lis
         cp_res = analyze_critical_path(market_data)
         result.risk_score = cp_res.risk_score
         result.base_risk_score = cp_res.risk_score
+        result.risk_level = derive_risk_level(result.risk_score)
     except Exception as e:
         print(f"⚠️ Critical Path Error: {e}")
 

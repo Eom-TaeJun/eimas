@@ -196,6 +196,7 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
 
         # ============ PHASE 2: EXTERNAL DATA ============
         ('ark_analysis', '20. ARK Invest Analysis'),
+        ('company_ra_analysis', '20.5 RA Company Analysis'),
         ('genius_act_signals', '21. Genius Act Signals'),
         ('extended_data', '22. Extended Data'),
         ('sentiment_analysis', '23. Sentiment Analysis'),

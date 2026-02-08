@@ -23,13 +23,12 @@ Example:
     print(fred.net_liquidity)
 """
 
-import importlib.util
+import importlib
 import os
-import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 
 # EIMAS 라이브러리
@@ -45,6 +44,7 @@ logger = get_logger("collectors")
 _FI_MARKET_TICKERS = ["SPY", "QQQ", "IWM", "DIA", "TLT", "GLD", "USO", "UUP", "^VIX"]
 _FI_MARKET_CRYPTO_TICKERS = ["BTC-USD", "ETH-USD"]
 _FI_CRYPTO_TICKERS = ["BTC-USD", "ETH-USD", "SOL-USD"]
+_FI_RA_COMPANY_TICKERS = ["AAPL", "MSFT", "NVDA", "JPM", "XOM"]
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -81,6 +81,17 @@ def _resolve_market_tickers_for_collection(use_alpha_vantage: bool) -> list[str]
     return probe_tickers
 
 
+def _resolve_ra_company_tickers() -> list[str]:
+    raw = os.getenv("EIMAS_RA_COMPANY_TICKERS", "").strip()
+    base = raw.split(",") if raw else _FI_RA_COMPANY_TICKERS
+    tickers: list[str] = []
+    for item in base:
+        ticker = item.strip().upper()
+        if ticker and ticker not in tickers:
+            tickers.append(ticker)
+    return tickers or _FI_RA_COMPANY_TICKERS
+
+
 @lru_cache(maxsize=1)
 def _load_financial_indicators() -> Dict[str, Any]:
     """
@@ -104,47 +115,19 @@ def _load_financial_indicators() -> Dict[str, Any]:
         return {}
 
     try:
-        ensure_path(fi_root)
+        ensure_path(fi_root.parent)
+        package_name = fi_root.name
+        if not package_name.isidentifier():
+            logger.warning("financial_indicators package name invalid: %s", package_name)
+            return {}
 
-        config_module_name = "_eimas_fi_config"
-        if config_module_name in sys.modules:
-            fi_config = sys.modules[config_module_name]
-        else:
-            config_spec = importlib.util.spec_from_file_location(config_module_name, config_path)
-            if config_spec is None or config_spec.loader is None:
-                raise ImportError(f"Cannot load {config_path}")
-            fi_config = importlib.util.module_from_spec(config_spec)
-            sys.modules[config_module_name] = fi_config
-            config_spec.loader.exec_module(fi_config)
-
-        package_name = "_eimas_financial_collectors"
-        if package_name in sys.modules:
-            fi_collectors = sys.modules[package_name]
-        else:
-            collectors_spec = importlib.util.spec_from_file_location(
-                package_name,
-                collectors_init,
-                submodule_search_locations=[str(fi_root / "collectors")],
-            )
-            if collectors_spec is None or collectors_spec.loader is None:
-                raise ImportError(f"Cannot load {collectors_init}")
-
-            saved_config_module = sys.modules.get("config")
-            sys.modules["config"] = fi_config
-            try:
-                fi_collectors = importlib.util.module_from_spec(collectors_spec)
-                sys.modules[package_name] = fi_collectors
-                collectors_spec.loader.exec_module(fi_collectors)
-            finally:
-                if saved_config_module is None:
-                    sys.modules.pop("config", None)
-                else:
-                    sys.modules["config"] = saved_config_module
+        fi_collectors = importlib.import_module(f"{package_name}.collectors")
 
         classes = {
             "FREDCollector": getattr(fi_collectors, "FREDCollector", None),
             "MarketCollector": getattr(fi_collectors, "MarketCollector", None),
             "CryptoCollector": getattr(fi_collectors, "CryptoCollector", None),
+            "CompanyRACollector": getattr(fi_collectors, "CompanyRACollector", None),
         }
 
         if not any(classes.values()):
@@ -213,6 +196,92 @@ def _collect_crypto_data_via_financial_indicators(lookback_days: int) -> Dict[st
             collected[ticker] = data
 
     return collected
+
+
+def _collect_company_ra_via_financial_indicators(lookback_days: int) -> Dict[str, Any]:
+    """
+    Collect company-level accounting/valuation outputs for RA workflow.
+    This is best-effort and returns {} when bridge collector is unavailable.
+    """
+    classes = _load_financial_indicators()
+    ra_cls = classes.get("CompanyRACollector")
+    if ra_cls is None:
+        return {}
+
+    tickers = _resolve_ra_company_tickers()
+
+    try:
+        collector = ra_cls(lookback_days=lookback_days)
+    except TypeError:
+        collector = ra_cls()
+
+    try:
+        return collector.collect_all(tickers=tickers)
+    except TypeError:
+        return collector.collect_all(tickers)
+    except Exception as e:
+        log_error(logger, "Company RA collection failed via financial_indicators", e)
+        return {}
+
+
+def _safe_numeric(value: Any) -> float | None:
+    try:
+        if value is None or (isinstance(value, float) and pd.isna(value)):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _serialize_ohlcv_rows(df: pd.DataFrame) -> list[Dict[str, Any]]:
+    rows: list[Dict[str, Any]] = []
+    if df is None or df.empty:
+        return rows
+
+    normalized = df.sort_index()
+    for idx, row in normalized.iterrows():
+        date_value = idx.date().isoformat() if hasattr(idx, "date") else str(idx)
+        item: Dict[str, Any] = {
+            "date": date_value,
+            "close": _safe_numeric(row.get("Close")),
+            "open": _safe_numeric(row.get("Open")),
+            "high": _safe_numeric(row.get("High")),
+            "low": _safe_numeric(row.get("Low")),
+            "volume": _safe_numeric(row.get("Volume")),
+        }
+        if item["close"] is None:
+            continue
+        rows.append(item)
+    return rows
+
+
+def build_financial_indicators_bridge_payload(
+    kind: str,
+    series: Dict[str, pd.DataFrame],
+    lookback_days: int,
+) -> Dict[str, Any]:
+    """
+    Build schema-compatible payload for financial_indicators bridge output.
+    Schema reference:
+      docs/references/financial_indicators_bridge_payload_v1.schema.json
+    """
+    if kind not in {"market", "crypto"}:
+        raise ValueError(f"Unsupported bridge payload kind: {kind}")
+
+    serialized_series: Dict[str, list[Dict[str, Any]]] = {}
+    for ticker, df in series.items():
+        rows = _serialize_ohlcv_rows(df)
+        if rows:
+            serialized_series[ticker] = rows
+
+    return {
+        "schema_version": "fi_bridge_v1",
+        "source": "financial_indicators",
+        "kind": kind,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "lookback_days": int(lookback_days),
+        "series": serialized_series,
+    }
 
 def collect_fred_data() -> FREDSummary:
     """FRED 데이터 수집"""
@@ -328,3 +397,16 @@ def collect_market_indicators() -> IndicatorsSummary:
     except Exception as e:
         log_error(logger, "Indicator collection failed", e)
         return IndicatorsSummary(timestamp=datetime.now().isoformat())
+
+
+def collect_company_ra_analysis(lookback_days: int = 365) -> Dict[str, Any]:
+    """RA-focused company accounting + valuation analysis (financial_indicators bridge)."""
+    print("\n[1.5] Collecting RA Company Analysis...")
+    try:
+        data = _collect_company_ra_via_financial_indicators(lookback_days=lookback_days)
+        companies = data.get("companies", []) if isinstance(data, dict) else []
+        print(f"      ✓ RA company analysis: {len(companies)} companies")
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        log_error(logger, "Company RA analysis collection failed", e)
+        return {}

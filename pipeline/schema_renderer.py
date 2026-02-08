@@ -130,6 +130,7 @@ SECTION_REGISTRY: Dict[str, SectionConfig] = {
     'ark_analysis': SectionConfig('ark_analysis', 'ARK Invest Analysis', 550),
     'genius_act_signals': SectionConfig('genius_act_signals', 'Genius Act Signals', 551),
     'genius_act_regime': SectionConfig('genius_act_regime', 'Genius Act Regime', 552),
+    'company_ra_analysis': SectionConfig('company_ra_analysis', 'RA Company Analysis', 553),
     'sentiment_analysis': SectionConfig('sentiment_analysis', 'Sentiment Analysis', 560),
     'fomc_analysis': SectionConfig('fomc_analysis', 'FOMC Analysis', 561),
     'gap_analysis': SectionConfig('gap_analysis', 'Gap Analysis', 570),

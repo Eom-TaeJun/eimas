@@ -8,6 +8,8 @@ Functions: run_ai_validation, run_allocation_engine, run_rebalancing_policy
 
 from typing import Dict, List, Any
 from datetime import datetime
+import hashlib
+import json
 import pandas as pd
 import numpy as np
 
@@ -31,6 +33,35 @@ from pipeline.exceptions import get_logger, log_error
 
 logger = get_logger("analyzers.governance")
 
+
+def _validation_input_fingerprint(result_data: Dict[str, Any]) -> str:
+    """Create deterministic cache key from validation-relevant inputs."""
+    regime = result_data.get("regime", {})
+    if isinstance(regime, dict):
+        regime_name = regime.get("regime")
+        regime_confidence = regime.get("confidence")
+    else:
+        regime_name = str(regime)
+        regime_confidence = None
+
+    payload = {
+        "final_recommendation": result_data.get("final_recommendation", "HOLD"),
+        "confidence": round(float(result_data.get("confidence", 0.5) or 0.5), 4),
+        "risk_level": result_data.get("risk_level", "MEDIUM"),
+        "risk_score": round(float(result_data.get("risk_score", 50.0) or 50.0), 4),
+        "regime": regime_name,
+        "regime_confidence": regime_confidence,
+    }
+    serialized = json.dumps(payload, sort_keys=True, ensure_ascii=True, default=str)
+    return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _is_cache_fresh(cache_timestamp: str, max_age_hours: int = 24) -> bool:
+    from datetime import timedelta
+
+    cache_time = datetime.fromisoformat(cache_timestamp)
+    return datetime.now() - cache_time < timedelta(hours=max_age_hours)
+
 def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, Any]:
     """
     AI 기반 투자 전략 검증 (Multi-LLM)
@@ -46,9 +77,9 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
     print("\n[2.24] AI Validation (Multi-LLM)...")
     try:
         import os
-        import json
-        from datetime import datetime, timedelta
         from pathlib import Path
+
+        current_fingerprint = _validation_input_fingerprint(result_data)
 
         # 캐시 확인
         cache_path = Path("outputs/.validation_cache.json")
@@ -56,10 +87,12 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
             try:
                 with open(cache_path, 'r') as f:
                     cache = json.load(f)
-                cache_time = datetime.fromisoformat(cache['timestamp'])
-                if datetime.now() - cache_time < timedelta(hours=24):
+                cache_fingerprint = cache.get("fingerprint")
+                if _is_cache_fresh(cache["timestamp"]) and cache_fingerprint == current_fingerprint:
                     print("      ✓ Using cached validation result (< 24h old)")
                     return cache['result']
+                if _is_cache_fresh(cache.get("timestamp", "")):
+                    print("      i Validation cache bypassed (input changed)")
             except Exception:
                 pass
 
@@ -96,7 +129,8 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
             'agreement_ratio': consensus.agreement_ratio,
             'key_concerns': consensus.key_concerns,
             'action_items': consensus.action_items,
-            'summary': consensus.summary
+            'summary': consensus.summary,
+            'validation_runtime_stats': consensus.validation_runtime_stats,
         }
 
         # 캐시 저장
@@ -106,6 +140,7 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
                 with open(cache_path, 'w') as f:
                     json.dump({
                         'timestamp': datetime.now().isoformat(),
+                        'fingerprint': current_fingerprint,
                         'result': validation_result
                     }, f)
             except Exception:
@@ -113,6 +148,8 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
 
         print(f"      ✓ AI Consensus: {consensus.final_result.value}")
         print(f"      ✓ Agreement: {consensus.agreement_ratio:.0%}")
+        total_retries = consensus.validation_runtime_stats.get('total_retries', 0)
+        print(f"      ✓ Retry Count: {total_retries}")
 
         return validation_result
     except Exception as e:
@@ -153,7 +190,7 @@ def run_allocation_engine(
         # 수익률 DataFrame 생성
         returns_df = pd.DataFrame()
         for ticker, df in market_data.items():
-            if not df.empty and 'Close' in df.columns:
+            if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
                 returns_df[ticker] = df['Close'].pct_change()
         returns_df = returns_df.dropna()
 

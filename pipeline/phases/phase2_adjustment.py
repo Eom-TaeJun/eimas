@@ -33,6 +33,7 @@ from lib.bubble_framework import FiveStageBubbleFramework
 from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 from lib.gap_analyzer import MarketModelGapAnalyzer
 from pipeline.analyzers import analyze_bubble_risk, analyze_sentiment, run_adaptive_portfolio
+from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import BubbleRiskMetrics, EIMASResult
 
 
@@ -195,6 +196,7 @@ def apply_extended_data_adjustment(result: EIMASResult):
         result.extended_data_adjustment = adjustment
         old_risk = result.risk_score
         result.risk_score = max(1.0, min(100, result.risk_score + adjustment))
+        result.risk_level = derive_risk_level(result.risk_score)
         print(f"      ✓ Extended Data Adjustment: {adjustment:+.0f} ({old_risk:.1f} -> {result.risk_score:.1f})")
         if details:
             print(f"        Details: {', '.join(details)}")

@@ -53,6 +53,7 @@ SECTION_SCHEMA = {
     "etf_flow_result": {"priority": 19.5, "title": "📊 ETF 플로우", "icon": "📊"},
     "shock_propagation": {"priority": 20, "title": "🌊 충격 전파", "icon": "🌊"},
     "ark_analysis": {"priority": 21, "title": "🚀 ARK Invest", "icon": "🚀"},
+    "company_ra_analysis": {"priority": 21.2, "title": "🏢 RA 기업분석", "icon": "🏢"},
     "sentiment_analysis": {"priority": 22, "title": "😊 센티먼트", "icon": "😊"},
     "extended_data": {"priority": 22.5, "title": "📊 확장 데이터", "icon": "📊"},
     "events_detected": {"priority": 23, "title": "📅 이벤트 탐지", "icon": "📅"},

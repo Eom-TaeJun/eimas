@@ -42,6 +42,11 @@ def run_ai_validation_phase(
 ):
     """[Phase 8] Multi-LLM validation with HOLD failsafe on REJECT."""
     if not full_mode:
+        result.validation_loop_result = {
+            "skipped": True,
+            "reason": "full_mode_disabled",
+            "timestamp": datetime.now().isoformat(),
+        }
         return
 
     print("\n" + "=" * 50)
@@ -49,7 +54,22 @@ def run_ai_validation_phase(
     print("=" * 50)
 
     try:
-        result.validation_loop_result = run_ai_validation(result.to_dict())
+        validation_result = run_ai_validation(result.to_dict())
+        if not isinstance(validation_result, dict):
+            validation_result = {
+                "skipped": True,
+                "reason": "validation_returned_non_dict",
+                "raw_type": type(validation_result).__name__,
+                "timestamp": datetime.now().isoformat(),
+            }
+        elif not validation_result:
+            validation_result = {
+                "skipped": True,
+                "reason": "validation_returned_empty",
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        result.validation_loop_result = validation_result
 
         if result.validation_loop_result.get("final_result") == "REJECT":
             result.failsafe_status = {

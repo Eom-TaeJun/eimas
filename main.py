@@ -153,6 +153,7 @@ from pipeline.phases.phase8_validation import (
 from pipeline.phases.phase9_artifacts import (
     export_artifacts as phase9_export_artifacts,
 )
+from pipeline.risk_utils import derive_risk_level
 # ============================================================================
 # Phase Helper Functions
 # ============================================================================
@@ -397,6 +398,8 @@ async def run_integrated_pipeline(
         enable_realtime,
         realtime_duration,
     )
+    # Keep canonical risk label aligned with score before persistence/validation layers.
+    result.risk_level = derive_risk_level(result.risk_score)
 
     # Phase 4.5: Operational Report (decision governance, rebalance)
     _run_timed_sync(

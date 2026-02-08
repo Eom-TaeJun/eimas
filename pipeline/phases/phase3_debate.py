@@ -23,6 +23,7 @@ Architecture:
 from typing import Any, Dict
 
 from pipeline.debate import run_dual_mode_debate
+from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import EIMASResult
 
 
@@ -36,7 +37,9 @@ async def run_debate(result: EIMASResult, market_data: Dict[str, Any]):
         result.modes_agree = debate_res.modes_agree
         result.final_recommendation = debate_res.final_recommendation
         result.confidence = debate_res.confidence
-        result.risk_level = debate_res.risk_level
+        result.debate_consensus["dual_mode_risk_level"] = debate_res.risk_level
+        result.debate_consensus["canonical_risk_level"] = derive_risk_level(result.risk_score)
+        result.risk_level = result.debate_consensus["canonical_risk_level"]
         result.warnings.extend(debate_res.warnings)
         result.reasoning_chain = debate_res.reasoning_chain
 

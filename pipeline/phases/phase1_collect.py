@@ -34,6 +34,7 @@ from pipeline.collectors import (
     collect_market_data,
     collect_crypto_data,
     collect_market_indicators,
+    collect_company_ra_analysis,
 )
 from pipeline.schemas import EIMASResult
 from pipeline.korea_integration import collect_korea_assets
@@ -538,6 +539,20 @@ async def collect_data(result: EIMASResult, quick_mode: bool) -> Dict[str, Any]:
         phase1_component_timings["market_indicators"] = {
             "duration_sec": 0.0,
             "status": "skipped_quick_mode",
+        }
+
+    enable_company_ra = _env_flag("EIMAS_ENABLE_COMPANY_RA_ANALYSIS", default=True)
+    if enable_company_ra:
+        company_ra_started = perf_counter()
+        result.company_ra_analysis = collect_company_ra_analysis(
+            lookback_days=min(lookback_days, 365),
+        )
+        _record_component_timing("company_ra_analysis", company_ra_started, status="ok")
+    else:
+        result.company_ra_analysis = {}
+        phase1_component_timings["company_ra_analysis"] = {
+            "duration_sec": 0.0,
+            "status": "skipped_env",
         }
 
     skip_korea_assets = os.getenv(

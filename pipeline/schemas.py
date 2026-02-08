@@ -358,6 +358,7 @@ class EIMASResult:
     event_attributions: List[Dict] = field(default_factory=list)
     event_backtest_results: Dict = field(default_factory=dict)
     news_correlations: List[Dict] = field(default_factory=list)
+    company_ra_analysis: Dict = field(default_factory=dict)    # RA-focused company/accounting analysis
 
     # Additional Integrated Modules
     ark_analysis: Dict = field(default_factory=dict)
@@ -738,6 +739,32 @@ class EIMASResult:
                 md.append(f"- **New Positions**: {', '.join(ark['new_positions'])}")
             if not (ark.get('consensus_buys') or ark.get('consensus_sells')):
                 md.append("- No major consensus trades detected")
+
+        if self.company_ra_analysis:
+            md.append("### RA Company Analysis (Accounting & Valuation)")
+            ra = self.company_ra_analysis
+            companies = ra.get('companies', []) if isinstance(ra, dict) else []
+            for company in companies[:5]:
+                if not isinstance(company, dict):
+                    continue
+                ticker = company.get('ticker', 'N/A')
+                signal = company.get('valuation_signal', 'N/A')
+                ratios = company.get('ratios', {}) if isinstance(company.get('ratios'), dict) else {}
+                md.append(
+                    f"- **{ticker}**: {signal} | "
+                    f"ROE {ratios.get('roe', 'N/A')}, "
+                    f"ROA {ratios.get('roa', 'N/A')}, "
+                    f"D/E {ratios.get('debt_to_equity', 'N/A')}"
+                )
+            postgres = ra.get('postgresql', {}) if isinstance(ra, dict) else {}
+            if isinstance(postgres, dict) and postgres:
+                md.append(
+                    f"- PostgreSQL: enabled={postgres.get('enabled')}, "
+                    f"stored_rows={postgres.get('stored_rows', 0)}"
+                )
+            work = ra.get('ra_work_support', {}) if isinstance(ra, dict) else {}
+            if isinstance(work, dict) and work.get('research_tasks'):
+                md.append(f"- Research Tasks: {len(work.get('research_tasks', []))}")
 
         # NEW: Extended Metrics (PCR, Valuation, Sentiment, etc.)
         if self.extended_data:
