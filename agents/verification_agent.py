@@ -209,24 +209,29 @@ class VerificationAgent(BaseAgent):
         total_checks = 0
 
         # 원본 데이터에서 허용 가능한 키워드 추출
-        valid_tickers = set(market_data.get('tickers', []))
+        valid_tickers = {
+            str(ticker).upper()
+            for ticker in market_data.get('tickers', [])
+            if ticker is not None and str(ticker).strip()
+        }
         valid_metrics = set(market_data.keys())
 
         for opinion in opinions:
-            content = f"{opinion.position} {' '.join(opinion.evidence)}".lower()
+            raw_content = f"{opinion.position} {' '.join(opinion.evidence)}"
+            content = raw_content.lower()
 
             # Check 1: 존재하지 않는 티커 언급
-            mentioned_tickers = self._extract_tickers(content)
+            mentioned_tickers = self._extract_tickers(raw_content)
             for ticker in mentioned_tickers:
                 total_checks += 1
-                if ticker not in valid_tickers:
+                if valid_tickers and ticker not in valid_tickers:
                     problematic_statements.append(
                         f"Unknown ticker '{ticker}' mentioned by {opinion.agent_role.value}"
                     )
                     hallucination_score += 1
 
             # Check 2: 수치 데이터 일치 여부
-            numeric_claims = self._extract_numeric_claims(content)
+            numeric_claims = self._extract_numeric_claims(raw_content)
             for claim in numeric_claims:
                 total_checks += 1
                 if not self._verify_numeric_claim(claim, market_data):
@@ -508,9 +513,26 @@ class VerificationAgent(BaseAgent):
     # Helper methods
 
     def _extract_tickers(self, text: str) -> List[str]:
-        """텍스트에서 티커 추출 (대문자 2-5자)"""
-        pattern = r'\b[A-Z]{2,5}\b'
-        return re.findall(pattern, text.upper())
+        """텍스트에서 ticker-like 토큰을 추출한다."""
+        if not text:
+            return []
+
+        ignored_words = {
+            "A", "AN", "AND", "ARE", "AT", "BEAR", "BULL", "BY", "FOR", "FROM",
+            "HOLD", "HIGH", "IN", "IS", "LOW", "NEUTRAL", "OF", "ON", "OR",
+            "RISK", "SELL", "THE", "TO", "WITH",
+        }
+        pattern = r'(?<![A-Za-z0-9_])(?:\$|\^)?([A-Z]{1,5}(?:-[A-Z]+)?(?:\.[A-Z]+)?)(?![A-Za-z0-9_])'
+        extracted: List[str] = []
+
+        for match in re.finditer(pattern, text):
+            token = match.group(1).upper()
+            if token in ignored_words:
+                continue
+            extracted.append(token)
+
+        # Deduplicate while preserving order
+        return list(dict.fromkeys(extracted))
 
     def _extract_numeric_claims(self, text: str) -> List[str]:
         """수치 주장 추출 (예: "VIX is 15.2", "RRP at $5B")"""

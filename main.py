@@ -81,6 +81,7 @@ OUTPUT | 출력물
 
 import asyncio
 import argparse
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -109,7 +110,46 @@ def _configure_yfinance_cache_dir() -> None:
         print(f"[Init] yfinance cache redirect failed: {type(exc).__name__}: {exc}")
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on", "y"}
+
+
+def _configure_network_failfast_logging() -> None:
+    """Reduce noisy third-party network logs when fail-fast mode is enabled."""
+    fail_fast_flags = (
+        "EIMAS_FRED_FAIL_FAST_NETWORK",
+        "EIMAS_EXTENDED_FAIL_FAST_NETWORK",
+        "EIMAS_MARKET_DATA_FAIL_FAST_NETWORK",
+        "EIMAS_CRYPTO_DATA_FAIL_FAST_NETWORK",
+        "EIMAS_MARKET_INDICATORS_FAIL_FAST_NETWORK",
+        "EIMAS_INSTITUTIONAL_FAIL_FAST_NETWORK",
+        "EIMAS_DEBATE_FAIL_FAST_NETWORK",
+        "EIMAS_REPORT_FAIL_FAST_NETWORK",
+        "EIMAS_BUBBLE_FAIL_FAST_NETWORK",
+        "EIMAS_SENTIMENT_FAIL_FAST_NETWORK",
+        "EIMAS_ENHANCED_FAIL_FAST_NETWORK",
+        "EIMAS_REGIME_FAIL_FAST_NETWORK",
+    )
+
+    quiet_yfinance = _env_flag("EIMAS_YFINANCE_QUIET", default=False)
+    if not quiet_yfinance:
+        quiet_yfinance = any(_env_flag(flag, default=False) for flag in fail_fast_flags)
+
+    if not quiet_yfinance:
+        return
+
+    yfinance_logger = logging.getLogger("yfinance")
+    yfinance_logger.setLevel(logging.CRITICAL)
+    yfinance_logger.propagate = False
+    if not yfinance_logger.handlers:
+        yfinance_logger.addHandler(logging.NullHandler())
+
+
 _configure_yfinance_cache_dir()
+_configure_network_failfast_logging()
 
 # ============================================================================
 # Pipeline Imports

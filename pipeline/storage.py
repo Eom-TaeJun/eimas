@@ -286,7 +286,7 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         if section_title:
             lines.append(f"\n## {section_title}")
 
-        lines.extend(_format_value(key, value, level=2))
+        lines.extend(_format_value(key, value, level=2, emit_dict_header=False))
 
     # 나머지 키 처리
     for key, value in data.items():
@@ -295,7 +295,7 @@ def _json_to_full_markdown(data: dict, level: int = 1) -> str:
         if value is None or value == '' or value == [] or value == {}:
             continue
         lines.append(f"\n## {key.replace('_', ' ').title()}")
-        lines.extend(_format_value(key, value, level=2))
+        lines.extend(_format_value(key, value, level=2, emit_dict_header=False))
 
     return '\n'.join(lines)
 
@@ -735,7 +735,7 @@ def _format_rebalance_decision(rb_data: dict) -> list:
     return lines
 
 
-def _format_value(key: str, value, level: int = 2) -> list:
+def _format_value(key: str, value, level: int = 2, emit_dict_header: bool = True) -> list:
     """값을 Markdown 포맷으로 변환"""
     lines = []
     prefix = "  " * (level - 2)
@@ -779,8 +779,12 @@ def _format_value(key: str, value, level: int = 2) -> list:
         if not value:
             lines.append(f"{prefix}- **{key_str}**: (empty)")
         else:
+            child_level = level
+            if emit_dict_header:
+                lines.append(f"{prefix}- **{key_str}**:")
+                child_level = level + 1
             for k, v in value.items():
-                lines.extend(_format_value(k, v, level))
+                lines.extend(_format_value(k, v, child_level, emit_dict_header=True))
     else:
         lines.append(f"{prefix}- **{key_str}**: {str(value)}")
 

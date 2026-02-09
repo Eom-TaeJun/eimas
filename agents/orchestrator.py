@@ -397,12 +397,21 @@ class MetaOrchestrator:
 
             if verification_response.is_success():
                 verification_result = verification_response.result
+                verification_payload = verification_result.get('verification_result', {})
+                sycophancy_payload = verification_result.get('sycophancy_check', {})
+
+                passed_raw = verification_payload.get('passed', True)
+                if isinstance(passed_raw, str):
+                    passed_value = passed_raw.strip().lower() in {'1', 'true', 'yes', 'on'}
+                else:
+                    passed_value = bool(passed_raw)
+
                 final_report['verification'] = {
-                    'overall_score': verification_result.get('verification_result', {}).get('overall_score', 0),
-                    'hallucination_risk': verification_result.get('hallucination_check', {}).get('confidence', 0),
-                    'sycophancy_risk': verification_result.get('sycophancy_check', {}).get('agreement_rate', 0),
-                    'passed': verification_result.get('verification_result', {}).get('passed', True),
-                    'warnings': verification_result.get('verification_result', {}).get('warnings', [])
+                    'overall_score': float(verification_payload.get('overall_score', 0.0)),
+                    'hallucination_risk': float(verification_payload.get('hallucination_risk', 0.0)),
+                    'sycophancy_risk': float(sycophancy_payload.get('agreement_rate', 0.0)),
+                    'passed': passed_value,
+                    'warnings': verification_payload.get('warnings', [])
                 }
                 self.logger.info(
                     f"Verification complete: Score={final_report['verification']['overall_score']:.1f}, "
