@@ -251,8 +251,8 @@ async def run_integrated_pipeline(
 # CLI Entry Point
 # ============================================================================
 
-def main(argv: list[str] | None = None):
-    """Canonical CLI entrypoint for the integrated pipeline."""
+def _build_main_parser() -> argparse.ArgumentParser:
+    """Build CLI parser for the canonical pipeline entrypoint."""
     parser = argparse.ArgumentParser(description='EIMAS Modular Pipeline')
     parser.add_argument('--realtime', '-r', action='store_true', help='Enable realtime stream')
     parser.add_argument('--duration', '-d', type=int, default=30, help='Stream duration (seconds)')
@@ -276,37 +276,47 @@ def main(argv: list[str] | None = None):
     parser.add_argument('--paper-enforce-approval', action='store_true', help='Require human approval gate for auto paper execution')
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
+    return parser
 
-    args = parser.parse_args(argv)
 
-    is_short = args.short or args.quick
-
-    # Determine market focus
-    market_focus = None
+def _resolve_market_focus(args: argparse.Namespace) -> str | None:
+    """Resolve quick validation market focus from CLI flags."""
     if args.quick1:
-        market_focus = 'KOSPI'
-    elif args.quick2:
-        market_focus = 'SPX'
+        return 'KOSPI'
+    if args.quick2:
+        return 'SPX'
+    return None
 
-    asyncio.run(run_integrated_pipeline(
-        enable_realtime=args.realtime,
-        realtime_duration=args.duration,
-        quick_mode=is_short,
-        generate_report=not is_short,
-        full_mode=args.full,
-        enable_backtest=args.backtest,
-        enable_attribution=args.attribution,
-        enable_stress_test=args.stress_test,
-        quick_validation_mode=market_focus,
-        output_dir=args.output_dir,
-        cron_mode=args.cron_mode,
-        enable_paper_auto=args.paper_auto,
-        paper_account=args.paper_account,
-        paper_capital=args.paper_capital,
-        paper_poll_only=args.paper_poll_only,
-        paper_backtest=args.paper_backtest,
-        paper_enforce_approval=args.paper_enforce_approval,
-    ))
+
+def _build_pipeline_kwargs(args: argparse.Namespace) -> dict[str, Any]:
+    """Map CLI args to run_integrated_pipeline kwargs."""
+    is_short = args.short or args.quick
+    return {
+        "enable_realtime": args.realtime,
+        "realtime_duration": args.duration,
+        "quick_mode": is_short,
+        "generate_report": not is_short,
+        "full_mode": args.full,
+        "enable_backtest": args.backtest,
+        "enable_attribution": args.attribution,
+        "enable_stress_test": args.stress_test,
+        "quick_validation_mode": _resolve_market_focus(args),
+        "output_dir": args.output_dir,
+        "cron_mode": args.cron_mode,
+        "enable_paper_auto": args.paper_auto,
+        "paper_account": args.paper_account,
+        "paper_capital": args.paper_capital,
+        "paper_poll_only": args.paper_poll_only,
+        "paper_backtest": args.paper_backtest,
+        "paper_enforce_approval": args.paper_enforce_approval,
+    }
+
+
+def main(argv: list[str] | None = None):
+    """Canonical CLI entrypoint for the integrated pipeline."""
+    parser = _build_main_parser()
+    args = parser.parse_args(argv)
+    asyncio.run(run_integrated_pipeline(**_build_pipeline_kwargs(args)))
 
 
 if __name__ == "__main__":
