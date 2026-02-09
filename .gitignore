@@ -94,3 +94,11 @@ htmlcov/
 # Tool specific
 .claude/settings.local.json
 docx2/
+
+# Local runtime environments and generated artifacts
+.conda_pg/
+.pgdata_ra/
+outputs/eimas_*.pdf
+outputs/full_pipeline_*/
+outputs/profile_runs_fastfail/
+outputs/smoke_*/
