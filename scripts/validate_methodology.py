@@ -8,6 +8,7 @@ Claude + Perplexity API를 사용하여 구현 방향성 검증
 2. MST-based Systemic Risk Identification (graph_clustered_portfolio.py)
 """
 
+import argparse
 import json
 from datetime import datetime
 
@@ -228,8 +229,25 @@ def validate_mst_systemic_risk():
     }
 
 
-def main():
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Validate methodology via Anthropic + Perplexity APIs."
+    )
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Execute live API validation (required to actually run).",
+    )
+    return parser
+
+
+def main(run: bool = False):
     """메인 실행"""
+    if not run:
+        print("[SKIP] validate_methodology.py requires --run for live execution.")
+        print("Usage: python scripts/validate_methodology.py --run")
+        return []
+
     print("=" * 70)
     print("EIMAS Methodology Validation")
     print(f"Timestamp: {datetime.now().isoformat()}")
@@ -269,4 +287,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = _build_parser().parse_args()
+    main(run=args.run)

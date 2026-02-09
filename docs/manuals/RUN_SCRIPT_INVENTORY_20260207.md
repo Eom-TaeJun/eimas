@@ -39,8 +39,8 @@
 | `scripts/daily_analysis.py` | 5 | Active | Keep |
 | `scripts/prepare_historical_data.py` | 2 | Active | Keep |
 | `scripts/delegate_general_lane.py` | 1 | Active | Keep |
-| `scripts/validate_integration_design.py` | 1 | Manual utility | Keep |
-| `scripts/validate_methodology.py` | 1 | Manual utility | Keep |
+| `scripts/validate_integration_design.py` | 1 | Manual utility | Keep (`--run` required for live execution) |
+| `scripts/validate_methodology.py` | 1 | Manual utility | Keep (`--run` required for live execution) |
 | `scripts/convert_md_to_html.py` | 1 | Manual utility | Keep (used by `generate_final_report.py`) |
 | `scripts/generate_final_report.py` | 6 | Manual utility | Keep (reporting utility) |
 | `scripts/check_gold_data.py` | 0 | Obsolete | Removed |

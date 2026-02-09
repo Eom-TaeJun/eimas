@@ -6,6 +6,10 @@ Microstructure + Bubble Detector 통합 설계 검증
 설계안을 Claude와 Perplexity로 검증
 """
 
+import argparse
+import json
+from datetime import datetime
+
 try:
     from _project_bootstrap import ensure_project_root
 except ImportError:
@@ -14,8 +18,6 @@ except ImportError:
 ensure_project_root(__file__)
 
 from core.config import APIConfig
-from datetime import datetime
-import json
 
 
 # =============================================================================
@@ -241,7 +243,24 @@ def query_claude(question: str, context: str = "") -> str:
         return f"[Claude Error] {str(e)}"
 
 
-def main():
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Validate integration design using Anthropic + Perplexity APIs."
+    )
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="Execute live API validation (required to actually run).",
+    )
+    return parser
+
+
+def main(run: bool = False):
+    if not run:
+        print("[SKIP] validate_integration_design.py requires --run for live execution.")
+        print("Usage: python scripts/validate_integration_design.py --run")
+        return None
+
     print("=" * 70)
     print("EIMAS Integration Design Validation")
     print(f"Timestamp: {datetime.now().isoformat()}")
@@ -309,7 +328,9 @@ def main():
     print("\n" + "=" * 70)
     print(f"Validation complete. Results saved to: {output_file}")
     print("=" * 70)
+    return output_file
 
 
 if __name__ == "__main__":
-    main()
+    args = _build_parser().parse_args()
+    main(run=args.run)

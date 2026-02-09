@@ -215,6 +215,8 @@
   - `scripts/setup_scheduler.sh` (instruction-only scheduler helper)
 - 유지:
   - `scripts/convert_md_to_html.py` (used by `scripts/generate_final_report.py`)
+  - `scripts/validate_integration_design.py` / `scripts/validate_methodology.py`
+    - accidental run 방지를 위해 `--run` 플래그 가드 추가
 - 인벤토리 갱신:
   - `docs/manuals/RUN_SCRIPT_INVENTORY_20260207.md`
 
