@@ -7,8 +7,9 @@
 
 ## Progress Update (2026-02-07)
 - `main_integrated.py` shim removed (canonical entrypoint unified to `main.py`)
-- `pipeline/runner.py` now delegates to canonical `main.run_integrated_pipeline`
-- `pipeline/runner.py` legacy `run_pipeline` alias restored
+- legacy wrappers removed:
+  - `pipeline/runner.py`
+  - `run_all_pipeline.sh`
 - `api/main.py` and `cli/eimas.py` now import canonical `main`
 - `api/server.py` removed (API entrypoint unified to `api.main`)
 - `execution_intelligence` scaffold created
@@ -58,8 +59,8 @@
 
 ### Step 1. Entry-path cleanup (완료/진행)
 - `main_integrated.py` 제거 완료 (단일 진입점: `main.py`)
-- `pipeline/runner.py`는 canonical main 파이프라인으로 위임
-- `run_all_pipeline.sh`는 `python main.py --full`만 호출
+- `pipeline/runner.py` 제거 완료 (중복 진입점 제거)
+- `run_all_pipeline.sh` 제거 완료 (full 실행은 `python main.py --full`)
 
 ### Step 2. Domain boundary tagging
 각 기능을 아래 4개 도메인으로 태깅하고 owner를 지정:

@@ -359,21 +359,15 @@ def cmd_report_daily(args):
 
 
 def cmd_run(args):
-    """통합 파이프라인 실행"""
-    # Canonical pipeline entrypoint
-    from main import run_integrated_pipeline
-    import asyncio
+    """통합 파이프라인 실행 (main.py로 위임)"""
+    from main import main as pipeline_main
 
-    print_header("Running Integrated Pipeline")
-    
-    asyncio.run(run_integrated_pipeline(
-        enable_realtime=args.realtime,
-        realtime_duration=args.duration,
-        quick_mode=args.quick,
-        generate_report=False,  # CLI run 명령은 기본적으로 report 비생성
-        full_mode=args.full,
-        output_dir=args.output,
-    ))
+    forwarded = list(args.pipeline_args or [])
+    if forwarded and forwarded[0] == "--":
+        forwarded = forwarded[1:]
+
+    print_header("Running Integrated Pipeline (delegated to main.py)")
+    pipeline_main(forwarded)
 
 
 # ============================================================================
@@ -387,13 +381,13 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
-    # Run command
-    run_parser = subparsers.add_parser("run", help="Run integrated pipeline")
-    run_parser.add_argument("--realtime", action="store_true", help="Enable realtime monitoring")
-    run_parser.add_argument("--duration", type=int, default=30, help="Realtime duration in seconds")
-    run_parser.add_argument("--quick", action="store_true", help="Quick mode")
-    run_parser.add_argument("--full", action="store_true", help="Full mode (standalone scripts)")
-    run_parser.add_argument("--output", default="outputs", help="Output directory")
+    # Run command (canonical parser lives in main.py)
+    run_parser = subparsers.add_parser("run", help="Run integrated pipeline via main.py")
+    run_parser.add_argument(
+        "pipeline_args",
+        nargs=argparse.REMAINDER,
+        help="Arguments forwarded to main.py (e.g. -- --full --realtime)",
+    )
     run_parser.set_defaults(func=cmd_run)
 
     # Signal commands

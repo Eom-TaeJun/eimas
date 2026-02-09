@@ -72,10 +72,10 @@ Owner context: EIMAS bloat-reduction and structure redesign for `main.py --full`
 - `pipeline/phases/phase2_enhanced.py`:
   - strategic allocation SPY return extraction now uses the same close-column fallback strategy.
 
-### 2.3 Runner compatibility fix
+### 2.3 Entrypoint simplification
 
-- `pipeline/runner.py` wrapper now forwards `output_dir` and `cron_mode` to canonical `main.run_integrated_pipeline(...)`.
-- Previously these arguments were ignored.
+- Legacy wrapper `pipeline/runner.py` removed.
+- Canonical runtime entrypoint remains `main.py` / `run_integrated_pipeline(...)`.
 
 ### 2.4 Execution contract script hardening
 
@@ -84,9 +84,10 @@ Owner context: EIMAS bloat-reduction and structure redesign for `main.py --full`
   - explicit status tokens (`STATUS:PASS`, `STATUS:FAIL`) to avoid false grep matches.
   - local/external backend source checks + allocation/rebalancing smoke test.
 
-### 2.5 Utility script portability
+### 2.5 Utility script cleanup
 
-- `run_all_pipeline.sh` now `cd`s based on script location instead of hardcoded absolute path.
+- Legacy shell wrapper `run_all_pipeline.sh` removed.
+- Full pipeline should be executed directly with `python main.py --full`.
 
 ### 2.9 Entrypoint cleanup (new)
 
@@ -103,7 +104,7 @@ Owner context: EIMAS bloat-reduction and structure redesign for `main.py --full`
 
 Validated in this workspace:
 
-- `python3 -m py_compile main.py pipeline/runner.py cli/eimas.py`
+- `python3 -m py_compile main.py cli/eimas.py`
 - `python3 -m py_compile pipeline/phases/__init__.py pipeline/phases/common.py pipeline/phases/phase1_collect.py pipeline/phases/phase2_basic.py pipeline/phases/phase2_enhanced.py pipeline/phases/phase2_adjustment.py pipeline/phases/phase3_debate.py pipeline/phases/phase4_realtime.py pipeline/phases/phase45_operational.py pipeline/phases/phase5_storage.py pipeline/phases/phase6_portfolio.py pipeline/phases/phase7_report.py pipeline/phases/phase8_validation.py`
 - `python3 -m py_compile pipeline/storage.py`
 - `bash -n scripts/check_execution_contract.sh`
@@ -122,7 +123,7 @@ Do not assume only one feature branch scope.
 
 Observed high-signal changed/new areas include:
 
-- `main.py`, `pipeline/runner.py`, `pipeline/analyzers*.py`
+- `main.py`, `pipeline/analyzers*.py`
 - `pipeline/phases/*` (M2 expanded: real logic now present)
 - `scripts/check_execution_contract.sh`
 - `docs/architecture/*`
@@ -158,7 +159,7 @@ Observed high-signal changed/new areas include:
 ```bash
 cd /home/tj/projects/autoai/eimas
 git status --short
-python3 -m py_compile main.py pipeline/runner.py pipeline/analyzers.py pipeline/analyzers_core.py pipeline/analyzers_advanced.py pipeline/analyzers_quant.py pipeline/analyzers_sentiment.py pipeline/analyzers_governance.py
+python3 -m py_compile main.py pipeline/analyzers.py pipeline/analyzers_core.py pipeline/analyzers_advanced.py pipeline/analyzers_quant.py pipeline/analyzers_sentiment.py pipeline/analyzers_governance.py
 bash scripts/check_execution_contract.sh
 ```
 
@@ -185,7 +186,7 @@ bash scripts/check_execution_contract.sh
 ## 10. Morning Restart Checklist
 
 1. `cd /home/tj/projects/autoai/eimas && git status --short`
-2. `python3 -m py_compile main.py api/main.py pipeline/runner.py lib/ai_report_generator.py`
+2. `python3 -m py_compile main.py api/main.py lib/ai_report_generator.py`
 3. `bash scripts/check_execution_contract.sh`
 4. Start Wave-N:
    - clean stale references in `docs/architecture/*` (`main_orchestrator`, `run_full_analysis`)

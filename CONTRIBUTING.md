@@ -17,6 +17,13 @@ Thank you for your interest in contributing to EIMAS! This document provides gui
 
 ## 🚀 Getting Started
 
+### Mandatory First Read
+
+- Before any implementation/refactor, read `command.md` first.
+- Treat `command.md` as the source of truth for entrypoint and command policy.
+- New independent features must be attached to `main.py` flags (`python main.py --abc`) instead of adding new runner scripts.
+- Follow the document priority tiers (`P0~P3`) defined in `command.md`.
+
 ### Prerequisites
 
 - Python 3.10+

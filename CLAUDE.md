@@ -7,6 +7,15 @@
 
 ---
 
+## 0. 필수 작업 원칙 (Mandatory)
+
+- 모든 변경 작업 시작 전 `command.md`를 먼저 확인한다.
+- 실행/진입점/CLI 정책은 `command.md`를 단일 기준(source of truth)으로 따른다.
+- 독립 기능 추가 시에도 별도 runner를 만들지 않고 `python main.py --abc` 형태로 `main.py`에 귀속한다.
+- 문서 중요도/읽기 순서는 `command.md`의 `P0~P3` 표를 따른다.
+
+---
+
 ## 1. 프로젝트 개요
 
 ### 무엇인가요?

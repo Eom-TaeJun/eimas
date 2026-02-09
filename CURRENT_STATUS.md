@@ -21,7 +21,10 @@
   - `pipeline/analyzers_governance.py`
 - Phase 로직 `main.py`에서 `pipeline/phases/*`로 이관 완료:
   - `phase1_collect` ~ `phase8_validation`
-- `pipeline/runner.py`는 canonical `main.run_integrated_pipeline(...)` 위임 래퍼로 고정.
+- 레거시 래퍼 제거 완료:
+  - `pipeline/runner.py`
+  - `run_all_pipeline.sh`
+  - full 실행은 `python main.py --full` 단일 경로로 통일
 
 ### 아티팩트 경로 정책
 - ADR 추가: `docs/architecture/ADV_007_ARTIFACT_PATH_POLICY_V1.md`
@@ -45,7 +48,8 @@
 ### 문서 정합성 업데이트 (2026-02-07)
 - `docs/architecture/EIMAS_OVERVIEW.md`의 엔트리포인트 표기를 `main_orchestrator.py` -> `main.py`로 정정
 - `docs/architecture/EIMAS_TECHNICAL_DOCUMENTATION.md`의 오케스트레이터 표기를 `main.py` 기준으로 정정
-- `pipeline/runner.py` docstring에서 archive runner 경로명 직접 참조 제거
+- `main.py` 단일 엔트리 정책 명시:
+  - `cli/eimas.py run`은 `main.py` 인자 포워딩 래퍼로 유지
 - 실행 스크립트 inventory 문서 추가: `docs/manuals/RUN_SCRIPT_INVENTORY_20260207.md`
 - 구형/위험 스크립트 제거: `scripts/merge_frontend.sh` (입력 원본 부재 + `rm -rf frontend` 위험)
 - `README.md` 문서 가이드에 full-mode refactor 링크 추가 (`FULL_EXECUTION_PROCESS`, `CURRENT_STATUS`, `TODO`)
@@ -261,7 +265,7 @@
 실행 명령:
 
 ```bash
-python3 -m py_compile main.py api/main.py pipeline/runner.py lib/ai_report_generator.py
+python3 -m py_compile main.py api/main.py lib/ai_report_generator.py
 python3 -m py_compile lib/validation_agents.py
 bash scripts/check_execution_contract.sh
 ```
@@ -315,7 +319,7 @@ bash scripts/check_execution_contract.sh
 ```bash
 cd /home/tj/projects/autoai/eimas
 git status --short
-python3 -m py_compile main.py api/main.py pipeline/runner.py lib/ai_report_generator.py
+python3 -m py_compile main.py api/main.py lib/ai_report_generator.py
 bash scripts/check_execution_contract.sh
 ```
 

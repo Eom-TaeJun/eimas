@@ -1,5 +1,5 @@
 # EIMAS Module Inventory & Technical Specification
-**Last Updated**: 2026-01-19
+**Last Updated**: 2026-02-09
 **System Version**: v2.1.2 (Real-World Agent Edition)
 
 ---
@@ -9,8 +9,8 @@
 
 | 모듈명 | 위치 | 주요 역할 | 핵심 기술/알고리즘 |
 |---|---|---|---|
-| **Pipeline Runner** | `pipeline/runner.py` | 전체 분석 프로세스(Phase 1~7) 순차 실행 제어 | `AsyncIO`, `Modular Pipeline` |
-| **CLI Interface** | `cli/eimas.py` | 사용자 명령 처리 및 개별 모듈 호출 | `Argparse`, `Rich Console` |
+| **Main Orchestrator** | `main.py` | 전체 분석 프로세스(Phase 1~9) 순차 실행 제어 | `AsyncIO`, `Modular Pipeline` |
+| **CLI Interface** | `cli/eimas.py` | 사용자 명령 처리 및 `main.py` 인자 포워딩 | `Argparse`, `Rich Console` |
 | **API Server** | `api/main.py` | 외부 연동 및 프론트엔드용 REST API | `FastAPI`, `WebSocket`, `Pydantic` |
 | **Config Manager** | `core/config.py` | 환경변수, API 키, 상수 중앙 관리 | `Dotenv`, `YAML Config` |
 | **Database Ops** | `core/database.py` | SQLite DB 연결 및 세션 관리 | `SQLite3`, `SQLAlchemy` |

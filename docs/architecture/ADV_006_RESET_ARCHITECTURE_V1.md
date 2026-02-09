@@ -20,7 +20,7 @@
 ## 3. Target Package Boundaries
 
 ### 3.1 Interface
-- 후보: `cli/eimas.py`, `api/main.py`, `pipeline/runner.py`, `run_all_pipeline.sh`
+- 후보: `main.py`, `cli/eimas.py`, `api/main.py`
 - 원칙: 실행 인자 파싱/입력 변환만 담당, 비즈니스 로직 금지.
 
 ### 3.2 Application
@@ -78,4 +78,3 @@
 - `GEN-303`: Phase3~8 helper 이동 + main slim-down + validation
 - `GEN-304` (new): RunConfig/PathPolicy application layer 도입
 - `GEN-305` (new): 문서 source-of-truth 재정렬 및 중복 문서 정리
-

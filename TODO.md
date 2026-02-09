@@ -19,9 +19,8 @@
 
 ### A1. 실행 경로 정리
 - [x] `main_integrated.py` 제거 (단일 진입점 `main.py`로 통합)
-- [x] `pipeline/runner.py`를 canonical 파이프라인 위임 방식으로 교체
-- [x] `pipeline/runner.py`에 legacy `run_pipeline` alias 복구
-- [x] `run_all_pipeline.sh`를 `python main.py --full` 기반으로 교체
+- [x] `pipeline/runner.py` 제거 (단일 진입점 `main.py`로 통합 완료)
+- [x] `run_all_pipeline.sh` 제거 (`python main.py --full` 직접 실행으로 단순화)
 - [x] `api/main.py`, `cli/eimas.py`의 legacy 주석/의존 제거
 - [x] 단일 run JSON artifact 경로 정책 도입 (`ADV_007`, phase7/8 동일 파일 갱신)
 - [x] `api/main.py`를 canonical API 엔트리로 고정, `api/server.py` 제거
@@ -136,7 +135,7 @@
 
 1. 상태 확인:
    - `git status --short`
-   - `python3 -m py_compile main.py api/main.py pipeline/runner.py lib/ai_report_generator.py`
+   - `python3 -m py_compile main.py api/main.py lib/ai_report_generator.py`
 2. 계약 확인:
    - `bash scripts/check_execution_contract.sh`
 3. 다음 클리닝:
@@ -156,8 +155,6 @@ python main.py --full
 # Full + realtime
 python main.py --full --realtime -d 30
 
-# Shell wrapper
-./run_all_pipeline.sh
 ```
 
 ---

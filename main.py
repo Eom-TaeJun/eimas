@@ -25,30 +25,27 @@ PIPELINE FLOW | 파이프라인 흐름
            ▼
     run_integrated_pipeline()
            │
-           ├─► [Phase 1] _collect_data()        # 데이터 수집 (FRED, Market, Crypto)
+           ├─► [Phase 1] phase1_collect_data()  # 데이터 수집 (FRED, Market, Crypto)
            │                                    # Data collection from multiple sources
            │
-           ├─► [Phase 2] _analyze_basic()       # 기본 분석 (Regime, Events, Risk)
-           │        └─► _analyze_enhanced()     # 고급 분석 (HFT, GARCH, DTW, etc.)
-           │        └─► _analyze_sentiment_bubble()  # 센티먼트 & 버블 분석
+           ├─► [Phase 2] phase2_* analyzers     # 기본/고급/보정 분석
            │
-           ├─► [Phase 3] _run_debate()          # AI 에이전트 토론 (Multi-LLM)
+           ├─► [Phase 3] phase3_run_debate()    # AI 에이전트 토론 (Multi-LLM)
            │                                    # Dual-mode debate with consensus
            │
-           ├─► [Phase 4] _run_realtime()        # 실시간 스트리밍 (Optional)
+           ├─► [Phase 4] phase4_run_realtime()  # 실시간 스트리밍 (Optional)
            │                                    # VPIN/OFI stream analysis
            │
-           ├─► [Phase 5] _save_results()        # 결과 저장 (unified JSON)
+           ├─► [Phase 5] phase5_save_results()  # 결과 저장 (unified JSON)
            │                                    # Save to outputs/eimas_*.json
            │
-           ├─► [Phase 6] _generate_report()     # AI 리포트 생성 (Optional)
-           │                                    # LLM-powered narrative report
+           ├─► [Phase 6] phase6_* portfolio     # 백테스트/기여도/스트레스 (Optional)
            │
-           ├─► [Phase 7] _validate_report()     # Whitening & Fact Check
-           │                                    # Data quality validation
+           ├─► [Phase 7] phase7_* report        # AI 리포트 생성/검증
            │
-           └─► [Phase 8] _run_ai_validation()   # Multi-LLM 검증 (--full only)
-                                                # Cross-LLM consensus check
+           ├─► [Phase 8] phase8_* validation    # Multi-LLM 검증/quick 검증
+           │
+           └─► [Phase 9] phase9_export_artifacts()
 
 ================================================================================
 USAGE | 사용법
@@ -162,10 +159,7 @@ from pipeline.risk_utils import derive_risk_level
 # ============================================================================
 
 # Phase handlers are now owned by `pipeline/phases/*`.
-_collect_data = phase1_collect_data
-_analyze_basic = phase2_analyze_basic
-
-def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
+def _run_phase2_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
     """Delegation wrapper to allow phase2 module to call tactical allocation hook."""
     return phase2_analyze_enhanced(
         result,
@@ -174,24 +168,10 @@ def _analyze_enhanced(result: EIMASResult, market_data: Dict, quick_mode: bool):
         run_tactical_allocation_fn=_run_tactical_allocation,
     )
 
-_apply_extended_data_adjustment = phase2_apply_extended_data_adjustment
-_analyze_sentiment_bubble = phase2_analyze_sentiment_bubble
-_analyze_institutional_frameworks = phase2_analyze_institutional_frameworks
-_run_adaptive_portfolio = phase2_run_adaptive_portfolio
-_run_debate = phase3_run_debate
-_run_realtime = phase4_run_realtime
-_generate_operational_report = phase45_generate_operational_report
-_run_paper_execution = phase46_run_paper_execution
-_save_results = phase5_save_results
-_run_backtest = phase6_run_backtest
-_run_performance_attribution = phase6_run_performance_attribution
-_run_tactical_allocation = phase6_run_tactical_allocation
-_run_stress_test = phase6_run_stress_test
-_generate_report = phase7_generate_report
-_validate_report = phase7_validate_report
-_run_ai_validation_phase = phase8_run_ai_validation_phase
-_run_quick_validation = phase8_run_quick_validation
-_export_artifacts = phase9_export_artifacts
+
+def _run_tactical_allocation(result: EIMASResult):
+    """Thin wrapper so phase2 enhanced can inject tactical allocation hook."""
+    return phase6_run_tactical_allocation(result)
 
 # ============================================================================
 # Main Pipeline
@@ -356,45 +336,45 @@ async def run_integrated_pipeline(
     # Phase 1-2: Data & Analysis
     market_data = await _run_timed_async(
         "phase1_collect_data",
-        _collect_data,
+        phase1_collect_data,
         result,
         quick_mode,
     )
     events, regime_res = _run_timed_sync(
         "phase2_basic_analyze",
-        _analyze_basic,
+        phase2_analyze_basic,
         result,
         market_data,
     )
     _run_timed_sync(
         "phase2_enhanced_analyze",
-        _analyze_enhanced,
+        _run_phase2_enhanced,
         result,
         market_data,
         quick_mode,
     )
     _run_timed_sync(
         "phase2_sentiment_bubble",
-        _analyze_sentiment_bubble,
+        phase2_analyze_sentiment_bubble,
         result,
         market_data,
         quick_mode,
     )
     _run_timed_sync(
         "phase2_extended_adjustment",
-        _apply_extended_data_adjustment,
+        phase2_apply_extended_data_adjustment,
         result,
     )  # PCR, Sentiment, Credit 기반 리스크 조정
     _run_timed_sync(
         "phase2_institutional_frameworks",
-        _analyze_institutional_frameworks,
+        phase2_analyze_institutional_frameworks,
         result,
         market_data,
         quick_mode,
     )  # JP Morgan, Goldman Sachs 프레임워크
     _run_timed_sync(
         "phase2_adaptive_portfolio",
-        _run_adaptive_portfolio,
+        phase2_run_adaptive_portfolio,
         result,
         regime_res,
         quick_mode,
@@ -403,13 +383,13 @@ async def run_integrated_pipeline(
     # Phase 3-4: Debate & Realtime
     await _run_timed_async(
         "phase3_debate",
-        _run_debate,
+        phase3_run_debate,
         result,
         market_data,
     )
     await _run_timed_async(
         "phase4_realtime",
-        _run_realtime,
+        phase4_run_realtime,
         result,
         enable_realtime,
         realtime_duration,
@@ -420,12 +400,12 @@ async def run_integrated_pipeline(
     # Phase 4.5: Operational Report (decision governance, rebalance)
     _run_timed_sync(
         "phase45_operational_report",
-        _generate_operational_report,
+        phase45_generate_operational_report,
         result,
     )
     _run_timed_sync(
         "phase46_paper_execution",
-        _run_paper_execution,
+        phase46_run_paper_execution,
         result,
         enable=enable_paper_auto,
         account_name=paper_account,
@@ -438,7 +418,7 @@ async def run_integrated_pipeline(
     # Phase 5: Storage
     output_file = _run_timed_sync(
         "phase5_storage",
-        _save_results,
+        phase5_save_results,
         result,
         events,
         output_path,
@@ -447,20 +427,20 @@ async def run_integrated_pipeline(
     # Phase 6: Portfolio Theory Modules (Optional, 2026-02-04)
     _run_timed_sync(
         "phase6_backtest",
-        _run_backtest,
+        phase6_run_backtest,
         result,
         market_data,
         enable_backtest,
     )
     _run_timed_sync(
         "phase6_performance_attribution",
-        _run_performance_attribution,
+        phase6_run_performance_attribution,
         result,
         enable_attribution,
     )
     _run_timed_sync(
         "phase6_stress_test",
-        _run_stress_test,
+        phase6_run_stress_test,
         result,
         enable_stress_test,
     )
@@ -468,7 +448,7 @@ async def run_integrated_pipeline(
     # Phase 7: AI Report Generation
     report_content = await _run_timed_async(
         "phase7_generate_report",
-        _generate_report,
+        phase7_generate_report,
         result,
         market_data,
         should_generate_report,
@@ -479,7 +459,7 @@ async def run_integrated_pipeline(
     # Phase 8: Validation
     await _run_timed_async(
         "phase7_validate_report",
-        _validate_report,
+        phase7_validate_report,
         result,
         report_content,
         should_generate_report,
@@ -488,7 +468,7 @@ async def run_integrated_pipeline(
     )
     _run_timed_sync(
         "phase8_ai_validation",
-        _run_ai_validation_phase,
+        phase8_run_ai_validation_phase,
         result,
         full_mode,
         output_path,
@@ -498,7 +478,7 @@ async def run_integrated_pipeline(
     # Phase 8.5: Quick Mode AI Validation (KOSPI/SPX 분리)
     _run_timed_sync(
         "phase85_quick_validation",
-        _run_quick_validation,
+        phase8_run_quick_validation,
         result,
         market_data,
         output_file,
@@ -506,7 +486,7 @@ async def run_integrated_pipeline(
     )
     artifact_export = _run_timed_sync(
         "phase9_artifact_export",
-        _export_artifacts,
+        phase9_export_artifacts,
         output_file,
         output_path,
         full_mode,
@@ -564,8 +544,8 @@ async def run_integrated_pipeline(
 # CLI Entry Point
 # ============================================================================
 
-def main():
-    """CLI 진입점"""
+def main(argv: list[str] | None = None):
+    """Canonical CLI entrypoint for the integrated pipeline."""
     parser = argparse.ArgumentParser(description='EIMAS Modular Pipeline')
     parser.add_argument('--realtime', '-r', action='store_true', help='Enable realtime stream')
     parser.add_argument('--duration', '-d', type=int, default=30, help='Stream duration (seconds)')
@@ -590,7 +570,7 @@ def main():
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     is_short = args.short or args.quick
 

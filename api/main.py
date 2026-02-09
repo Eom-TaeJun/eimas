@@ -156,9 +156,8 @@ async def run_research(request: ResearchRequest):
     try:
         # 통합 파이프라인 실행
         # 주: 실제 구현에서는 query를 pipeline에 전달하는 매커니즘이 필요함.
-        # 현재 구조상 query는 내부적으로 하드코딩 되어 있거나 ("Analyze current market...")
-        # pipeline/signal/runner.py를 수정해야 함.
-        # 우선은 파이프라인을 실행하고 결과 포맷을 반환.
+        # 현재 구조상 query는 파이프라인 내부 기본 프롬프트를 사용합니다.
+        # 우선은 canonical pipeline을 실행하고 결과 포맷을 반환합니다.
         
         result = await run_integrated_pipeline(
             quick_mode=request.quick_mode,

@@ -45,6 +45,7 @@ cp .env.example .env  # Add your API keys
 
 ### Run Analysis
 ```bash
+# Canonical pipeline entrypoint (single source of truth)
 python main.py              # Default analysis
 python main.py --short      # Quick mode
 python main.py --full       # Full mode with Multi-LLM
@@ -53,6 +54,9 @@ python main.py --full --paper-auto --paper-account ra_auto  # Auto LIMIT paper e
 python main.py --paper-auto --paper-poll-only --paper-account ra_auto  # Poll pending paper orders
 python scripts/auto_paper_execution.py --run-backtest  # Auto execution + backtest loop
 ```
+
+`cli/eimas.py run` is a thin wrapper that forwards arguments to `main.py`.
+All integrated pipeline run options are defined only in `main.py`.
 
 ### Run Web Dashboard
 ```bash
@@ -85,9 +89,22 @@ eimas/
 
 ## 📚 Documentation Guide
 
+### Recommended Read Order (Start Here)
+
+Importance tiers are defined in [`command.md`](./command.md) (`P0`~`P3`).
+
+1. [`command.md`](./command.md) - `P0` source of truth for entrypoint/command policy
+2. [`README.md`](./README.md) - `P1` project overview and quick start
+3. [`ARCHITECTURE.md`](./ARCHITECTURE.md) - `P1` system architecture and boundaries
+4. [`CLAUDE.md`](./CLAUDE.md) - `P1` AI-assisted operational context
+5. [`CURRENT_STATUS.md`](./CURRENT_STATUS.md) - `P2` latest migration/refactor state
+6. [`TODO.md`](./TODO.md) - `P2` active execution checklist
+7. [`FULL_EXECUTION_PROCESS.md`](./FULL_EXECUTION_PROCESS.md) - `P2` full run flow and gates
+
 | What You Need | Where to Find It |
 |---------------|------------------|
 | **Project Overview** | This file (`README.md`) |
+| **Command Policy** | [`command.md`](./command.md) - single entrypoint and `main.py --abc` rules |
 | **System Architecture** | [`ARCHITECTURE.md`](./ARCHITECTURE.md) - Components, data flow, design patterns |
 | **Contribution Guidelines** | [`CONTRIBUTING.md`](./CONTRIBUTING.md) - Setup, code style, PR process |
 | **Version History** | [`CHANGELOG.md`](./CHANGELOG.md) - All version changes |

@@ -7,7 +7,7 @@
 
 ## Summary
 
-- Canonical full pipeline entry remains `run_all_pipeline.sh` -> `python main.py --full`.
+- Canonical full pipeline entry is `python main.py --full` (wrapper script removed).
 - Contract verification script `scripts/check_execution_contract.sh` is active and referenced by ADR/work orders/handoff docs.
 - Frontend one-time merge script was removed:
   - `scripts/merge_frontend.sh` (deleted on 2026-02-07)
@@ -17,7 +17,6 @@
 
 | Script | Reference Count* | Status | Action |
 |---|---:|---|---|
-| `run_all_pipeline.sh` | 5 | Active | Keep (canonical full run wrapper) |
 | `scripts/check_execution_contract.sh` | 17 | Active | Keep (contract gate) |
 | `run_all.sh` | 1 | Active | Keep (local dashboard bring-up) |
 | `stop_all.sh` | 1 | Active | Keep (local dashboard stop) |
