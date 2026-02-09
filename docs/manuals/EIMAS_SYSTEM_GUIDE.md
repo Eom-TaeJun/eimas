@@ -4,6 +4,13 @@
 > 작성일: 2026-01-12
 > 버전: v2.1.2 (Real-Time Dashboard Edition)
 
+> [주의] 이 문서는 과거 스냅샷(legacy guide) 성격입니다.
+> 최신 실행 정책/엔트리포인트는 아래 문서를 우선 참고하세요.
+> 1) `command.md` (P0, source of truth)
+> 2) `README.md`
+> 3) `CURRENT_STATUS.md`
+> 4) `TODO.md`
+
 ---
 
 ## INTENT: 목표와 질문
@@ -1019,4 +1026,3 @@ python lib/news_correlator.py
 **작성자**: EIMAS Documentation System
 **버전**: v2.1.2 (Real-Time Dashboard Edition)
 **Framework**: Economic Intelligence Multi-Agent System
-
