@@ -131,7 +131,7 @@ async def run_integrated_pipeline(
     enable_backtest: bool = False,
     enable_attribution: bool = False,
     enable_stress_test: bool = False,
-    quick_validation_mode: str = None,
+    quick_validation_mode: str | None = None,
     output_dir: str = "outputs",
     cron_mode: bool = False,
     enable_paper_auto: bool = False,
@@ -153,11 +153,13 @@ async def run_integrated_pipeline(
         Phase 2: Quantitative analysis (regime detection, risk scoring, etc.)
         Phase 3: AI agent debate with dual-mode consensus
         Phase 4: Real-time streaming analysis (optional)
+        Phase 4.5: Operational report + paper execution
         Phase 5: Result storage (JSON, database)
-        Phase 6: AI report generation (optional)
-        Phase 7: Report validation (whitening, fact-check)
+        Phase 6: Portfolio modules (backtest/attribution/stress, optional)
+        Phase 7: AI report generation + validation
         Phase 8: Multi-LLM cross-validation (full mode only)
         Phase 8.5: Quick mode AI validation (KOSPI/SPX 분리, --quick1/--quick2)
+        Phase 9: Artifact export
 
     Args:
         enable_realtime (bool): Enable real-time VPIN/OFI streaming.
