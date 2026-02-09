@@ -208,6 +208,15 @@
   - `python main.py --help`
   - `python cli/eimas.py run -- --help`
 
+### Script pruning Wave (2026-02-10)
+- 제거:
+  - `scripts/check_gold_data.py` (ad-hoc debug utility)
+  - `scripts/visualize_agents.py` (standalone visualizer utility)
+- 유지:
+  - `scripts/convert_md_to_html.py` (used by `scripts/generate_final_report.py`)
+- 인벤토리 갱신:
+  - `docs/manuals/RUN_SCRIPT_INVENTORY_20260207.md`
+
 ### Phase 1 runtime stabilization Wave 2 (2026-02-08)
 - `pipeline/collectors.py`
   - `collect_market_data(..., include_crypto=True)` 시그니처 확장
