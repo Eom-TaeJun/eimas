@@ -50,6 +50,8 @@ python main.py              # Default analysis
 python main.py --short      # Quick mode
 python main.py --full       # Full mode with Multi-LLM
 python main.py --realtime   # Real-time streaming
+python main.py --short --debate-full-lookback 180 --debate-ref-lookback 45  # Faster Phase3 debate windows
+python main.py --short --debate-skip-reference  # Fastest Phase3 (single-mode)
 python main.py --full --paper-auto --paper-account ra_auto  # Auto LIMIT paper execution
 python main.py --paper-auto --paper-poll-only --paper-account ra_auto  # Poll pending paper orders
 python scripts/auto_paper_execution.py --run-backtest  # Auto execution + backtest loop

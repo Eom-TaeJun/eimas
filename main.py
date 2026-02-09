@@ -180,6 +180,9 @@ async def run_integrated_pipeline(
     paper_poll_only: bool = False,
     paper_backtest: bool = False,
     paper_enforce_approval: bool = False,
+    debate_full_lookback: int = 365,
+    debate_ref_lookback: int = 90,
+    debate_skip_reference: bool = False,
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -224,6 +227,9 @@ async def run_integrated_pipeline(
         paper_poll_only (bool): Poll pending LIMIT orders only.
         paper_backtest (bool): Run allocation backtest after auto execution.
         paper_enforce_approval (bool): Block auto execution when human approval is required.
+        debate_full_lookback (int): FULL mode lookback window for phase3 debate.
+        debate_ref_lookback (int): REFERENCE mode lookback window for phase3 debate.
+        debate_skip_reference (bool): Skip REFERENCE mode and mirror FULL mode result.
     
     Returns:
         EIMASResult: Comprehensive analysis result object containing:
@@ -271,6 +277,9 @@ async def run_integrated_pipeline(
         paper_poll_only=paper_poll_only,
         paper_backtest=paper_backtest,
         paper_enforce_approval=paper_enforce_approval,
+        debate_full_lookback=debate_full_lookback,
+        debate_ref_lookback=debate_ref_lookback,
+        debate_skip_reference=debate_skip_reference,
     )
 
     # Summary
@@ -316,6 +325,9 @@ def _build_main_parser() -> argparse.ArgumentParser:
     parser.add_argument('--paper-poll-only', action='store_true', help='Poll pending paper LIMIT orders only')
     parser.add_argument('--paper-backtest', action='store_true', help='Run allocation backtest after auto paper execution')
     parser.add_argument('--paper-enforce-approval', action='store_true', help='Require human approval gate for auto paper execution')
+    parser.add_argument('--debate-full-lookback', type=int, default=365, help='Phase3 FULL mode lookback window (days)')
+    parser.add_argument('--debate-ref-lookback', type=int, default=90, help='Phase3 REFERENCE mode lookback window (days)')
+    parser.add_argument('--debate-skip-reference', action='store_true', help='Skip REFERENCE debate mode and mirror FULL mode')
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
     return parser
@@ -351,6 +363,9 @@ def _build_pipeline_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "paper_poll_only": args.paper_poll_only,
         "paper_backtest": args.paper_backtest,
         "paper_enforce_approval": args.paper_enforce_approval,
+        "debate_full_lookback": args.debate_full_lookback,
+        "debate_ref_lookback": args.debate_ref_lookback,
+        "debate_skip_reference": args.debate_skip_reference,
     }
 
 

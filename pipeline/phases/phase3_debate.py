@@ -27,11 +27,25 @@ from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import EIMASResult
 
 
-async def run_debate(result: EIMASResult, market_data: Dict[str, Any]):
+async def run_debate(
+    result: EIMASResult,
+    market_data: Dict[str, Any],
+    quick_mode: bool = False,
+    debate_full_lookback: int = 365,
+    debate_ref_lookback: int = 90,
+    debate_skip_reference: bool = False,
+):
     """[Phase 3] Execute dual-mode debate and write consensus fields."""
     print("\n[Phase 3] Running AI Debate...")
     try:
-        debate_res = await run_dual_mode_debate(market_data, extended_data=result.extended_data)
+        debate_res = await run_dual_mode_debate(
+            market_data,
+            lookback_full=debate_full_lookback,
+            lookback_ref=debate_ref_lookback,
+            quick_mode=quick_mode,
+            skip_reference=debate_skip_reference,
+            extended_data=result.extended_data,
+        )
         result.full_mode_position = debate_res.full_mode_position
         result.reference_mode_position = debate_res.reference_mode_position
         result.modes_agree = debate_res.modes_agree

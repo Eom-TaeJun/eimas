@@ -103,6 +103,7 @@
 - [x] Institutional frameworks 네트워크 fail-fast/스킵 옵션 추가 (`EIMAS_INSTITUTIONAL_FAIL_FAST_NETWORK`, `EIMAS_SKIP_INSTITUTIONAL_NETWORK_ANALYSIS`)
 - [x] Institutional frameworks 컴포넌트 타이밍 텔레메트리 추가 (`audit_metadata.phase2_institutional_components`)
 - [x] Adaptive portfolio DB I/O 배치 최적화 (`AdaptiveAgentManager.run_all` 단일 트랜잭션)
+- [x] Phase3 debate 런타임 제어 추가 (`--debate-full-lookback`, `--debate-ref-lookback`, `--debate-skip-reference`, quick-mode cap 180/45 + env override)
 
 ### C2. 신뢰성
 - [x] `sys.path.insert` 1차 축소 (`13 -> 6`, `scripts/_project_bootstrap.py`로 스크립트 경로부트스트랩 통합)

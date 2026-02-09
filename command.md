@@ -43,6 +43,10 @@ python main.py --short
 # 풀 실행
 python main.py --full
 
+# Debate 경량화 제어 (Phase 3)
+python main.py --short --debate-full-lookback 180 --debate-ref-lookback 45
+python main.py --short --debate-skip-reference
+
 # 실시간 포함
 python main.py --realtime -d 30
 python main.py --full --realtime -d 30
@@ -61,6 +65,11 @@ python main.py --paper-auto --paper-backtest --paper-account ra_auto
 python main.py --quick1
 python main.py --quick2
 ```
+
+참고:
+- `--short` 실행 시 Phase3 debate lookback은 기본 cap(`FULL=180`, `REFERENCE=45`)이 적용된다.
+- cap 환경변수: `EIMAS_DEBATE_QUICK_FULL_LOOKBACK`, `EIMAS_DEBATE_QUICK_REF_LOOKBACK`
+- 참조 모드 스킵 환경변수: `EIMAS_DEBATE_SKIP_REFERENCE`, `EIMAS_DEBATE_SKIP_REFERENCE_QUICK`
 
 ## 3) Non-Canonical (제한)
 
@@ -90,6 +99,7 @@ python main.py --quick2
   - `main.py`
   - `command.md`
   - `README.md`
+  - Phase3 debate 성능 관련 옵션은 `--debate-*` 플래그로만 조정
 - 기능 로직 변경:
   - `pipeline/phases/*` (우선)
   - 필요 시 `lib/*`

@@ -21,6 +21,7 @@ Example:
 """
 
 import asyncio
+import os
 from typing import Dict, List, Any, Tuple
 import pandas as pd
 
@@ -28,6 +29,23 @@ import pandas as pd
 from agents.orchestrator import MetaOrchestrator
 from lib.dual_mode_analyzer import DualModeAnalyzer, ModeResult, AnalysisMode
 from pipeline.schemas import DebateResult
+
+
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on", "y"}
+
+
+def _env_int(name: str, default: int, minimum: int = 1) -> int:
+    raw = os.getenv(name)
+    if raw is None or not str(raw).strip():
+        return max(default, minimum)
+    try:
+        return max(int(raw), minimum)
+    except ValueError:
+        return max(default, minimum)
 
 async def run_single_mode(mode_name: str, lookback: int, query: str,
                           market_data: Dict[str, pd.DataFrame]) -> Tuple[ModeResult, Dict[str, Any]]:
@@ -114,6 +132,8 @@ async def run_single_mode(mode_name: str, lookback: int, query: str,
 async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
                                lookback_full: int = 365,
                                lookback_ref: int = 90,
+                               quick_mode: bool = False,
+                               skip_reference: bool = False,
                                extended_data: Dict[str, Any] = None) -> DebateResult:
     """
     듀얼 모드 토론 실행
@@ -128,6 +148,30 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     print("PHASE 3: MULTI-AGENT DEBATE")
     print("=" * 50)
 
+    try:
+        lookback_full = max(int(lookback_full), 10)
+    except (TypeError, ValueError):
+        lookback_full = 365
+    try:
+        lookback_ref = max(int(lookback_ref), 10)
+    except (TypeError, ValueError):
+        lookback_ref = 90
+
+    if quick_mode:
+        quick_full_cap = _env_int("EIMAS_DEBATE_QUICK_FULL_LOOKBACK", default=180, minimum=30)
+        quick_ref_cap = _env_int("EIMAS_DEBATE_QUICK_REF_LOOKBACK", default=45, minimum=15)
+        lookback_full = min(lookback_full, quick_full_cap)
+        lookback_ref = min(lookback_ref, quick_ref_cap)
+        print(
+            f"[Phase 3] Quick mode lookback caps applied: "
+            f"FULL={lookback_full}, REFERENCE={lookback_ref}"
+        )
+
+    if _env_flag("EIMAS_DEBATE_SKIP_REFERENCE", default=False):
+        skip_reference = True
+    if quick_mode and _env_flag("EIMAS_DEBATE_SKIP_REFERENCE_QUICK", default=False):
+        skip_reference = True
+
     # Build query with extended data context
     query = "Analyze current market conditions, risks, and generate trading signals"
     if extended_data:
@@ -139,7 +183,18 @@ async def run_dual_mode_debate(market_data: Dict[str, pd.DataFrame],
     full_result, full_orch_result = await run_single_mode('FULL', lookback_full, query, market_data)
 
     # 2. Reference Mode (비교용)
-    ref_result, _ = await run_single_mode('REFERENCE', lookback_ref, query, market_data)
+    if skip_reference:
+        print("\n[REFERENCE] Skipped (configured). Mirroring FULL mode output.")
+        ref_result = ModeResult(
+            mode=AnalysisMode.REFERENCE,
+            consensus=None,
+            confidence=full_result.confidence,
+            position=full_result.position,
+            dissent_count=0,
+            has_strong_dissent=False,
+        )
+    else:
+        ref_result, _ = await run_single_mode('REFERENCE', lookback_ref, query, market_data)
 
     # 3. Compare
     print("\n[3.3] Comparing modes...")

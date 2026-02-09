@@ -84,6 +84,9 @@ async def run_pipeline_phases(
     paper_poll_only: bool,
     paper_backtest: bool,
     paper_enforce_approval: bool,
+    debate_full_lookback: int,
+    debate_ref_lookback: int,
+    debate_skip_reference: bool,
 ) -> Tuple[str | None, Dict[str, Any]]:
     """
     Execute phase 1~9 flow.
@@ -144,6 +147,10 @@ async def run_pipeline_phases(
         phase3_run_debate,
         result,
         market_data,
+        quick_mode,
+        debate_full_lookback,
+        debate_ref_lookback,
+        debate_skip_reference,
     )
     await runtime.run_async(
         "phase4_realtime",
@@ -252,4 +259,3 @@ async def run_pipeline_phases(
         result.audit_metadata["artifact_export"] = artifact_export
 
     return output_file, market_data
-
