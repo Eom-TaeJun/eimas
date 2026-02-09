@@ -212,6 +212,7 @@
 - 제거:
   - `scripts/check_gold_data.py` (ad-hoc debug utility)
   - `scripts/visualize_agents.py` (standalone visualizer utility)
+  - `scripts/setup_scheduler.sh` (instruction-only scheduler helper)
 - 유지:
   - `scripts/convert_md_to_html.py` (used by `scripts/generate_final_report.py`)
 - 인벤토리 갱신:

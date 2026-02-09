@@ -12,6 +12,8 @@
 - Legacy utility scripts removed (2026-02-10):
   - `scripts/check_gold_data.py` (ad-hoc ticker probe, no active references)
   - `scripts/visualize_agents.py` (standalone dashboard generator, no active references)
+- Scheduler helper shell removed (2026-02-10):
+  - `scripts/setup_scheduler.sh` (instruction-only script; moved to manual snippet below)
 - Frontend one-time merge script was removed:
   - `scripts/merge_frontend.sh` (deleted on 2026-02-07)
   - Reason: source tree `frontend_steps/` no longer exists and script had destructive `rm -rf frontend`.
@@ -24,7 +26,7 @@
 | `run_all.sh` | 1 | Active | Keep (local dashboard bring-up) |
 | `stop_all.sh` | 1 | Active | Keep (local dashboard stop) |
 | `scripts/delegate_general_lane.sh` | 2 | Active | Keep (work-order lane wrapper) |
-| `scripts/setup_scheduler.sh` | 0 | Manual utility | Keep (optional cron setup) |
+| `scripts/setup_scheduler.sh` | 0 | Obsolete | Removed (manual snippet documented) |
 | `scripts/merge_frontend.sh` | 1 | Obsolete | Removed |
 
 ## Python Entry Scripts (`scripts/*.py`)
@@ -48,5 +50,15 @@
 
 ## Next Cleanup Candidates
 
-1. Decide whether `scripts/setup_scheduler.sh` should move to `docs/manuals/` example-only snippet.
-2. Review low-reference (`<=1`) manual utilities for runbook promotion vs removal.
+1. Review low-reference (`<=1`) manual utilities for runbook promotion vs removal.
+2. Decide whether `scripts/validate_integration_design.py` / `scripts/validate_methodology.py` should remain in `scripts/` or move to `docs/session_artifacts/` examples.
+
+## Optional Cron Snippet (Manual)
+
+```bash
+# Weekday 17:00 collector run (example)
+PROJECT_DIR=/home/tj/projects/autoai/eimas
+LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+(crontab -l 2>/dev/null; echo "0 17 * * 1-5 cd $PROJECT_DIR && /usr/bin/python3 scripts/daily_collector.py >> $LOG_DIR/daily.log 2>&1") | crontab -
+```

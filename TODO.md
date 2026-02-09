@@ -27,6 +27,7 @@
 - [x] `main.py` 런타임 보조 로직 분리 (`pipeline/app/runtime.py`, `PhaseRuntimeTracker`)
 - [x] `main.py` phase 실행 블록 분리 (`pipeline/app/orchestrator_steps.py`)
 - [x] 미사용 스크립트 2종 제거 (`scripts/check_gold_data.py`, `scripts/visualize_agents.py`)
+- [x] instruction-only 스크립트 제거 (`scripts/setup_scheduler.sh`, cron 예시는 manual 문서로 이전)
 
 ### A2. 깨진/중복 경로 청소
 - [x] `main_integrated` 직접 참조 제거 (활성 코드 경로 기준)
