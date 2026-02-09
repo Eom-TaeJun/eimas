@@ -81,7 +81,6 @@ OUTPUT | 출력물
 
 import asyncio
 import argparse
-import json
 import os
 from datetime import datetime
 from pathlib import Path
@@ -235,28 +234,15 @@ async def run_integrated_pipeline(
     # Summary
     elapsed = perf_counter() - start_perf
     runtime.record_total(elapsed)
-    result.pipeline_elapsed_sec = round(elapsed, 3)
-    result.audit_metadata["pipeline_elapsed_sec"] = round(elapsed, 3)
-    result.audit_metadata["pipeline_phase_count"] = len(phase_timings) - 1
-    result.audit_metadata["pipeline_timing_recorded_at"] = datetime.now().isoformat()
-
-    # Persist final snapshot so runtime timing fields are reflected in final JSON.
-    if output_file:
-        try:
-            target_path = Path(output_file).expanduser()
-            target_path.parent.mkdir(exist_ok=True, parents=True)
-            with open(target_path, "w", encoding="utf-8") as f:
-                json.dump(result.to_dict(), f, indent=2, default=str)
-            print(f"  Final snapshot updated: {target_path}")
-        except Exception as exc:
-            print(f"⚠️ Final snapshot update failed: {runtime.format_error(exc)}")
+    runtime.apply_result_timing_metadata(
+        result,
+        elapsed,
+        datetime.now().isoformat(),
+    )
+    runtime.persist_final_snapshot(output_file, result.to_dict())
 
     runtime.print_timing_summary(top_n=8)
-
-    print("\n" + "=" * 70)
-    print(f"EIMAS PIPELINE COMPLETE ({elapsed:.1f}s)")
-    print(f"Output: {output_file}")
-    print("=" * 70)
+    runtime.print_pipeline_completion(elapsed, output_file)
 
     return result
 

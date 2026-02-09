@@ -197,8 +197,11 @@
 - `pipeline/app/runtime.py` 추가:
   - `resolve_output_path(...)`
   - `PhaseRuntimeTracker` (`run_sync`, `run_async`, phase timing 기록/요약)
+- `pipeline/app/orchestrator_steps.py` 추가:
+  - phase 1~9 실행 흐름을 `run_pipeline_phases(...)`로 이동
 - `main.py`:
   - phase 타이밍 내부 중첩 함수 제거 후 `pipeline.app` 유틸로 위임
+  - phase 실행 블록을 `run_pipeline_phases(...)` 호출로 단순화
   - 출력 경로 해석 로직을 `resolve_output_path(...)`로 통합
 - 동작 유지 확인:
   - `python -m compileall main.py cli/eimas.py api/main.py pipeline/app`

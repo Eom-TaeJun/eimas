@@ -4,6 +4,7 @@ Runtime support helpers for orchestrating the integrated pipeline.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Awaitable, Callable
@@ -106,6 +107,31 @@ class PhaseRuntimeTracker:
             "status": "ok",
         }
 
+    def apply_result_timing_metadata(
+        self,
+        result: Any,
+        elapsed: float,
+        recorded_at: str,
+    ) -> None:
+        elapsed_rounded = round(elapsed, 3)
+        result.pipeline_elapsed_sec = elapsed_rounded
+        result.audit_metadata["pipeline_elapsed_sec"] = elapsed_rounded
+        result.audit_metadata["pipeline_phase_count"] = len(self.phase_timings) - 1
+        result.audit_metadata["pipeline_timing_recorded_at"] = recorded_at
+
+    def persist_final_snapshot(self, output_file: str | None, payload: Any) -> None:
+        """Persist final payload to the same output JSON file if available."""
+        if not output_file:
+            return
+        try:
+            target_path = Path(output_file).expanduser()
+            target_path.parent.mkdir(exist_ok=True, parents=True)
+            with open(target_path, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2, default=str)
+            print(f"  Final snapshot updated: {target_path}")
+        except Exception as exc:
+            print(f"⚠️ Final snapshot update failed: {self.format_error(exc)}")
+
     def print_timing_summary(self, top_n: int = 8) -> None:
         ranked = sorted(
             (
@@ -123,3 +149,9 @@ class PhaseRuntimeTracker:
                 f" ({meta.get('status', 'n/a')})"
             )
 
+    @staticmethod
+    def print_pipeline_completion(elapsed: float, output_file: str | None) -> None:
+        print("\n" + "=" * 70)
+        print(f"EIMAS PIPELINE COMPLETE ({elapsed:.1f}s)")
+        print(f"Output: {output_file}")
+        print("=" * 70)
