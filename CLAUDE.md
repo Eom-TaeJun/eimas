@@ -200,14 +200,15 @@ Phase 8.5: Quick Mode 검증 (--quick1/2)
 
 | Phase | 함수 | 파일 | 설명 |
 |-------|------|------|------|
-| 1 | `_collect_data()` | main.py:151 | 데이터 수집 |
-| 2 | `_analyze_basic()` | main.py:183 | 기본 분석 |
-| 2+ | `_analyze_enhanced()` | main.py:203 | 고급 분석 (HFT, GARCH, DTW) |
-| 2+ | `_apply_extended_data_adjustment()` | main.py:352 | 리스크 조정 |
-| 3 | `_run_debate()` | main.py:502 | AI 에이전트 토론 |
-| 5 | `_save_results()` | main.py:678 | 결과 저장 |
-| 7 | `_generate_report()` | main.py:687 | AI 리포트 생성 |
-| 8.5 | `_run_quick_validation()` | main.py:750 | Quick 모드 검증 |
+| Orchestrator | `run_integrated_pipeline()` | `main.py` | 통합 Phase 실행 제어 |
+| 1 | `collect_data` | `pipeline/phases/phase1_collect.py` | 데이터 수집 |
+| 2 | `analyze_basic` | `pipeline/phases/phase2_basic.py` | 기본 분석 |
+| 2+ | `analyze_enhanced` | `pipeline/phases/phase2_enhanced.py` | 고급 분석 |
+| 2+ | `apply_extended_data_adjustment` | `pipeline/phases/phase2_adjustment.py` | 리스크 보정 |
+| 3 | `run_debate` | `pipeline/phases/phase3_debate.py` | AI 에이전트 토론 |
+| 5 | `save_results` | `pipeline/phases/phase5_storage.py` | 결과 저장 |
+| 7 | `generate_report` | `pipeline/phases/phase7_report.py` | AI 리포트 생성 |
+| 8.5 | `run_quick_validation` | `pipeline/phases/phase8_validation.py` | Quick 모드 검증 |
 
 ---
 
@@ -371,7 +372,7 @@ class BubbleRiskMetrics:
 **Risk Score Edge Case 수정**
 - **문제**: Risk Score = 0.0 edge case 발생
 - **원인**: Base risk + 음수 adjustment = 0으로 clamping
-- **수정**: `main.py` line 431
+- **수정**: `main.py` risk score floor를 1.0으로 상향
   ```python
   # BEFORE: result.risk_score = max(0, ...)
   # AFTER:  result.risk_score = max(1.0, ...)
@@ -425,30 +426,33 @@ class BubbleRiskMetrics:
 
 ### 새 모듈 추가 체크리스트
 
-1. `lib/` 에 모듈 생성
-2. `if __name__ == "__main__"` 테스트 코드 포함
-3. `main.py`에 import 추가 (line 45-86)
-4. 적절한 Phase에 호출 코드 추가
-5. `EIMASResult`에 필요한 필드 추가 (line 100-146)
-6. Summary 출력에 결과 추가 (line 958-1014)
-7. 이 문서(CLAUDE.md) 업데이트
+1. 작업 전 `command.md` 확인 (`P0`).
+2. 기능 로직은 `pipeline/phases/*` 또는 `lib/*`에 구현.
+3. 실행 플래그/진입점 변경은 `main.py`에서만 정의.
+4. 필요한 경우 `EIMASResult` 필드를 `pipeline/schemas.py`에 추가.
+5. 문서 동기화: `command.md`, `README.md`, `CURRENT_STATUS.md`, `TODO.md`.
 
 ### 변경 후 검증 절차 (REQUIRED)
 
 ```bash
-# 1. FULL 파이프라인 테스트 (REQUIRED - ~4분 소요)
-python main.py
+# 1. 최소 검증 (항상)
+python -m compileall main.py cli/eimas.py api/main.py pipeline/app
+python main.py --help
+python cli/eimas.py run -- --help
 
-# 2. 결과 확인
+# 2. 결과 확인 (필요 시)
 ls -la outputs/eimas_*.json | tail -1
 
 # 3. (선택) API 서버 테스트
 uvicorn api.main:app --port 8000 &
 curl http://localhost:8000/health
 pkill -f "uvicorn api.main"
+
+# 4. Milestone에서만 FULL 회귀
+python main.py --full
 ```
 
-**주의**: `--quick` 모드는 Phase 2.3-2.10을 스킵하므로 의존성 오류를 놓칠 수 있습니다.
+**주의**: `--short/--quick` 모드는 일부 고비용 Phase 2 분석 및 리포트 생성을 생략합니다.
 
 ### Quick Tips
 
@@ -493,8 +497,8 @@ GET  /latest           # 최신 JSON 반환 (대시보드용)
 python -m cli.eimas --help
 
 # 분석 실행
-python -m cli.eimas analyze --quick
-python -m cli.eimas analyze --report
+python -m cli.eimas run -- --quick
+python -m cli.eimas run -- --full
 ```
 
 ### API 키 (환경변수)
@@ -558,5 +562,5 @@ export GOOGLE_API_KEY="..."                # Gemini (선택)
 
 ---
 
-*마지막 업데이트: 2026-02-06 KST*
+*마지막 업데이트: 2026-02-10 KST*
 *문의: EIMAS 프로젝트 담당자*

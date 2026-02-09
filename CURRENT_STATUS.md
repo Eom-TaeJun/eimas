@@ -193,6 +193,18 @@
     - `readonly database` 에러 미발생 (`run_20260208_wave2.log`)
     - debate fail-fast 적용 전/후: `phase3_debate 4.013s -> 0.000s` (`eimas_20260208_021512.json` vs `eimas_20260208_021730.json`)
 
+### Main orchestrator slim-down Wave (2026-02-10)
+- `pipeline/app/runtime.py` 추가:
+  - `resolve_output_path(...)`
+  - `PhaseRuntimeTracker` (`run_sync`, `run_async`, phase timing 기록/요약)
+- `main.py`:
+  - phase 타이밍 내부 중첩 함수 제거 후 `pipeline.app` 유틸로 위임
+  - 출력 경로 해석 로직을 `resolve_output_path(...)`로 통합
+- 동작 유지 확인:
+  - `python -m compileall main.py cli/eimas.py api/main.py pipeline/app`
+  - `python main.py --help`
+  - `python cli/eimas.py run -- --help`
+
 ### Phase 1 runtime stabilization Wave 2 (2026-02-08)
 - `pipeline/collectors.py`
   - `collect_market_data(..., include_crypto=True)` 시그니처 확장

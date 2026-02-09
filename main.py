@@ -86,7 +86,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any, Dict
 
 # Runtime cache bootstrap (must run before pipeline imports that may touch yfinance).
 def _configure_yfinance_cache_dir() -> None:
@@ -153,6 +153,7 @@ from pipeline.phases.phase8_validation import (
 from pipeline.phases.phase9_artifacts import (
     export_artifacts as phase9_export_artifacts,
 )
+from pipeline.app import PhaseRuntimeTracker, resolve_output_path
 from pipeline.risk_utils import derive_risk_level
 # ============================================================================
 # Phase Helper Functions
@@ -257,122 +258,54 @@ async def run_integrated_pipeline(
     start_time = datetime.now()
     start_perf = perf_counter()
     result = EIMASResult(timestamp=start_time.isoformat())
-    raw_output_path = Path(output_dir).expanduser()
-    if raw_output_path.is_absolute():
-        output_path = raw_output_path
-    else:
-        # Keep legacy behavior: relative output dirs are project-root relative.
-        output_path = Path(__file__).resolve().parent / raw_output_path
+    output_path = resolve_output_path(output_dir, __file__)
     should_generate_report = generate_report and not cron_mode
     phase_timings: Dict[str, Dict[str, Any]] = {}
     result.pipeline_phase_timings = phase_timings
+    runtime = PhaseRuntimeTracker(phase_timings)
 
-    def _format_error(exc: Exception) -> str:
-        return f"{type(exc).__name__}: {exc}"[:300]
-
-    def _record_phase_timing(
-        phase_name: str,
-        started_at: float,
-        status: str = "ok",
-        error: str = "",
-    ) -> None:
-        elapsed = perf_counter() - started_at
-        entry: Dict[str, Any] = {
-            "duration_sec": round(elapsed, 3),
-            "status": status,
-        }
-        if error:
-            entry["error"] = error
-        phase_timings[phase_name] = entry
-        print(f"  [Timing] {phase_name}: {elapsed:.3f}s ({status})")
-
-    def _run_timed_sync(
-        phase_name: str,
-        fn: Callable[..., Any],
-        *args,
-        **kwargs,
-    ) -> Any:
-        started = perf_counter()
-        try:
-            value = fn(*args, **kwargs)
-        except Exception as exc:
-            _record_phase_timing(
-                phase_name,
-                started,
-                status="error",
-                error=_format_error(exc),
-            )
-            raise
-        _record_phase_timing(phase_name, started, status="ok")
-        return value
-
-    async def _run_timed_async(
-        phase_name: str,
-        fn: Callable[..., Awaitable[Any]],
-        *args,
-        **kwargs,
-    ) -> Any:
-        started = perf_counter()
-        try:
-            value = await fn(*args, **kwargs)
-        except Exception as exc:
-            _record_phase_timing(
-                phase_name,
-                started,
-                status="error",
-                error=_format_error(exc),
-            )
-            raise
-        _record_phase_timing(phase_name, started, status="ok")
-        return value
-
-    print("=" * 70)
-    print("  EIMAS - Integrated Analysis Pipeline")
-    print("=" * 70)
-    print(f"  Output Dir: {output_path}")
-    if cron_mode:
-        print("  Cron Mode: Enabled (report generation skipped)")
+    runtime.print_pipeline_banner(output_path, cron_mode=cron_mode)
 
     # Phase 1-2: Data & Analysis
-    market_data = await _run_timed_async(
+    market_data = await runtime.run_async(
         "phase1_collect_data",
         phase1_collect_data,
         result,
         quick_mode,
     )
-    events, regime_res = _run_timed_sync(
+    events, regime_res = runtime.run_sync(
         "phase2_basic_analyze",
         phase2_analyze_basic,
         result,
         market_data,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase2_enhanced_analyze",
         _run_phase2_enhanced,
         result,
         market_data,
         quick_mode,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase2_sentiment_bubble",
         phase2_analyze_sentiment_bubble,
         result,
         market_data,
         quick_mode,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase2_extended_adjustment",
         phase2_apply_extended_data_adjustment,
         result,
     )  # PCR, Sentiment, Credit 기반 리스크 조정
-    _run_timed_sync(
+    runtime.run_sync(
         "phase2_institutional_frameworks",
         phase2_analyze_institutional_frameworks,
         result,
         market_data,
         quick_mode,
     )  # JP Morgan, Goldman Sachs 프레임워크
-    _run_timed_sync(
+    runtime.run_sync(
         "phase2_adaptive_portfolio",
         phase2_run_adaptive_portfolio,
         result,
@@ -381,13 +314,13 @@ async def run_integrated_pipeline(
     )
 
     # Phase 3-4: Debate & Realtime
-    await _run_timed_async(
+    await runtime.run_async(
         "phase3_debate",
         phase3_run_debate,
         result,
         market_data,
     )
-    await _run_timed_async(
+    await runtime.run_async(
         "phase4_realtime",
         phase4_run_realtime,
         result,
@@ -398,12 +331,12 @@ async def run_integrated_pipeline(
     result.risk_level = derive_risk_level(result.risk_score)
 
     # Phase 4.5: Operational Report (decision governance, rebalance)
-    _run_timed_sync(
+    runtime.run_sync(
         "phase45_operational_report",
         phase45_generate_operational_report,
         result,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase46_paper_execution",
         phase46_run_paper_execution,
         result,
@@ -416,7 +349,7 @@ async def run_integrated_pipeline(
     )
 
     # Phase 5: Storage
-    output_file = _run_timed_sync(
+    output_file = runtime.run_sync(
         "phase5_storage",
         phase5_save_results,
         result,
@@ -425,20 +358,20 @@ async def run_integrated_pipeline(
     )
 
     # Phase 6: Portfolio Theory Modules (Optional, 2026-02-04)
-    _run_timed_sync(
+    runtime.run_sync(
         "phase6_backtest",
         phase6_run_backtest,
         result,
         market_data,
         enable_backtest,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase6_performance_attribution",
         phase6_run_performance_attribution,
         result,
         enable_attribution,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase6_stress_test",
         phase6_run_stress_test,
         result,
@@ -446,7 +379,7 @@ async def run_integrated_pipeline(
     )
 
     # Phase 7: AI Report Generation
-    report_content = await _run_timed_async(
+    report_content = await runtime.run_async(
         "phase7_generate_report",
         phase7_generate_report,
         result,
@@ -457,7 +390,7 @@ async def run_integrated_pipeline(
     )
 
     # Phase 8: Validation
-    await _run_timed_async(
+    await runtime.run_async(
         "phase7_validate_report",
         phase7_validate_report,
         result,
@@ -466,7 +399,7 @@ async def run_integrated_pipeline(
         output_path,
         output_file=output_file,
     )
-    _run_timed_sync(
+    runtime.run_sync(
         "phase8_ai_validation",
         phase8_run_ai_validation_phase,
         result,
@@ -476,7 +409,7 @@ async def run_integrated_pipeline(
     )
 
     # Phase 8.5: Quick Mode AI Validation (KOSPI/SPX 분리)
-    _run_timed_sync(
+    runtime.run_sync(
         "phase85_quick_validation",
         phase8_run_quick_validation,
         result,
@@ -484,7 +417,7 @@ async def run_integrated_pipeline(
         output_file,
         quick_validation_mode,
     )
-    artifact_export = _run_timed_sync(
+    artifact_export = runtime.run_sync(
         "phase9_artifact_export",
         phase9_export_artifacts,
         output_file,
@@ -496,10 +429,7 @@ async def run_integrated_pipeline(
 
     # Summary
     elapsed = perf_counter() - start_perf
-    phase_timings["pipeline_total"] = {
-        "duration_sec": round(elapsed, 3),
-        "status": "ok",
-    }
+    runtime.record_total(elapsed)
     result.pipeline_elapsed_sec = round(elapsed, 3)
     result.audit_metadata["pipeline_elapsed_sec"] = round(elapsed, 3)
     result.audit_metadata["pipeline_phase_count"] = len(phase_timings) - 1
@@ -514,23 +444,9 @@ async def run_integrated_pipeline(
                 json.dump(result.to_dict(), f, indent=2, default=str)
             print(f"  Final snapshot updated: {target_path}")
         except Exception as exc:
-            print(f"⚠️ Final snapshot update failed: {_format_error(exc)}")
+            print(f"⚠️ Final snapshot update failed: {runtime.format_error(exc)}")
 
-    ranked = sorted(
-        (
-            (phase_name, meta)
-            for phase_name, meta in phase_timings.items()
-            if phase_name != "pipeline_total"
-        ),
-        key=lambda item: item[1].get("duration_sec", 0.0),
-        reverse=True,
-    )
-    print("\n[Pipeline Timing Summary] Top 8")
-    for phase_name, meta in ranked[:8]:
-        print(
-            f"  - {phase_name}: {meta.get('duration_sec', 0.0):.3f}s"
-            f" ({meta.get('status', 'n/a')})"
-        )
+    runtime.print_timing_summary(top_n=8)
 
     print("\n" + "=" * 70)
     print(f"EIMAS PIPELINE COMPLETE ({elapsed:.1f}s)")

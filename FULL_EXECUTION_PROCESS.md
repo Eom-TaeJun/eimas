@@ -14,6 +14,7 @@
 - `api/server.py` removed (API entrypoint unified to `api.main`)
 - `execution_intelligence` scaffold created
 - `main.py` Phase 4.5 now uses adapter layer (`lib/adapters/execution_backend.py`)
+- `main.py` runtime helper logic partially extracted to `pipeline/app/runtime.py`
 - `execution_intelligence` now includes local `operational` package and runs in `EXIS_BACKEND=local` mode
 - `allocation_engine`/`rebalancing_policy` moved to `execution_intelligence/models` (1차)
 - `pipeline/analyzers.py` now resolves allocation/rebalancing classes via `lib/adapters/execution_models.py`

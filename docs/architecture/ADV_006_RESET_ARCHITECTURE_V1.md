@@ -24,7 +24,7 @@
 - 원칙: 실행 인자 파싱/입력 변환만 담당, 비즈니스 로직 금지.
 
 ### 3.2 Application
-- 후보: `pipeline/phases/*`, 향후 `pipeline/app/*`
+- 후보: `pipeline/phases/*`, `pipeline/app/*`
 - 원칙: phase 호출 순서, mode 분기(full/quick/cron), 오류 제어만 담당.
 
 ### 3.3 Domain

@@ -1,6 +1,6 @@
 # EIMAS Command Policy (Single Entrypoint)
 
-Last Updated: 2026-02-09
+Last Updated: 2026-02-10
 
 ## 0) 문서 중요도 및 읽기 순서 (Priority)
 
@@ -93,6 +93,8 @@ python main.py --quick2
 - 기능 로직 변경:
   - `pipeline/phases/*` (우선)
   - 필요 시 `lib/*`
+- 오케스트레이션/런타임 유틸 변경:
+  - `pipeline/app/*`
 - API 노출 변경:
   - `api/main.py`
 - CLI 변경:

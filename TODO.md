@@ -24,6 +24,7 @@
 - [x] `api/main.py`, `cli/eimas.py`의 legacy 주석/의존 제거
 - [x] 단일 run JSON artifact 경로 정책 도입 (`ADV_007`, phase7/8 동일 파일 갱신)
 - [x] `api/main.py`를 canonical API 엔트리로 고정, `api/server.py` 제거
+- [x] `main.py` 런타임 보조 로직 분리 (`pipeline/app/runtime.py`, `PhaseRuntimeTracker`)
 
 ### A2. 깨진/중복 경로 청소
 - [x] `main_integrated` 직접 참조 제거 (활성 코드 경로 기준)
