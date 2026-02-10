@@ -53,6 +53,7 @@ def _save_summary(summary: Dict[str, Any], output_dir: Path) -> Path:
 def main():
     parser = argparse.ArgumentParser(description="Run EIMAS auto paper execution")
     parser.add_argument("--input", help="EIMAS json path (default: latest outputs/eimas_*.json)")
+    parser.add_argument("--broker", default="ibkr", help="Execution broker (default: ibkr)")
     parser.add_argument("--account", default="ra_auto", help="Paper account name")
     parser.add_argument("--capital", type=float, default=100000.0, help="Initial paper capital")
     parser.add_argument("--poll-only", action="store_true", help="Only poll pending orders")
@@ -67,11 +68,24 @@ def main():
     parser.add_argument("--max-orders", type=int, default=12, help="Maximum orders per run")
     parser.add_argument("--buy-buffer-bps", type=float, default=40.0, help="BUY limit buffer in bps")
     parser.add_argument("--sell-buffer-bps", type=float, default=40.0, help="SELL limit buffer in bps")
+    parser.add_argument(
+        "--max-order-notional-pct",
+        type=float,
+        default=0.20,
+        help="Global max notional cap per order as portfolio ratio (default: 0.20)",
+    )
+    parser.add_argument(
+        "--disable-asset-class",
+        action="append",
+        default=[],
+        help="Disable order placement for an asset class (repeatable)",
+    )
     parser.add_argument("--output-dir", default=str(PROJECT_ROOT / "outputs" / "reports"), help="Summary output directory")
     args = parser.parse_args()
 
     if args.poll_only:
         summary = poll_pending_paper_orders(
+            broker=args.broker,
             account_name=args.account,
             initial_capital=args.capital,
         )
@@ -86,6 +100,7 @@ def main():
     result_data = _load_json(input_path)
 
     cfg = AutoPaperExecutionConfig(
+        broker=args.broker,
         account_name=args.account,
         initial_capital=args.capital,
         buy_limit_buffer_bps=args.buy_buffer_bps,
@@ -95,6 +110,8 @@ def main():
         allow_synthetic_backtest_fallback=not args.backtest_require_market_data,
         dry_run=args.dry_run,
         enforce_human_approval=args.enforce_approval,
+        max_order_notional_pct=args.max_order_notional_pct,
+        disabled_asset_classes=tuple(args.disable_asset_class),
     )
     summary = run_auto_paper_execution(result_data, config=cfg)
     out_path = _save_summary(summary, Path(args.output_dir))

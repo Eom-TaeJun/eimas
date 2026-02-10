@@ -68,14 +68,23 @@ def _is_network_available(hosts: list[str]) -> bool:
     return False
 
 
-def analyze_sentiment_bubble(result: EIMASResult, market_data: Dict[str, Any], quick_mode: bool):
+def analyze_sentiment_bubble(
+    result: EIMASResult,
+    market_data: Dict[str, Any],
+    quick_mode: bool,
+    *,
+    skip_bubble: bool = False,
+    skip_sentiment: bool = False,
+):
     """[Phase 2.3] Run bubble risk (full) and sentiment (always)."""
     if not quick_mode:
-        skip_bubble = _env_flag("EIMAS_SKIP_BUBBLE_ANALYSIS", default=False)
+        skip_bubble_env = _env_flag("EIMAS_SKIP_BUBBLE_ANALYSIS", default=False)
         bubble_fail_fast = _env_flag("EIMAS_BUBBLE_FAIL_FAST_NETWORK", default=False)
         bubble_reason = ""
 
         if skip_bubble:
+            bubble_reason = "pipeline_profile_skip_bubble"
+        elif skip_bubble_env:
             bubble_reason = "EIMAS_SKIP_BUBBLE_ANALYSIS"
         elif bubble_fail_fast:
             bubble_hosts = _resolve_hosts(
@@ -102,9 +111,17 @@ def analyze_sentiment_bubble(result: EIMASResult, market_data: Dict[str, Any], q
             except Exception as e:
                 print(f"⚠️ Bubble Risk Error: {e}")
 
-    skip_sentiment = _env_flag("EIMAS_SKIP_SENTIMENT_ANALYSIS", default=False)
+    skip_sentiment_env = _env_flag("EIMAS_SKIP_SENTIMENT_ANALYSIS", default=False)
     sentiment_fail_fast = _env_flag("EIMAS_SENTIMENT_FAIL_FAST_NETWORK", default=False)
     if skip_sentiment:
+        result.sentiment_analysis = {
+            "skipped": True,
+            "reason": "pipeline_profile_skip_sentiment",
+        }
+        print("      i Sentiment analysis skipped by pipeline profile")
+        return
+
+    if skip_sentiment_env:
         result.sentiment_analysis = {
             "skipped": True,
             "reason": "EIMAS_SKIP_SENTIMENT_ANALYSIS",

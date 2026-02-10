@@ -156,7 +156,13 @@ _configure_network_failfast_logging()
 # ============================================================================
 from pipeline.schemas import EIMASResult
 
-from pipeline.app import PhaseRuntimeTracker, resolve_output_path, run_pipeline_phases
+from pipeline.app import (
+    PhaseRuntimeTracker,
+    pipeline_profile_choices,
+    resolve_output_path,
+    resolve_pipeline_profile,
+    run_pipeline_phases,
+)
 
 # ============================================================================
 # Main Pipeline
@@ -183,6 +189,7 @@ async def run_integrated_pipeline(
     debate_full_lookback: int = 365,
     debate_ref_lookback: int = 90,
     debate_skip_reference: bool = False,
+    pipeline_profile_name: str = "legacy",
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -255,8 +262,12 @@ async def run_integrated_pipeline(
     phase_timings: Dict[str, Dict[str, Any]] = {}
     result.pipeline_phase_timings = phase_timings
     runtime = PhaseRuntimeTracker(phase_timings)
+    pipeline_profile = resolve_pipeline_profile(pipeline_profile_name)
+    result.audit_metadata["pipeline_profile"] = pipeline_profile.name
+    result.audit_metadata["pipeline_profile_policy"] = pipeline_profile.to_dict()
 
     runtime.print_pipeline_banner(output_path, cron_mode=cron_mode)
+    print(f"  Profile: {pipeline_profile.name}")
 
     output_file, _ = await run_pipeline_phases(
         runtime=runtime,
@@ -280,6 +291,7 @@ async def run_integrated_pipeline(
         debate_full_lookback=debate_full_lookback,
         debate_ref_lookback=debate_ref_lookback,
         debate_skip_reference=debate_skip_reference,
+        pipeline_profile=pipeline_profile,
     )
 
     # Summary
@@ -328,6 +340,12 @@ def _build_main_parser() -> argparse.ArgumentParser:
     parser.add_argument('--debate-full-lookback', type=int, default=365, help='Phase3 FULL mode lookback window (days)')
     parser.add_argument('--debate-ref-lookback', type=int, default=90, help='Phase3 REFERENCE mode lookback window (days)')
     parser.add_argument('--debate-skip-reference', action='store_true', help='Skip REFERENCE debate mode and mirror FULL mode')
+    parser.add_argument(
+        '--profile',
+        default='legacy',
+        choices=pipeline_profile_choices(),
+        help='Pipeline profile (legacy|us-trader-v1)',
+    )
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
     return parser
@@ -366,6 +384,7 @@ def _build_pipeline_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "debate_full_lookback": args.debate_full_lookback,
         "debate_ref_lookback": args.debate_ref_lookback,
         "debate_skip_reference": args.debate_skip_reference,
+        "pipeline_profile_name": args.profile,
     }
 
 

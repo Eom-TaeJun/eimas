@@ -4,6 +4,7 @@
 - 기준 실행 경로를 `python main.py --full`로 고정
 - 과도하게 결합된 기능을 도메인별로 분리
 - `eimas`는 "full orchestration core"로 축소
+- 실거래 지향 베이스라인(`us-trader-v1`)을 별도 profile로 운영
 
 ## Refactor Rules
 - 단일 진입점: `main.py` (`run_integrated_pipeline`)
@@ -28,6 +29,22 @@
 - [x] `main.py` phase 실행 블록 분리 (`pipeline/app/orchestrator_steps.py`)
 - [x] 미사용 스크립트 2종 제거 (`scripts/check_gold_data.py`, `scripts/visualize_agents.py`)
 - [x] instruction-only 스크립트 제거 (`scripts/setup_scheduler.sh`, cron 예시는 manual 문서로 이전)
+
+---
+
+## Track F - US Trader Baseline (14일 컷오버)
+
+기준 문서: `docs/US_TRADER_BASELINE_20260210.md`
+
+- [x] `--profile us-trader-v1` 추가 (phase-level 정책 적용)
+- [x] profile 기반 phase skip audit trail 추가 (`audit_metadata.profile_skips`)
+- [x] phase2 sentiment/bubble 분리 스위치 추가 (`skip_bubble`)
+- [x] 브로커 우선순위 확정 (`IBKR` 우선)
+- [x] IBKR 기준 실행 라우터 + idempotency 키 도입 (`lib/broker_execution.py`)
+- [x] 실행 DB에 order_state/idempotency/explainability 컬럼 추가 (`lib/trading_db.py`)
+- [x] 멀티자산 주문정책(v1.1) 적용 (자산군별 notional cap/수량 정밀도/비거래 자산 차단)
+- [ ] 운영 리스크 파라미터(회전율/집중도/리스크 임계값) 실측 튜닝
+- [ ] 연속 실행 운영 시나리오(cron/daemon) + 장애 복구 검증
 
 ### A2. 깨진/중복 경로 청소
 - [x] `main_integrated` 직접 참조 제거 (활성 코드 경로 기준)

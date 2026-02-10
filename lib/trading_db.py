@@ -139,6 +139,10 @@ class Execution:
     commission: float = 0.0
     slippage: float = 0.0
     external_order_id: Optional[str] = None
+    broker: str = "paper"
+    idempotency_key: Optional[str] = None
+    order_state: str = "created"
+    explainability: Dict[str, Any] = field(default_factory=dict)
     status: str = "filled"  # pending/filled/rejected/cancelled
     timestamp: datetime = field(default_factory=datetime.now)
     id: Optional[int] = None
@@ -256,6 +260,9 @@ class TradingDB:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 portfolio_id INTEGER,
                 external_order_id TEXT,
+                broker TEXT DEFAULT 'paper',
+                idempotency_key TEXT,
+                order_state TEXT DEFAULT 'created',
                 execution_time DATETIME NOT NULL,
                 session_type VARCHAR(20),
                 ticker VARCHAR(10) NOT NULL,
@@ -265,6 +272,7 @@ class TradingDB:
                 slippage FLOAT,
                 shares FLOAT,
                 commission FLOAT,
+                explainability JSON,
                 status VARCHAR(20) DEFAULT 'filled',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (portfolio_id) REFERENCES portfolio_candidates(id)
@@ -483,11 +491,14 @@ class TradingDB:
         # v2.1 마이그레이션: backtest_runs 새 컬럼 추가
         self._migrate_backtest_runs_v21(cursor)
         self._migrate_executions_v22(cursor)
+        self._migrate_executions_v23(cursor)
 
         # 인덱스 생성
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signals_source ON signals(signal_source)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_portfolio_profile ON portfolio_candidates(profile_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_executions_ext_order ON executions(external_order_id)")
+        cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_executions_idempotency ON executions(idempotency_key)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_performance_date ON performance_tracking(date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_signal_perf_date ON signal_performance(evaluation_date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_session_date_ticker ON session_analysis(date, ticker)")
@@ -530,6 +541,21 @@ class TradingDB:
         existing_cols = {row[1] for row in cursor.fetchall()}
         if "external_order_id" not in existing_cols:
             cursor.execute("ALTER TABLE executions ADD COLUMN external_order_id TEXT")
+
+    def _migrate_executions_v23(self, cursor):
+        """v2.3 마이그레이션: executions에 broker/idempotency/state/explainability 컬럼 추가"""
+        cursor.execute("PRAGMA table_info(executions)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        migrations = {
+            "broker": "ALTER TABLE executions ADD COLUMN broker TEXT DEFAULT 'paper'",
+            "idempotency_key": "ALTER TABLE executions ADD COLUMN idempotency_key TEXT",
+            "order_state": "ALTER TABLE executions ADD COLUMN order_state TEXT DEFAULT 'created'",
+            "explainability": "ALTER TABLE executions ADD COLUMN explainability JSON",
+        }
+        for col, sql in migrations.items():
+            if col not in existing_cols:
+                cursor.execute(sql)
 
     # ========================================================================
     # Signal Methods
@@ -687,30 +713,48 @@ class TradingDB:
         conn = self._get_conn()
         cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT INTO executions
-            (portfolio_id, external_order_id, execution_time, session_type, ticker, action,
-             target_price, executed_price, slippage, shares, commission, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            execution.portfolio_id,
-            execution.external_order_id,
-            execution.timestamp.isoformat(),
-            execution.session.value,
-            execution.ticker,
-            execution.action.value,
-            execution.target_price,
-            execution.executed_price,
-            execution.slippage,
-            execution.shares,
-            execution.commission,
-            execution.status,
-        ))
-
-        exec_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        return exec_id
+        try:
+            cursor.execute("""
+                INSERT INTO executions
+                (portfolio_id, external_order_id, broker, idempotency_key, order_state,
+                 execution_time, session_type, ticker, action, target_price, executed_price,
+                 slippage, shares, commission, explainability, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                execution.portfolio_id,
+                execution.external_order_id,
+                execution.broker,
+                execution.idempotency_key,
+                execution.order_state,
+                execution.timestamp.isoformat(),
+                execution.session.value,
+                execution.ticker,
+                execution.action.value,
+                execution.target_price,
+                execution.executed_price,
+                execution.slippage,
+                execution.shares,
+                execution.commission,
+                json.dumps(execution.explainability),
+                execution.status,
+            ))
+            exec_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return exec_id
+        except sqlite3.IntegrityError as exc:
+            # Idempotency unique key race: return existing execution id.
+            if execution.idempotency_key and "idempotency_key" in str(exc).lower():
+                cursor.execute(
+                    "SELECT id FROM executions WHERE idempotency_key = ? LIMIT 1",
+                    (execution.idempotency_key,),
+                )
+                row = cursor.fetchone()
+                conn.close()
+                if row and row["id"]:
+                    return int(row["id"])
+            conn.close()
+            raise
 
     def update_execution_status(
         self,
@@ -752,6 +796,7 @@ class TradingDB:
         self,
         external_order_id: str,
         status: str,
+        order_state: Optional[str] = None,
         executed_price: Optional[float] = None,
         slippage: Optional[float] = None,
         commission: Optional[float] = None,
@@ -765,6 +810,9 @@ class TradingDB:
 
         updates = ["status = ?"]
         params: List[Any] = [status]
+        if order_state is not None:
+            updates.append("order_state = ?")
+            params.append(order_state)
         if executed_price is not None:
             updates.append("executed_price = ?")
             params.append(executed_price)
@@ -784,6 +832,25 @@ class TradingDB:
         )
         conn.commit()
         conn.close()
+
+    def find_execution_by_idempotency_key(self, idempotency_key: str) -> Optional[Dict[str, Any]]:
+        """Idempotency key로 기존 실행 레코드 조회."""
+        if not idempotency_key:
+            return None
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT * FROM executions
+            WHERE idempotency_key = ?
+            ORDER BY execution_time DESC
+            LIMIT 1
+            """,
+            (idempotency_key,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
 
     def get_execution_history(
         self,

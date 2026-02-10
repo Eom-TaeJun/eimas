@@ -8,6 +8,8 @@ Purpose:
 
 from __future__ import annotations
 
+import os
+
 from lib.auto_paper_execution import (
     AutoPaperExecutionConfig,
     poll_pending_paper_orders,
@@ -29,10 +31,22 @@ def run_paper_execution(
     if not enable and not poll_only:
         return
 
+    broker = os.getenv("EIMAS_EXECUTION_BROKER", "ibkr").strip().lower() or "ibkr"
+    disabled_asset_classes = tuple(
+        value.strip().lower()
+        for value in os.getenv("EIMAS_EXECUTION_DISABLED_ASSET_CLASSES", "").split(",")
+        if value.strip()
+    )
+    try:
+        max_order_notional_pct = float(os.getenv("EIMAS_EXECUTION_MAX_ORDER_NOTIONAL_PCT", "0.20"))
+    except Exception:
+        max_order_notional_pct = 0.20
+
     print("\n[Phase 4.6] Auto Paper Execution...")
     try:
         if poll_only:
             poll_result = poll_pending_paper_orders(
+                broker=broker,
                 account_name=account_name,
                 initial_capital=initial_capital,
             )
@@ -48,10 +62,13 @@ def run_paper_execution(
             return
 
         cfg = AutoPaperExecutionConfig(
+            broker=broker,
             account_name=account_name,
             initial_capital=initial_capital,
             run_backtest=run_backtest,
             enforce_human_approval=enforce_human_approval,
+            max_order_notional_pct=max_order_notional_pct,
+            disabled_asset_classes=disabled_asset_classes,
         )
         execution_summary = run_auto_paper_execution(result.to_dict(), config=cfg)
         result.paper_execution = execution_summary

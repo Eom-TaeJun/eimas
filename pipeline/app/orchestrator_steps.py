@@ -4,9 +4,11 @@ Phase execution helpers for the integrated pipeline orchestrator.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
+from pipeline.app.profiles import PipelineProfile
 from pipeline.app.runtime import PhaseRuntimeTracker
 from pipeline.phases.phase1_collect import collect_data as phase1_collect_data
 from pipeline.phases.phase2_adjustment import (
@@ -43,6 +45,21 @@ from pipeline.phases.phase8_validation import (
 from pipeline.phases.phase9_artifacts import export_artifacts as phase9_export_artifacts
 from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import EIMASResult
+
+
+def _mark_profile_skip(result: EIMASResult, phase_name: str, reason: str) -> None:
+    """Record profile-driven phase skip metadata in audit trail."""
+    if not isinstance(result.audit_metadata, dict):
+        result.audit_metadata = {}
+    skips = result.audit_metadata.setdefault("profile_skips", [])
+    if isinstance(skips, list):
+        skips.append(
+            {
+                "phase": phase_name,
+                "reason": reason,
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
 
 
 def _run_tactical_allocation(result: EIMASResult) -> Any:
@@ -87,6 +104,7 @@ async def run_pipeline_phases(
     debate_full_lookback: int,
     debate_ref_lookback: int,
     debate_skip_reference: bool,
+    pipeline_profile: PipelineProfile,
 ) -> Tuple[str | None, Dict[str, Any]]:
     """
     Execute phase 1~9 flow.
@@ -114,44 +132,88 @@ async def run_pipeline_phases(
         market_data,
         quick_mode,
     )
-    runtime.run_sync(
-        "phase2_sentiment_bubble",
-        phase2_analyze_sentiment_bubble,
-        result,
-        market_data,
-        quick_mode,
-    )
+    if pipeline_profile.run_sentiment_bubble:
+        runtime.run_sync(
+            "phase2_sentiment_bubble",
+            phase2_analyze_sentiment_bubble,
+            result,
+            market_data,
+            quick_mode,
+            skip_bubble=pipeline_profile.skip_bubble_analysis,
+        )
+    else:
+        _mark_profile_skip(
+            result,
+            "phase2_sentiment_bubble",
+            f"profile:{pipeline_profile.name}",
+        )
+        result.sentiment_analysis = {
+            "skipped": True,
+            "reason": f"profile:{pipeline_profile.name}",
+        }
+
     runtime.run_sync(
         "phase2_extended_adjustment",
         phase2_apply_extended_data_adjustment,
         result,
     )
-    runtime.run_sync(
-        "phase2_institutional_frameworks",
-        phase2_analyze_institutional_frameworks,
-        result,
-        market_data,
-        quick_mode,
-    )
-    runtime.run_sync(
-        "phase2_adaptive_portfolio",
-        phase2_run_adaptive_portfolio,
-        result,
-        regime_res,
-        quick_mode,
-    )
+    if pipeline_profile.run_institutional_frameworks:
+        runtime.run_sync(
+            "phase2_institutional_frameworks",
+            phase2_analyze_institutional_frameworks,
+            result,
+            market_data,
+            quick_mode,
+        )
+    else:
+        _mark_profile_skip(
+            result,
+            "phase2_institutional_frameworks",
+            f"profile:{pipeline_profile.name}",
+        )
+        result.institutional_analysis = {
+            "skipped": True,
+            "reason": f"profile:{pipeline_profile.name}",
+        }
+
+    if pipeline_profile.run_adaptive_portfolio:
+        runtime.run_sync(
+            "phase2_adaptive_portfolio",
+            phase2_run_adaptive_portfolio,
+            result,
+            regime_res,
+            quick_mode,
+        )
+    else:
+        _mark_profile_skip(
+            result,
+            "phase2_adaptive_portfolio",
+            f"profile:{pipeline_profile.name}",
+        )
+        result.adaptive_portfolios = {
+            "skipped": True,
+            "reason": f"profile:{pipeline_profile.name}",
+        }
 
     # Phase 3-4: Debate & Realtime
-    await runtime.run_async(
-        "phase3_debate",
-        phase3_run_debate,
-        result,
-        market_data,
-        quick_mode,
-        debate_full_lookback,
-        debate_ref_lookback,
-        debate_skip_reference,
-    )
+    if pipeline_profile.run_debate:
+        await runtime.run_async(
+            "phase3_debate",
+            phase3_run_debate,
+            result,
+            market_data,
+            quick_mode,
+            debate_full_lookback,
+            debate_ref_lookback,
+            debate_skip_reference,
+        )
+    else:
+        _mark_profile_skip(
+            result,
+            "phase3_debate",
+            f"profile:{pipeline_profile.name}",
+        )
+
     await runtime.run_async(
         "phase4_realtime",
         phase4_run_realtime,
@@ -189,24 +251,47 @@ async def run_pipeline_phases(
     )
 
     # Phase 6: Portfolio Modules
+    effective_backtest = enable_backtest and pipeline_profile.run_backtest
+    effective_attribution = enable_attribution and pipeline_profile.run_attribution
+    effective_stress_test = enable_stress_test and pipeline_profile.run_stress_test
+
+    if enable_backtest and not pipeline_profile.run_backtest:
+        _mark_profile_skip(
+            result,
+            "phase6_backtest",
+            f"profile:{pipeline_profile.name}",
+        )
+    if enable_attribution and not pipeline_profile.run_attribution:
+        _mark_profile_skip(
+            result,
+            "phase6_performance_attribution",
+            f"profile:{pipeline_profile.name}",
+        )
+    if enable_stress_test and not pipeline_profile.run_stress_test:
+        _mark_profile_skip(
+            result,
+            "phase6_stress_test",
+            f"profile:{pipeline_profile.name}",
+        )
+
     runtime.run_sync(
         "phase6_backtest",
         phase6_run_backtest,
         result,
         market_data,
-        enable_backtest,
+        effective_backtest,
     )
     runtime.run_sync(
         "phase6_performance_attribution",
         phase6_run_performance_attribution,
         result,
-        enable_attribution,
+        effective_attribution,
     )
     runtime.run_sync(
         "phase6_stress_test",
         phase6_run_stress_test,
         result,
-        enable_stress_test,
+        effective_stress_test,
     )
 
     # Phase 7: AI Report Generation
@@ -230,23 +315,49 @@ async def run_pipeline_phases(
         output_path,
         output_file=output_file,
     )
-    runtime.run_sync(
-        "phase8_ai_validation",
-        phase8_run_ai_validation_phase,
-        result,
-        full_mode,
-        output_path,
-        output_file=output_file,
-    )
+    if pipeline_profile.run_phase8_ai_validation:
+        runtime.run_sync(
+            "phase8_ai_validation",
+            phase8_run_ai_validation_phase,
+            result,
+            full_mode,
+            output_path,
+            output_file=output_file,
+        )
+    else:
+        _mark_profile_skip(
+            result,
+            "phase8_ai_validation",
+            f"profile:{pipeline_profile.name}",
+        )
+        result.validation_loop_result = {
+            "skipped": True,
+            "reason": f"profile:{pipeline_profile.name}",
+            "timestamp": datetime.now().isoformat(),
+        }
 
     # Phase 8.5 + 9
+    effective_quick_validation_mode = quick_validation_mode
+    if quick_validation_mode and not pipeline_profile.run_phase85_quick_validation:
+        effective_quick_validation_mode = None
+        _mark_profile_skip(
+            result,
+            "phase85_quick_validation",
+            f"profile:{pipeline_profile.name}",
+        )
+        result.quick_validation = {
+            "skipped": True,
+            "reason": f"profile:{pipeline_profile.name}",
+            "timestamp": datetime.now().isoformat(),
+        }
+
     runtime.run_sync(
         "phase85_quick_validation",
         phase8_run_quick_validation,
         result,
         market_data,
         output_file,
-        quick_validation_mode,
+        effective_quick_validation_mode,
     )
     artifact_export = runtime.run_sync(
         "phase9_artifact_export",

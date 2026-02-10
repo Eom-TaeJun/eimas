@@ -8,7 +8,7 @@ EIMAS Auto Paper Execution
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import os
@@ -20,11 +20,11 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from lib.paper_trader import Order, OrderStatus, PaperTrader
+from lib.broker_execution import BrokerOrderRequest, build_ibkr_paper_router
+from lib.paper_trader import PaperTrader
 from lib.backtest import BacktestConfig, BacktestEngine
 from lib.ra_sql_store import save_backtest_metrics_to_sql
 from lib.trading_db import (
-    Execution,
     SessionType,
     Signal,
     SignalAction,
@@ -54,6 +54,7 @@ _configure_yfinance_cache_dir()
 
 @dataclass
 class AutoPaperExecutionConfig:
+    broker: str = "ibkr"
     account_name: str = "ra_auto"
     initial_capital: float = 100_000.0
     buy_limit_buffer_bps: float = 40.0
@@ -68,6 +69,153 @@ class AutoPaperExecutionConfig:
     backtest_lookback_days: int = 756
     allow_synthetic_backtest_fallback: bool = True
     dry_run: bool = False
+    idempotency_scope: str = "daily"
+    strategy_tag: str = "eimas.auto_paper_execution"
+    max_order_notional_pct: float = 0.20
+    disabled_asset_classes: Tuple[str, ...] = ()
+    asset_policy_overrides: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class AssetClassPolicy:
+    asset_class: str
+    min_notional: float
+    max_notional_pct: float
+    quantity_precision: int
+    allow_fractional: bool
+    tradable: bool = True
+
+
+ASSET_POLICY_VERSION = "us-trader-v1.1"
+
+
+_CRYPTO_TICKERS = {
+    "BTC",
+    "ETH",
+    "SOL",
+    "BNB",
+    "XRP",
+    "ADA",
+    "DOGE",
+    "AVAX",
+    "DOT",
+    "MATIC",
+}
+
+
+_US_BOND_ETF_TICKERS = {
+    "TLT",
+    "IEF",
+    "SHY",
+    "BND",
+    "AGG",
+    "LQD",
+    "HYG",
+    "BIL",
+    "SGOV",
+}
+
+
+_US_COMMODITY_ETF_TICKERS = {
+    "GLD",
+    "SLV",
+    "USO",
+    "UNG",
+    "DBA",
+    "DBC",
+}
+
+
+_US_ETF_TICKERS = {
+    "SPY",
+    "QQQ",
+    "IWM",
+    "DIA",
+    "VTI",
+    "VEA",
+    "VWO",
+    "EEM",
+    "XLK",
+    "XLF",
+    "XLV",
+    "XLE",
+    "XLI",
+    "XLP",
+    "XLU",
+    "XLY",
+    "XLC",
+    "XLB",
+    "UUP",
+}
+
+
+_DEFAULT_ASSET_CLASS_POLICIES: Dict[str, AssetClassPolicy] = {
+    "us_equity": AssetClassPolicy(
+        asset_class="us_equity",
+        min_notional=100.0,
+        max_notional_pct=0.10,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+    "us_etf": AssetClassPolicy(
+        asset_class="us_etf",
+        min_notional=100.0,
+        max_notional_pct=0.15,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+    "us_bond_etf": AssetClassPolicy(
+        asset_class="us_bond_etf",
+        min_notional=100.0,
+        max_notional_pct=0.20,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+    "us_commodity_etf": AssetClassPolicy(
+        asset_class="us_commodity_etf",
+        min_notional=100.0,
+        max_notional_pct=0.12,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+    "korea_equity": AssetClassPolicy(
+        asset_class="korea_equity",
+        min_notional=100.0,
+        max_notional_pct=0.10,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+    "crypto_spot": AssetClassPolicy(
+        asset_class="crypto_spot",
+        min_notional=50.0,
+        max_notional_pct=0.12,
+        quantity_precision=4,
+        allow_fractional=True,
+    ),
+    "futures": AssetClassPolicy(
+        asset_class="futures",
+        min_notional=0.0,
+        max_notional_pct=0.0,
+        quantity_precision=0,
+        allow_fractional=False,
+        tradable=False,
+    ),
+    "index": AssetClassPolicy(
+        asset_class="index",
+        min_notional=0.0,
+        max_notional_pct=0.0,
+        quantity_precision=0,
+        allow_fractional=False,
+        tradable=False,
+    ),
+    "unknown": AssetClassPolicy(
+        asset_class="unknown",
+        min_notional=100.0,
+        max_notional_pct=0.05,
+        quantity_precision=0,
+        allow_fractional=False,
+    ),
+}
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -75,6 +223,20 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return float(value)
     except Exception:
         return default
+
+
+def _safe_bool(value: Any, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+    return default
 
 
 def _priority_value(raw: Any) -> int:
@@ -140,34 +302,84 @@ def _extract_delta_weight(item: Dict[str, Any]) -> float:
     return target_w - current_w
 
 
-def _is_crypto_ticker(ticker: str) -> bool:
-    t = ticker.upper()
-    return t.endswith("-USD") or t in {"BTC", "ETH", "SOL"}
+def _is_ascii_upper_numeric(value: str) -> bool:
+    return value.isascii() and value.replace(".", "").replace("-", "").isalnum()
 
 
-def _round_quantity(ticker: str, quantity: float) -> float:
+def _classify_asset_class(ticker: str) -> str:
+    t = str(ticker or "").strip().upper()
+    if not t:
+        return "unknown"
+    if t.startswith("^"):
+        return "index"
+    if t.endswith("=F"):
+        return "futures"
+    if t.endswith("-USD") or t in _CRYPTO_TICKERS:
+        return "crypto_spot"
+    if t.endswith(".KS") or t.endswith(".KQ"):
+        return "korea_equity"
+    if t in _US_BOND_ETF_TICKERS:
+        return "us_bond_etf"
+    if t in _US_COMMODITY_ETF_TICKERS:
+        return "us_commodity_etf"
+    if t in _US_ETF_TICKERS:
+        return "us_etf"
+    if _is_ascii_upper_numeric(t) and len(t) <= 5:
+        return "us_equity"
+    return "unknown"
+
+
+def _resolve_asset_policy(
+    cfg: AutoPaperExecutionConfig,
+    asset_class: str,
+) -> AssetClassPolicy:
+    base = _DEFAULT_ASSET_CLASS_POLICIES.get(
+        asset_class,
+        _DEFAULT_ASSET_CLASS_POLICIES["unknown"],
+    )
+    overrides = cfg.asset_policy_overrides if isinstance(cfg.asset_policy_overrides, dict) else {}
+    raw_override = overrides.get(asset_class)
+    if not isinstance(raw_override, dict):
+        return base
+
+    quantity_precision = int(
+        _safe_float(
+            raw_override.get("quantity_precision", base.quantity_precision),
+            float(base.quantity_precision),
+        )
+    )
+    quantity_precision = max(0, min(quantity_precision, 8))
+    return AssetClassPolicy(
+        asset_class=base.asset_class,
+        min_notional=max(0.0, _safe_float(raw_override.get("min_notional", base.min_notional), base.min_notional)),
+        max_notional_pct=max(
+            0.0,
+            _safe_float(raw_override.get("max_notional_pct", base.max_notional_pct), base.max_notional_pct),
+        ),
+        quantity_precision=quantity_precision,
+        allow_fractional=_safe_bool(raw_override.get("allow_fractional", base.allow_fractional), base.allow_fractional),
+        tradable=_safe_bool(raw_override.get("tradable", base.tradable), base.tradable),
+    )
+
+
+def _normalized_disabled_asset_classes(cfg: AutoPaperExecutionConfig) -> set[str]:
+    raw = cfg.disabled_asset_classes
+    if isinstance(raw, str):
+        values = [raw]
+    elif isinstance(raw, (tuple, list, set)):
+        values = list(raw)
+    else:
+        values = []
+    return {str(value).strip().lower() for value in values if str(value).strip()}
+
+
+def _round_quantity(quantity: float, *, allow_fractional: bool, precision: int) -> float:
     if quantity <= 0:
         return 0.0
-    if _is_crypto_ticker(ticker):
-        return round(quantity, 4)
-    return float(int(quantity))
-
-
-def _order_to_dict(order: Order) -> Dict[str, Any]:
-    return {
-        "id": order.id,
-        "ticker": order.ticker,
-        "side": order.side.value,
-        "order_type": order.order_type.value,
-        "quantity": order.quantity,
-        "limit_price": order.limit_price,
-        "status": order.status.value,
-        "filled_price": order.filled_price,
-        "filled_quantity": order.filled_quantity,
-        "commission": order.commission,
-        "created_at": order.created_at.isoformat() if order.created_at else "",
-        "filled_at": order.filled_at.isoformat() if order.filled_at else "",
-    }
+    if not allow_fractional:
+        return float(int(quantity))
+    bounded = max(0, min(int(precision), 8))
+    return float(round(quantity, bounded))
 
 
 def _build_research_signal(result_data: Dict[str, Any]) -> Signal:
@@ -210,6 +422,70 @@ def _build_research_signal(result_data: Dict[str, Any]) -> Signal:
     )
 
 
+def _resolve_idempotency_scope_date(
+    scope: str,
+    result_data: Dict[str, Any],
+) -> str:
+    normalized = (scope or "").strip().lower()
+    if normalized == "run":
+        ts = str(result_data.get("timestamp", "")).strip()
+        if ts:
+            return ts[:19]
+    return datetime.now().strftime("%Y-%m-%d")
+
+
+def _build_order_explainability(
+    result_data: Dict[str, Any],
+    item: Dict[str, Any],
+    *,
+    ticker: str,
+    side: str,
+    asset_class: str,
+    delta_weight: float,
+    current_price: float,
+    limit_price: float,
+    target_notional_requested: float,
+    target_notional_effective: float,
+    min_notional_threshold: float,
+    max_notional_cap: float,
+    quantity_precision: int,
+    allow_fractional: bool,
+    notional_capped: bool,
+) -> Dict[str, Any]:
+    regime = (result_data.get("regime") or {})
+    op_report = (result_data.get("operational_report") or {})
+    rebalance_plan = (op_report.get("rebalance_plan") or {})
+    approval = rebalance_plan.get("approval") or {}
+
+    return {
+        "source": "trade_plan",
+        "ticker": ticker,
+        "side": side,
+        "asset_class": asset_class,
+        "asset_policy_version": ASSET_POLICY_VERSION,
+        "delta_weight": round(delta_weight, 6),
+        "current_price": round(current_price, 6),
+        "limit_price": round(limit_price, 6),
+        "target_notional_requested": round(target_notional_requested, 6),
+        "target_notional_effective": round(target_notional_effective, 6),
+        "min_notional_threshold": round(min_notional_threshold, 6),
+        "max_notional_cap": round(max_notional_cap, 6),
+        "quantity_precision": int(quantity_precision),
+        "allow_fractional": bool(allow_fractional),
+        "notional_capped": bool(notional_capped),
+        "trade_priority": item.get("priority"),
+        "trade_reason": item.get("reason", ""),
+        "final_recommendation": str(result_data.get("final_recommendation", "HOLD")).upper(),
+        "confidence": round(_safe_float(result_data.get("confidence", 0.0)), 4),
+        "risk_score": round(_safe_float(result_data.get("risk_score", 50.0)), 2),
+        "risk_level": str(result_data.get("risk_level", "")),
+        "regime": regime.get("regime") if isinstance(regime, dict) else "",
+        "regime_confidence": _safe_float(regime.get("confidence"), 0.0) if isinstance(regime, dict) else 0.0,
+        "requires_human_approval": bool(approval.get("requires_human_approval", False)),
+        "approval_reason": approval.get("approval_reason", ""),
+    }
+
+
 def run_auto_paper_execution(
     result_data: Dict[str, Any],
     config: Optional[AutoPaperExecutionConfig] = None,
@@ -224,6 +500,8 @@ def run_auto_paper_execution(
     summary: Dict[str, Any] = {
         "enabled": True,
         "timestamp": datetime.now().isoformat(),
+        "broker": cfg.broker,
+        "asset_policy_version": ASSET_POLICY_VERSION,
         "account": cfg.account_name,
         "dry_run": cfg.dry_run,
         "registered_orders": [],
@@ -262,6 +540,11 @@ def run_auto_paper_execution(
         summary["error"] = "human_approval_required"
         return summary
 
+    if (cfg.broker or "").strip().lower() != "ibkr":
+        summary["enabled"] = False
+        summary["error"] = f"unsupported_broker:{cfg.broker}"
+        return summary
+
     db = TradingDB()
     signal = _build_research_signal(result_data)
     summary["signal_id"] = db.save_signal(signal)
@@ -272,122 +555,206 @@ def run_auto_paper_execution(
     )
     account_summary = trader.get_portfolio_summary()
     portfolio_value = max(account_summary.total_value, 1.0)
+    router = build_ibkr_paper_router(
+        account_name=cfg.account_name,
+        initial_capital=cfg.initial_capital,
+        db=db,
+        trader=trader,
+        dry_run=cfg.dry_run,
+    )
+    idempotency_scope_date = _resolve_idempotency_scope_date(
+        cfg.idempotency_scope,
+        result_data,
+    )
+    summary["idempotency_scope_date"] = idempotency_scope_date
 
     final_rec = str(result_data.get("final_recommendation", "HOLD")).upper()
     selected = trade_candidates[: max(1, int(cfg.max_orders))]
-    tickers = sorted({str(item.get("ticker", "")).upper() for item in selected if item.get("ticker")})
-    price_map = trader.get_current_prices(tickers)
+    disabled_asset_classes = _normalized_disabled_asset_classes(cfg)
+    summary["disabled_asset_classes"] = sorted(disabled_asset_classes)
+    prefetch_tickers = set()
+    for item in selected:
+        ticker = str(item.get("ticker", "")).upper()
+        if not ticker:
+            continue
+        asset_class = _classify_asset_class(ticker)
+        policy = _resolve_asset_policy(cfg, asset_class)
+        if asset_class in disabled_asset_classes or not policy.tradable:
+            continue
+        prefetch_tickers.add(ticker)
+    price_map = trader.get_current_prices(sorted(prefetch_tickers))
     session = _infer_session_type(datetime.now())
 
     for item in selected:
         ticker = str(item.get("ticker", "")).upper()
         side = "buy" if str(item.get("action", "")).upper() == "BUY" else "sell"
+        asset_class = _classify_asset_class(ticker)
+        policy = _resolve_asset_policy(cfg, asset_class)
+
+        if asset_class in disabled_asset_classes:
+            summary["skipped"].append(
+                {
+                    "ticker": ticker,
+                    "asset_class": asset_class,
+                    "reason": "asset_class_disabled",
+                }
+            )
+            continue
+        if not policy.tradable:
+            summary["skipped"].append(
+                {
+                    "ticker": ticker,
+                    "asset_class": asset_class,
+                    "reason": "asset_class_not_tradable",
+                }
+            )
+            continue
 
         if final_rec == "HOLD" and side == "buy" and not cfg.allow_buys_when_hold:
-            summary["skipped"].append({"ticker": ticker, "reason": "hold_guard"})
+            summary["skipped"].append(
+                {"ticker": ticker, "asset_class": asset_class, "reason": "hold_guard"}
+            )
             continue
 
         current_price = _safe_float(price_map.get(ticker), 0.0)
         if current_price <= 0:
             current_price = trader.get_current_price(ticker)
         if current_price <= 0:
-            summary["skipped"].append({"ticker": ticker, "reason": "price_unavailable"})
+            summary["skipped"].append(
+                {"ticker": ticker, "asset_class": asset_class, "reason": "price_unavailable"}
+            )
             continue
 
         delta_weight = abs(_extract_delta_weight(item))
         if delta_weight < cfg.min_delta_weight:
-            summary["skipped"].append({"ticker": ticker, "reason": "delta_below_threshold"})
+            summary["skipped"].append(
+                {"ticker": ticker, "asset_class": asset_class, "reason": "delta_below_threshold"}
+            )
             continue
 
-        target_notional = portfolio_value * delta_weight
-        if target_notional < cfg.min_order_notional:
-            summary["skipped"].append({"ticker": ticker, "reason": "notional_too_small"})
+        target_notional_requested = portfolio_value * delta_weight
+        min_notional_threshold = max(cfg.min_order_notional, policy.min_notional)
+        if target_notional_requested < min_notional_threshold:
+            summary["skipped"].append(
+                {
+                    "ticker": ticker,
+                    "asset_class": asset_class,
+                    "reason": "notional_too_small",
+                    "requested_notional": target_notional_requested,
+                    "min_notional_threshold": min_notional_threshold,
+                }
+            )
             continue
 
-        quantity = _round_quantity(ticker, target_notional / current_price)
+        policy_cap = portfolio_value * max(policy.max_notional_pct, 0.0)
+        global_cap = portfolio_value * max(cfg.max_order_notional_pct, 0.0)
+        if global_cap > 0:
+            max_notional_cap = policy_cap if policy_cap > 0 else global_cap
+            max_notional_cap = min(max_notional_cap, global_cap)
+        else:
+            max_notional_cap = policy_cap
+
+        target_notional_effective = target_notional_requested
+        notional_capped = False
+        if max_notional_cap > 0 and target_notional_effective > max_notional_cap:
+            target_notional_effective = max_notional_cap
+            notional_capped = True
+
+        if target_notional_effective < min_notional_threshold:
+            summary["skipped"].append(
+                {
+                    "ticker": ticker,
+                    "asset_class": asset_class,
+                    "reason": "cap_below_min_notional",
+                    "effective_notional": target_notional_effective,
+                    "min_notional_threshold": min_notional_threshold,
+                }
+            )
+            continue
+
+        quantity = _round_quantity(
+            target_notional_effective / current_price,
+            allow_fractional=policy.allow_fractional,
+            precision=policy.quantity_precision,
+        )
         if quantity <= 0:
-            summary["skipped"].append({"ticker": ticker, "reason": "quantity_zero"})
+            summary["skipped"].append(
+                {"ticker": ticker, "asset_class": asset_class, "reason": "quantity_zero"}
+            )
             continue
 
         if side == "sell":
             current_qty = _safe_float(trader.positions.get(ticker, {}).get("quantity", 0.0), 0.0)
             quantity = min(quantity, current_qty)
             if quantity <= 0:
-                summary["skipped"].append({"ticker": ticker, "reason": "no_position_to_sell"})
+                summary["skipped"].append(
+                    {"ticker": ticker, "asset_class": asset_class, "reason": "no_position_to_sell"}
+                )
                 continue
 
         if side == "buy":
             limit_price = current_price * (1.0 - cfg.buy_limit_buffer_bps / 10000.0)
         else:
             limit_price = current_price * (1.0 + cfg.sell_limit_buffer_bps / 10000.0)
-
-        if cfg.dry_run:
-            mock_status = OrderStatus.PENDING.value
-            ext_order_id = f"dryrun-{ticker}-{datetime.now().strftime('%H%M%S%f')}"
-            executed_price = 0.0
-            commission = 0.0
-            slippage = 0.0
-        else:
-            order = trader.execute_order(
+        target_notional_effective = quantity * current_price
+        explainability = _build_order_explainability(
+            result_data,
+            item,
+            ticker=ticker,
+            side=side,
+            asset_class=asset_class,
+            delta_weight=delta_weight,
+            current_price=current_price,
+            limit_price=limit_price,
+            target_notional_requested=target_notional_requested,
+            target_notional_effective=target_notional_effective,
+            min_notional_threshold=min_notional_threshold,
+            max_notional_cap=max_notional_cap,
+            quantity_precision=policy.quantity_precision,
+            allow_fractional=policy.allow_fractional,
+            notional_capped=notional_capped,
+        )
+        submit_result = router.submit_limit_order(
+            BrokerOrderRequest(
                 ticker=ticker,
                 side=side,
                 quantity=quantity,
-                order_type="limit",
                 limit_price=limit_price,
-            )
-            mock_status = order.status.value
-            ext_order_id = str(order.id) if order.id else None
-            executed_price = order.filled_price if order.status == OrderStatus.FILLED else 0.0
-            commission = order.commission
-            slippage = (
-                abs(order.filled_price - current_price) / current_price
-                if order.status == OrderStatus.FILLED and current_price > 0
-                else 0.0
-            )
-
-        exec_record = Execution(
-            portfolio_id=0,
-            external_order_id=ext_order_id,
-            ticker=ticker,
-            action=SignalAction.BUY if side == "buy" else SignalAction.SELL,
-            session=session,
-            target_price=limit_price,
-            executed_price=executed_price,
-            shares=quantity,
-            commission=commission,
-            slippage=slippage,
-            status=mock_status,
+                session=session,
+                reference_price=current_price,
+                strategy_tag=cfg.strategy_tag,
+                explainability=explainability,
+            ),
+            scope_date=idempotency_scope_date,
         )
-        execution_id = db.save_execution(exec_record)
 
         summary["registered_orders"].append(
             {
-                "execution_id": execution_id,
-                "external_order_id": ext_order_id,
+                "execution_id": submit_result.get("execution_id"),
+                "external_order_id": submit_result.get("external_order_id"),
+                "idempotency_key": submit_result.get("idempotency_key"),
+                "deduplicated": bool(submit_result.get("deduplicated", False)),
+                "broker": submit_result.get("broker", cfg.broker),
                 "ticker": ticker,
+                "asset_class": asset_class,
                 "side": side,
                 "quantity": quantity,
                 "current_price": current_price,
                 "limit_price": limit_price,
-                "status": mock_status,
+                "target_notional_requested": target_notional_requested,
+                "target_notional_effective": target_notional_effective,
+                "notional_capped": notional_capped,
+                "executed_price": _safe_float(submit_result.get("executed_price"), 0.0),
+                "order_state": submit_result.get("order_state"),
+                "status": submit_result.get("status"),
             }
         )
 
     if cfg.poll_pending and not cfg.dry_run:
-        poll_result = trader.process_pending_orders()
+        poll_result = router.poll_pending_orders()
         summary["poll_result"] = poll_result
-        for order_info in poll_result.get("filled_orders", []):
-            order_id = str(order_info.get("id")) if order_info.get("id") is not None else ""
-            if not order_id:
-                continue
-            db.update_execution_by_external_order_id(
-                external_order_id=order_id,
-                status="filled",
-                executed_price=_safe_float(order_info.get("filled_price")),
-                commission=_safe_float(order_info.get("commission")),
-            )
 
-    summary["pending_count"] = len(trader.get_pending_orders())
+    summary["pending_count"] = router.pending_order_count()
     if cfg.run_backtest:
         summary["backtest"] = run_allocation_backtest_from_result(
             result_data=result_data,
@@ -798,27 +1165,34 @@ def run_allocation_backtest_from_result(
 
 
 def poll_pending_paper_orders(
+    broker: str = "ibkr",
     account_name: str = "ra_auto",
     initial_capital: float = 100_000.0,
 ) -> Dict[str, Any]:
     """대기 주문만 폴링/체결하고 TradingDB 상태를 동기화."""
+    if (broker or "").strip().lower() != "ibkr":
+        return {
+            "account": account_name,
+            "broker": broker,
+            "poll_result": {},
+            "pending_count": 0,
+            "error": f"unsupported_broker:{broker}",
+        }
+
     trader = PaperTrader(initial_capital=initial_capital, account_name=account_name)
     db = TradingDB()
-    poll_result = trader.process_pending_orders()
-
-    for order_info in poll_result.get("filled_orders", []):
-        order_id = str(order_info.get("id")) if order_info.get("id") is not None else ""
-        if not order_id:
-            continue
-        db.update_execution_by_external_order_id(
-            external_order_id=order_id,
-            status="filled",
-            executed_price=_safe_float(order_info.get("filled_price")),
-            commission=_safe_float(order_info.get("commission")),
-        )
+    router = build_ibkr_paper_router(
+        account_name=account_name,
+        initial_capital=initial_capital,
+        db=db,
+        trader=trader,
+        dry_run=False,
+    )
+    poll_result = router.poll_pending_orders()
 
     return {
         "account": account_name,
+        "broker": broker,
         "poll_result": poll_result,
-        "pending_count": len(trader.get_pending_orders()),
+        "pending_count": router.pending_order_count(),
     }

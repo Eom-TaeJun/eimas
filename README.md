@@ -55,6 +55,9 @@ python main.py --short --debate-skip-reference  # Fastest Phase3 (single-mode)
 python main.py --full --paper-auto --paper-account ra_auto  # Auto LIMIT paper execution
 python main.py --paper-auto --paper-poll-only --paper-account ra_auto  # Poll pending paper orders
 python scripts/auto_paper_execution.py --run-backtest  # Auto execution + backtest loop
+python scripts/auto_paper_execution.py --broker ibkr --run-backtest  # IBKR-first execution router (paper backend)
+python scripts/auto_paper_execution.py --broker ibkr --disable-asset-class futures --disable-asset-class index
+python main.py --profile us-trader-v1  # US trader baseline profile (execution + explainability focus)
 ```
 
 `cli/eimas.py run` is a thin wrapper that forwards arguments to `main.py`.
