@@ -67,43 +67,13 @@ def _local_monolith_bundle(
     current_weights: Optional[Dict[str, float]] = None,
     rebalance_decision: Optional[Dict[str, Any]] = None,
 ) -> Bundle:
-    """Use in-repo monolithic execution backend as compatibility fallback."""
-    from lib.operational_engine import (
-        OperationalEngine,
-        get_approval_status,
-        get_audit_metadata,
-        get_indicator_classification,
-        get_input_validation,
-        get_operational_controls,
+    """Monolith backend removed - redirecting to package backend."""
+    logger.warning("Monolith backend no longer available, using package backend instead")
+    return _local_package_bundle(
+        result_data=result_data,
+        current_weights=current_weights,
+        rebalance_decision=rebalance_decision,
     )
-
-    engine = OperationalEngine()
-    op_report = engine.process(result_data, current_weights or {})
-
-    constraint_payload = (
-        op_report.constraint_repair.to_dict() if hasattr(op_report, "constraint_repair") else {}
-    )
-    rebalance_payload = (
-        op_report.rebalance_plan.to_dict() if hasattr(op_report, "rebalance_plan") else {}
-    )
-
-    return {
-        "op_report": op_report,
-        "operational_report": op_report.to_dict(),
-        "input_validation": get_input_validation(result_data),
-        "indicator_classification": get_indicator_classification(result_data),
-        "operational_controls": get_operational_controls(
-            result_data,
-            rebalance_decision=rebalance_decision,
-            constraint_result=constraint_payload,
-        ),
-        "audit_metadata": get_audit_metadata(result_data),
-        "approval_status": get_approval_status(
-            result_data,
-            rebalance_plan=rebalance_payload,
-        ),
-        "backend_source": "local_monolith",
-    }
 
 
 def _local_bundle(

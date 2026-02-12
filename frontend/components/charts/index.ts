@@ -7,3 +7,10 @@ export { SystemStatusDashboard } from "./SystemStatusDashboard";
 export { CorrelationHeatmap } from "./CorrelationHeatmap";
 export { RiskHeatmap } from "./RiskHeatmap";
 export { ChartsSection } from "./ChartsSection";
+
+// Enhanced interactive components
+export { PortfolioTimeSeriesChart } from "./PortfolioTimeSeriesChart";
+export { RiskTimelineChart } from "./RiskTimelineChart";
+export { EnhancedCorrelationHeatmap } from "./EnhancedCorrelationHeatmap";
+export { RegimeTransitionChart } from "./RegimeTransitionChart";
+export { PortfolioAllocationEvolution } from "./PortfolioAllocationEvolution";

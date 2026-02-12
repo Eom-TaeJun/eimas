@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Dispatch a General Lane WORK_ORDER to Claude Code (non-interactive).
+Dispatch a General Lane WORK_ORDER to a selected executor (non-interactive).
 
 Usage:
     python3 scripts/delegate_general_lane.py --work-order work_orders/GEN-101.md
+    python3 scripts/delegate_general_lane.py --executor codex --work-order work_orders/GEN-101.md
 """
 
 from __future__ import annotations
@@ -19,6 +20,10 @@ from pathlib import Path
 from typing import List, Tuple
 
 from dotenv import load_dotenv
+
+
+CLAUDE_DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
+CODEX_DEFAULT_MODEL = "gpt-5-codex"
 
 
 SYSTEM_PROMPT = """You are the General Lane execution worker for EIMAS.
@@ -38,44 +43,82 @@ Output format:
 """
 
 
+def to_bool(raw: str) -> bool:
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def resolve_model(executor: str, requested_model: str) -> str:
+    if requested_model:
+        return requested_model
+    if executor == "codex":
+        return os.getenv("CODEX_GENERAL_MODEL", CODEX_DEFAULT_MODEL)
+    return os.getenv("CLAUDE_GENERAL_MODEL", CLAUDE_DEFAULT_MODEL)
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Dispatch WORK_ORDER to Claude Code")
+    parser = argparse.ArgumentParser(
+        description="Dispatch WORK_ORDER to selected executor (Claude or Codex)"
+    )
     parser.add_argument(
         "--work-order",
         required=True,
         help="Path to WORK_ORDER markdown file",
     )
     parser.add_argument(
+        "--executor",
+        default=os.getenv("GENERAL_LANE_EXECUTOR", "codex").strip().lower(),
+        choices=["claude", "codex"],
+        help="Execution engine for General Lane tasks",
+    )
+    parser.add_argument(
         "--model",
-        default=os.getenv("CLAUDE_GENERAL_MODEL", "claude-sonnet-4-5-20250929"),
-        help="Claude model name",
+        default=os.getenv("GENERAL_LANE_MODEL", ""),
+        help="Model name for selected executor",
     )
     parser.add_argument(
         "--permission-mode",
         default=os.getenv("CLAUDE_GENERAL_PERMISSION_MODE", "acceptEdits"),
         choices=["acceptEdits", "bypassPermissions", "default", "delegate", "dontAsk", "plan"],
-        help="Claude Code permission mode",
+        help="Claude Code permission mode (used only when --executor claude)",
     )
     parser.add_argument(
         "--max-budget-usd",
         type=float,
         default=float(os.getenv("CLAUDE_GENERAL_MAX_BUDGET_USD", "0") or 0),
-        help="Optional API spend cap for one run (0 disables cap)",
+        help="Optional API spend cap for one Claude run (0 disables cap)",
     )
     parser.add_argument(
         "--allowed-tools",
         default=os.getenv("CLAUDE_GENERAL_ALLOWED_TOOLS", ""),
-        help='Optional allowed tools string, e.g. "Bash(git:*) Edit"',
+        help='Optional allowed tools string for Claude, e.g. "Bash(git:*) Edit"',
+    )
+    parser.add_argument(
+        "--codex-sandbox",
+        default=os.getenv("CODEX_GENERAL_SANDBOX", "workspace-write").strip().lower(),
+        choices=["read-only", "workspace-write", "danger-full-access"],
+        help="Codex sandbox mode (used when --executor codex and full-auto is off)",
+    )
+    parser.add_argument(
+        "--codex-full-auto",
+        default=os.getenv("CODEX_GENERAL_FULL_AUTO", "true").strip().lower(),
+        choices=["true", "false"],
+        help="Use codex --full-auto (true/false)",
+    )
+    parser.add_argument(
+        "--codex-json",
+        default=os.getenv("CODEX_GENERAL_JSON", "false").strip().lower(),
+        choices=["true", "false"],
+        help="Enable codex JSON event stream output (true/false)",
     )
     parser.add_argument(
         "--output-dir",
-        default="outputs/claude_general",
+        default=os.getenv("GENERAL_LANE_OUTPUT_DIR", "outputs/general_lane"),
         help="Directory for request/response artifacts",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print command and prompt path without calling Claude",
+        help="Print command and prompt path without calling executor",
     )
     return parser.parse_args()
 
@@ -112,9 +155,17 @@ def extract_scope_files(work_order: str) -> List[str]:
     return scope
 
 
-def build_prompt(repo_root: Path, work_order_text: str, scope_files: List[str]) -> str:
+def build_prompt(
+    repo_root: Path,
+    work_order_text: str,
+    scope_files: List[str],
+    embed_system_prompt: bool = False,
+) -> str:
     scope_block = "\n".join(f"- {f}" for f in scope_files) if scope_files else "- (not specified)"
-    return f"""Repository root: {repo_root}
+    prefix = ""
+    if embed_system_prompt:
+        prefix = f"System rules:\n{SYSTEM_PROMPT}\n\n"
+    return f"""{prefix}Repository root: {repo_root}
 
 You are executing a General Lane task in WSL. Follow the WORK_ORDER exactly.
 
@@ -126,7 +177,7 @@ WORK_ORDER:
 """
 
 
-def build_command(
+def build_claude_command(
     model: str,
     permission_mode: str,
     max_budget_usd: float,
@@ -156,13 +207,39 @@ def build_command(
     return cmd
 
 
-def run_claude(cmd: List[str]) -> Tuple[int, str, str]:
+def build_codex_command(
+    model: str,
+    codex_full_auto: bool,
+    codex_sandbox: str,
+    codex_json: bool,
+    repo_root: Path,
+    prompt: str,
+) -> List[str]:
+    cmd = [
+        "codex",
+        "exec",
+        "--cd",
+        str(repo_root),
+        "--model",
+        model,
+    ]
+    if codex_full_auto:
+        cmd.append("--full-auto")
+    else:
+        cmd.extend(["--sandbox", codex_sandbox])
+    if codex_json:
+        cmd.append("--json")
+    cmd.append(prompt)
+    return cmd
+
+
+def run_command(cmd: List[str]) -> Tuple[int, str, str]:
     proc = subprocess.run(cmd, capture_output=True, text=True)
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def ensure_api_key() -> None:
-    if not os.getenv("ANTHROPIC_API_KEY"):
+def ensure_credentials(executor: str) -> None:
+    if executor == "claude" and not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError(
             "ANTHROPIC_API_KEY is not set. Export it in WSL shell or define it in .env."
         )
@@ -176,18 +253,25 @@ def save_artifacts(
     return_code: int,
     stdout: str,
     stderr: str,
+    executor: str,
+    model: str,
 ) -> Path:
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = base_dir / f"{ts}_{work_id}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     (out_dir / "request_prompt.md").write_text(prompt, encoding="utf-8")
-    (out_dir / "response_stdout.json").write_text(stdout or "", encoding="utf-8")
+    (out_dir / "response_stdout.log").write_text(stdout or "", encoding="utf-8")
+    if executor == "claude":
+        # Backward-compatible artifact name for existing Claude workflows.
+        (out_dir / "response_stdout.json").write_text(stdout or "", encoding="utf-8")
     (out_dir / "response_stderr.log").write_text(stderr or "", encoding="utf-8")
 
     meta = {
         "timestamp": ts,
         "work_id": work_id,
+        "executor": executor,
+        "model": model,
         "command": cmd,
         "return_code": return_code,
     }
@@ -203,38 +287,62 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     load_env(repo_root)
 
+    model = resolve_model(args.executor, args.model)
+    codex_full_auto = to_bool(args.codex_full_auto)
+    codex_json = to_bool(args.codex_json)
+
     work_order_path = Path(args.work_order).resolve()
     work_order_text = read_work_order(work_order_path)
     work_id = extract_work_id(work_order_text)
     scope_files = extract_scope_files(work_order_text)
-    prompt = build_prompt(repo_root, work_order_text, scope_files)
-
-    cmd = build_command(
-        model=args.model,
-        permission_mode=args.permission_mode,
-        max_budget_usd=args.max_budget_usd,
-        allowed_tools=args.allowed_tools,
-        repo_root=repo_root,
-        prompt=prompt,
+    prompt = build_prompt(
+        repo_root,
+        work_order_text,
+        scope_files,
+        embed_system_prompt=(args.executor == "codex"),
     )
+
+    if args.executor == "claude":
+        cmd = build_claude_command(
+            model=model,
+            permission_mode=args.permission_mode,
+            max_budget_usd=args.max_budget_usd,
+            allowed_tools=args.allowed_tools,
+            repo_root=repo_root,
+            prompt=prompt,
+        )
+    else:
+        cmd = build_codex_command(
+            model=model,
+            codex_full_auto=codex_full_auto,
+            codex_sandbox=args.codex_sandbox,
+            codex_json=codex_json,
+            repo_root=repo_root,
+            prompt=prompt,
+        )
 
     if args.dry_run:
         print("DRY RUN")
+        print("EXECUTOR:", args.executor)
         print("WORK_ORDER:", work_order_path)
-        print("MODEL:", args.model)
-        print(
-            "COMMAND:",
-            "claude --print --output-format json",
-            f"--model {args.model}",
-            f"--permission-mode {args.permission_mode}",
-            f"--add-dir {repo_root}",
-            "... <system/prompt omitted>",
-        )
+        print("MODEL:", model)
+        if args.executor == "claude":
+            print(
+                "COMMAND:",
+                "claude --print --output-format json",
+                f"--model {model}",
+                f"--permission-mode {args.permission_mode}",
+                f"--add-dir {repo_root}",
+                "--append-system-prompt <omitted>",
+                "<prompt omitted>",
+            )
+        else:
+            print("COMMAND:", " ".join(cmd[:-1]), "<prompt omitted>")
         return 0
 
-    ensure_api_key()
+    ensure_credentials(args.executor)
 
-    return_code, stdout, stderr = run_claude(cmd)
+    return_code, stdout, stderr = run_command(cmd)
     output_dir = save_artifacts(
         base_dir=(repo_root / args.output_dir),
         work_id=work_id,
@@ -243,15 +351,18 @@ def main() -> int:
         return_code=return_code,
         stdout=stdout,
         stderr=stderr,
+        executor=args.executor,
+        model=model,
     )
 
+    print(f"EXECUTOR: {args.executor}")
     print(f"WORK_ORDER: {work_order_path}")
-    print(f"MODEL: {args.model}")
+    print(f"MODEL: {model}")
     print(f"RETURN_CODE: {return_code}")
     print(f"ARTIFACTS: {output_dir}")
 
     if return_code != 0:
-        print("Claude run failed. Check response_stderr.log for details.", file=sys.stderr)
+        print(f"{args.executor} run failed. Check response_stderr.log for details.", file=sys.stderr)
     return return_code
 
 

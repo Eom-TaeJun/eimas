@@ -1,0 +1,2043 @@
+{
+  "timestamp": "2026-02-10T02:43:01.530919",
+  "schema_version": "1.0.0",
+  "fred_summary": {
+    "timestamp": "2026-02-10T02:43:01.554576",
+    "fed_funds": 0,
+    "treasury_2y": 0,
+    "treasury_10y": 0,
+    "treasury_30y": 0,
+    "spread_10y2y": 0,
+    "spread_10y3m": 0,
+    "hy_oas": 0,
+    "cpi_yoy": 0,
+    "core_pce_yoy": 0,
+    "breakeven_5y": 0,
+    "breakeven_10y": 0,
+    "unemployment": 0,
+    "initial_claims": 0,
+    "rrp": 0,
+    "rrp_delta": 0,
+    "rrp_delta_pct": 0,
+    "tga": 0,
+    "tga_delta": 0,
+    "fed_assets": 0,
+    "fed_assets_delta": 0,
+    "net_liquidity": 0,
+    "liquidity_regime": "Normal",
+    "curve_inverted": false,
+    "curve_status": "Flat",
+    "signals": [
+      "HY \uc2a4\ud504\ub808\ub4dc \uc548\uc815 (0bp)",
+      "CPI \uc548\uc815 (0.0%)",
+      "\uace0\uc6a9\uc2dc\uc7a5 \uacac\uace0 (\uc2e4\uc5c5\ub960 0.0%)"
+    ],
+    "warnings": []
+  },
+  "market_indicators": {},
+  "market_data_count": 17,
+  "crypto_data_count": 0,
+  "korea_data": {},
+  "korea_summary": {
+    "skipped": true,
+    "reason": "EIMAS_SKIP_KOREA_ASSETS"
+  },
+  "regime": {
+    "timestamp": "2026-02-10T02:43:04.415776",
+    "regime": "Transition",
+    "trend": "Neutral",
+    "volatility": "Normal",
+    "confidence": 0.5,
+    "description": "\ub808\uc9d0 \uc804\ud658 \uc911. \uad00\ub9dd \ud544\uc694",
+    "strategy": "\ud3ec\uc9c0\uc158 \ucd95\uc18c, \ubc29\ud5a5\uc131 \ud655\uc778 \ud6c4 \uc9c4\uc785"
+  },
+  "events_detected": [],
+  "liquidity_signal": "NEUTRAL",
+  "risk_score": 22.72750898274385,
+  "debate_consensus": {
+    "dual_mode_risk_level": "MEDIUM",
+    "canonical_risk_level": "LOW",
+    "enhanced": {
+      "interpretation": {},
+      "methodology": {}
+    },
+    "verification": {
+      "overall_score": 55.97376307658199,
+      "hallucination_risk": 0.0,
+      "sycophancy_risk": 30.0,
+      "passed": true,
+      "warnings": []
+    },
+    "metadata": {
+      "num_agents": 7,
+      "total_opinions": 17,
+      "total_debates": 5,
+      "avg_confidence": 0.54,
+      "enhanced_debate_enabled": false,
+      "reasoning_chain_steps": 3,
+      "institutional_methodology_enabled": true
+    }
+  },
+  "dissent_records": [],
+  "has_strong_dissent": false,
+  "full_mode_position": "NEUTRAL",
+  "reference_mode_position": "NEUTRAL",
+  "modes_agree": true,
+  "final_recommendation": "NEUTRAL",
+  "confidence": 0.54,
+  "risk_level": "LOW",
+  "warnings": [],
+  "realtime_signals": [],
+  "portfolio_weights": {},
+  "shock_propagation": {},
+  "integrated_signals": [],
+  "genius_act_regime": "NEUTRAL",
+  "genius_act_signals": [],
+  "whitening_summary": "",
+  "fact_check_grade": "N/A",
+  "theme_etf_analysis": {},
+  "volume_anomalies": [],
+  "volume_analysis_summary": "",
+  "market_quality": null,
+  "bubble_risk": null,
+  "base_risk_score": 23.627508982743848,
+  "microstructure_adjustment": -0.9,
+  "bubble_risk_adjustment": 0.0,
+  "extended_data_adjustment": 0.0,
+  "crypto_stress_test": {},
+  "devils_advocate_arguments": [],
+  "hrp_allocation_rationale": "",
+  "defi_tvl": {},
+  "mena_markets": {},
+  "onchain_risk_signals": [],
+  "event_tracking": {},
+  "tracked_events": [],
+  "adaptive_portfolios": {},
+  "validation_loop_result": {
+    "skipped": true,
+    "reason": "full_mode_disabled",
+    "timestamp": "2026-02-10T02:43:17.677594"
+  },
+  "correlation_matrix": [],
+  "correlation_tickers": [],
+  "intraday_summary": {},
+  "crypto_monitoring": {},
+  "event_predictions": [],
+  "event_attributions": [],
+  "event_backtest_results": {},
+  "news_correlations": [],
+  "company_ra_analysis": {
+    "timestamp": "2026-02-10T02:43:02.319683",
+    "role_focus": "RA 1\uba85 (\ub9e4\ud06c\ub85c/ETF \uc804\ub7b5)",
+    "companies": [
+      {
+        "ticker": "AAPL",
+        "company_name": "AAPL",
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "currency": "USD",
+        "last_close": null,
+        "market_cap": null,
+        "valuation": {
+          "trailing_pe": null,
+          "forward_pe": null,
+          "price_to_book": null,
+          "ev_to_ebitda": null
+        },
+        "accounting": {
+          "revenue": null,
+          "operating_income": null,
+          "net_income": null,
+          "operating_cash_flow": null,
+          "free_cash_flow": null,
+          "total_assets": null,
+          "total_liabilities": null,
+          "total_equity": null
+        },
+        "ratios": {
+          "roe": null,
+          "roa": null,
+          "operating_margin": null,
+          "net_margin": null,
+          "debt_to_equity": null,
+          "current_ratio": null
+        },
+        "price_momentum": {
+          "ret_1d_pct": null,
+          "ret_5d_pct": null,
+          "ret_20d_pct": null
+        },
+        "valuation_signal": "N/A",
+        "peer_pe_median": null,
+        "ra_takeaway": "\ud575\uc2ec \uc7ac\ubb34\uc9c0\ud45c\uc640 \uc774\uc775 \ubaa8\uba58\ud140\uc758 \uc815\ud569\uc131 \ud655\uc778 \ud6c4 \ud3ec\uc9c0\uc158 \ud310\ub2e8 \uad8c\uace0."
+      },
+      {
+        "ticker": "MSFT",
+        "company_name": "MSFT",
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "currency": "USD",
+        "last_close": null,
+        "market_cap": null,
+        "valuation": {
+          "trailing_pe": null,
+          "forward_pe": null,
+          "price_to_book": null,
+          "ev_to_ebitda": null
+        },
+        "accounting": {
+          "revenue": null,
+          "operating_income": null,
+          "net_income": null,
+          "operating_cash_flow": null,
+          "free_cash_flow": null,
+          "total_assets": null,
+          "total_liabilities": null,
+          "total_equity": null
+        },
+        "ratios": {
+          "roe": null,
+          "roa": null,
+          "operating_margin": null,
+          "net_margin": null,
+          "debt_to_equity": null,
+          "current_ratio": null
+        },
+        "price_momentum": {
+          "ret_1d_pct": null,
+          "ret_5d_pct": null,
+          "ret_20d_pct": null
+        },
+        "valuation_signal": "N/A",
+        "peer_pe_median": null,
+        "ra_takeaway": "\ud575\uc2ec \uc7ac\ubb34\uc9c0\ud45c\uc640 \uc774\uc775 \ubaa8\uba58\ud140\uc758 \uc815\ud569\uc131 \ud655\uc778 \ud6c4 \ud3ec\uc9c0\uc158 \ud310\ub2e8 \uad8c\uace0."
+      },
+      {
+        "ticker": "NVDA",
+        "company_name": "NVDA",
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "currency": "USD",
+        "last_close": null,
+        "market_cap": null,
+        "valuation": {
+          "trailing_pe": null,
+          "forward_pe": null,
+          "price_to_book": null,
+          "ev_to_ebitda": null
+        },
+        "accounting": {
+          "revenue": null,
+          "operating_income": null,
+          "net_income": null,
+          "operating_cash_flow": null,
+          "free_cash_flow": null,
+          "total_assets": null,
+          "total_liabilities": null,
+          "total_equity": null
+        },
+        "ratios": {
+          "roe": null,
+          "roa": null,
+          "operating_margin": null,
+          "net_margin": null,
+          "debt_to_equity": null,
+          "current_ratio": null
+        },
+        "price_momentum": {
+          "ret_1d_pct": null,
+          "ret_5d_pct": null,
+          "ret_20d_pct": null
+        },
+        "valuation_signal": "N/A",
+        "peer_pe_median": null,
+        "ra_takeaway": "\ud575\uc2ec \uc7ac\ubb34\uc9c0\ud45c\uc640 \uc774\uc775 \ubaa8\uba58\ud140\uc758 \uc815\ud569\uc131 \ud655\uc778 \ud6c4 \ud3ec\uc9c0\uc158 \ud310\ub2e8 \uad8c\uace0."
+      },
+      {
+        "ticker": "JPM",
+        "company_name": "JPM",
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "currency": "USD",
+        "last_close": null,
+        "market_cap": null,
+        "valuation": {
+          "trailing_pe": null,
+          "forward_pe": null,
+          "price_to_book": null,
+          "ev_to_ebitda": null
+        },
+        "accounting": {
+          "revenue": null,
+          "operating_income": null,
+          "net_income": null,
+          "operating_cash_flow": null,
+          "free_cash_flow": null,
+          "total_assets": null,
+          "total_liabilities": null,
+          "total_equity": null
+        },
+        "ratios": {
+          "roe": null,
+          "roa": null,
+          "operating_margin": null,
+          "net_margin": null,
+          "debt_to_equity": null,
+          "current_ratio": null
+        },
+        "price_momentum": {
+          "ret_1d_pct": null,
+          "ret_5d_pct": null,
+          "ret_20d_pct": null
+        },
+        "valuation_signal": "N/A",
+        "peer_pe_median": null,
+        "ra_takeaway": "\ud575\uc2ec \uc7ac\ubb34\uc9c0\ud45c\uc640 \uc774\uc775 \ubaa8\uba58\ud140\uc758 \uc815\ud569\uc131 \ud655\uc778 \ud6c4 \ud3ec\uc9c0\uc158 \ud310\ub2e8 \uad8c\uace0."
+      },
+      {
+        "ticker": "XOM",
+        "company_name": "XOM",
+        "sector": "Unknown",
+        "industry": "Unknown",
+        "currency": "USD",
+        "last_close": null,
+        "market_cap": null,
+        "valuation": {
+          "trailing_pe": null,
+          "forward_pe": null,
+          "price_to_book": null,
+          "ev_to_ebitda": null
+        },
+        "accounting": {
+          "revenue": null,
+          "operating_income": null,
+          "net_income": null,
+          "operating_cash_flow": null,
+          "free_cash_flow": null,
+          "total_assets": null,
+          "total_liabilities": null,
+          "total_equity": null
+        },
+        "ratios": {
+          "roe": null,
+          "roa": null,
+          "operating_margin": null,
+          "net_margin": null,
+          "debt_to_equity": null,
+          "current_ratio": null
+        },
+        "price_momentum": {
+          "ret_1d_pct": null,
+          "ret_5d_pct": null,
+          "ret_20d_pct": null
+        },
+        "valuation_signal": "N/A",
+        "peer_pe_median": null,
+        "ra_takeaway": "\ud575\uc2ec \uc7ac\ubb34\uc9c0\ud45c\uc640 \uc774\uc775 \ubaa8\uba58\ud140\uc758 \uc815\ud569\uc131 \ud655\uc778 \ud6c4 \ud3ec\uc9c0\uc158 \ud310\ub2e8 \uad8c\uace0."
+      }
+    ],
+    "etf_strategy_snapshot": [
+      {
+        "ticker": "XLK",
+        "etf_name": "XLK",
+        "category": "sector",
+        "asset_role": "Sector Satellite",
+        "factor_exposure": "Quality/Growth",
+        "sector_or_theme": "\uae30\uc220 \uc139\ud130",
+        "duration_profile": "\uae08\ub9ac \ubbfc\uac10",
+        "last_close": 142.3565,
+        "ret_1d_pct": -0.34,
+        "ret_5d_pct": 0.1,
+        "ret_20d_pct": 2.21,
+        "ret_60d_pct": 4.56,
+        "relative_strength_20d": 4.19,
+        "volume_ratio_20d": 1.061,
+        "rsi_14": 62.32,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "ADBE"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Software",
+            "weight_pct": 39.0
+          },
+          {
+            "sector": "Semiconductors",
+            "weight_pct": 31.0
+          },
+          {
+            "sector": "Tech Hardware",
+            "weight_pct": 20.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "XLV",
+        "etf_name": "XLV",
+        "category": "sector",
+        "asset_role": "Sector Satellite",
+        "factor_exposure": "Defensive",
+        "sector_or_theme": "\ud5ec\uc2a4\ucf00\uc5b4 \uc139\ud130",
+        "duration_profile": "\ubc29\uc5b4\uc801",
+        "last_close": 91.5167,
+        "ret_1d_pct": -0.27,
+        "ret_5d_pct": -0.68,
+        "ret_20d_pct": -0.47,
+        "ret_60d_pct": 1.29,
+        "relative_strength_20d": 1.52,
+        "volume_ratio_20d": 1.113,
+        "rsi_14": 42.16,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "LLY",
+          "UNH",
+          "JNJ",
+          "ABBV",
+          "MRK"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Pharmaceuticals",
+            "weight_pct": 30.0
+          },
+          {
+            "sector": "Healthcare Equipment",
+            "weight_pct": 22.0
+          },
+          {
+            "sector": "Biotech",
+            "weight_pct": 16.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "SPY",
+        "etf_name": "SPY",
+        "category": "market",
+        "asset_role": "Core",
+        "factor_exposure": "Market Beta",
+        "sector_or_theme": "\ubbf8\uad6d \ub300\ud615\uc8fc \uad11\ubc94\uc704",
+        "duration_profile": "\uc911\ub9bd",
+        "last_close": 104.1213,
+        "ret_1d_pct": 0.09,
+        "ret_5d_pct": 0.09,
+        "ret_20d_pct": -1.98,
+        "ret_60d_pct": 3.99,
+        "relative_strength_20d": 0.0,
+        "volume_ratio_20d": 0.812,
+        "rsi_14": 45.49,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AMZN",
+          "META"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Technology",
+            "weight_pct": 31.0
+          },
+          {
+            "sector": "Financials",
+            "weight_pct": 13.0
+          },
+          {
+            "sector": "Healthcare",
+            "weight_pct": 12.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "XLE",
+        "etf_name": "XLE",
+        "category": "sector",
+        "asset_role": "Sector Satellite",
+        "factor_exposure": "Value/Cyclicals",
+        "sector_or_theme": "\uc5d0\ub108\uc9c0 \uc139\ud130",
+        "duration_profile": "\uc720\uac00 \ubbfc\uac10",
+        "last_close": 106.217,
+        "ret_1d_pct": 0.25,
+        "ret_5d_pct": -0.24,
+        "ret_20d_pct": -2.49,
+        "ret_60d_pct": 3.33,
+        "relative_strength_20d": -0.51,
+        "volume_ratio_20d": 0.956,
+        "rsi_14": 19.66,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "XOM",
+          "CVX",
+          "COP",
+          "SLB",
+          "EOG"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Integrated Oil & Gas",
+            "weight_pct": 41.0
+          },
+          {
+            "sector": "E&P",
+            "weight_pct": 33.0
+          },
+          {
+            "sector": "Oil Equipment/Services",
+            "weight_pct": 15.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "GLD",
+        "etf_name": "GLD",
+        "category": "alternative",
+        "asset_role": "Real Asset Hedge",
+        "factor_exposure": "Inflation/Real Rate",
+        "sector_or_theme": "\uae08(\ub300\uccb4\uc790\uc0b0)",
+        "duration_profile": "\uc2e4\uc9c8\uae08\ub9ac \uc5ed\ubbfc\uac10",
+        "last_close": 79.3724,
+        "ret_1d_pct": -0.08,
+        "ret_5d_pct": -1.16,
+        "ret_20d_pct": -4.34,
+        "ret_60d_pct": -4.02,
+        "relative_strength_20d": -2.35,
+        "volume_ratio_20d": 1.015,
+        "rsi_14": 8.65,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 1,
+        "top_holdings": [
+          "Physical Gold Bullion"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Precious Metals",
+            "weight_pct": 100.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "XLI",
+        "etf_name": "XLI",
+        "category": "sector",
+        "asset_role": "Sector Satellite",
+        "factor_exposure": "Cyclicals",
+        "sector_or_theme": "\uc0b0\uc5c5\uc7ac \uc139\ud130",
+        "duration_profile": "\uacbd\uae30 \ubbfc\uac10",
+        "last_close": 99.747,
+        "ret_1d_pct": 0.17,
+        "ret_5d_pct": -0.84,
+        "ret_20d_pct": -4.77,
+        "ret_60d_pct": -8.4,
+        "relative_strength_20d": -2.78,
+        "volume_ratio_20d": 1.077,
+        "rsi_14": 23.35,
+        "momentum_label": "NEUTRAL",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "GE",
+          "RTX",
+          "UNP",
+          "CAT",
+          "HON"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Aerospace & Defense",
+            "weight_pct": 22.0
+          },
+          {
+            "sector": "Industrial Conglomerates",
+            "weight_pct": 18.0
+          },
+          {
+            "sector": "Machinery",
+            "weight_pct": 17.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "XLF",
+        "etf_name": "XLF",
+        "category": "sector",
+        "asset_role": "Sector Satellite",
+        "factor_exposure": "Value/Cyclicals",
+        "sector_or_theme": "\uae08\uc735 \uc139\ud130",
+        "duration_profile": "\uc7a5\ub2e8\uae30\uae08\ub9ac\ucc28 \ubbfc\uac10",
+        "last_close": 94.528,
+        "ret_1d_pct": -0.67,
+        "ret_5d_pct": -2.76,
+        "ret_20d_pct": -5.12,
+        "ret_60d_pct": -2.47,
+        "relative_strength_20d": -3.14,
+        "volume_ratio_20d": 0.873,
+        "rsi_14": 0.8,
+        "momentum_label": "DOWNTREND",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "BRK-B",
+          "JPM",
+          "V",
+          "MA",
+          "BAC"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Banks",
+            "weight_pct": 35.0
+          },
+          {
+            "sector": "Capital Markets",
+            "weight_pct": 24.0
+          },
+          {
+            "sector": "Insurance",
+            "weight_pct": 17.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "IWM",
+        "etf_name": "IWM",
+        "category": "market",
+        "asset_role": "Size Tilt",
+        "factor_exposure": "Small Cap",
+        "sector_or_theme": "\ubbf8\uad6d \uc18c\ud615\uc8fc",
+        "duration_profile": "\uacbd\uae30 \ubbfc\uac10",
+        "last_close": 128.7969,
+        "ret_1d_pct": -0.71,
+        "ret_5d_pct": -1.42,
+        "ret_20d_pct": -5.79,
+        "ret_60d_pct": 2.13,
+        "relative_strength_20d": -3.8,
+        "volume_ratio_20d": 0.922,
+        "rsi_14": 3.11,
+        "momentum_label": "DOWNTREND",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "SMCI",
+          "FTAI",
+          "CRDO",
+          "APPF",
+          "TGTX"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Industrials",
+            "weight_pct": 19.0
+          },
+          {
+            "sector": "Financials",
+            "weight_pct": 17.0
+          },
+          {
+            "sector": "Healthcare",
+            "weight_pct": 16.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "TLT",
+        "etf_name": "TLT",
+        "category": "bond",
+        "asset_role": "Rates Hedge",
+        "factor_exposure": "Duration",
+        "sector_or_theme": "\ubbf8\uad6d \uc7a5\uae30 \uad6d\ucc44",
+        "duration_profile": "\uace0\ub4c0\ub808\uc774\uc158",
+        "last_close": 137.2081,
+        "ret_1d_pct": -0.17,
+        "ret_5d_pct": -0.65,
+        "ret_20d_pct": -6.5,
+        "ret_60d_pct": -6.0,
+        "relative_strength_20d": -4.52,
+        "volume_ratio_20d": 1.118,
+        "rsi_14": 2.81,
+        "momentum_label": "DOWNTREND",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 3,
+        "top_holdings": [
+          "UST 20Y+",
+          "UST 25Y+",
+          "UST 30Y+"
+        ],
+        "sector_weights": [
+          {
+            "sector": "US Treasuries",
+            "weight_pct": 100.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      },
+      {
+        "ticker": "QQQ",
+        "etf_name": "QQQ",
+        "category": "market",
+        "asset_role": "Growth Tilt",
+        "factor_exposure": "Growth/Quality",
+        "sector_or_theme": "\ub098\uc2a4\ub2e5100(\uae30\uc220 \ube44\uc911 \ub192\uc74c)",
+        "duration_profile": "\uc0c1\ub300\uc801 \uace0\ub4c0\ub808\uc774\uc158",
+        "last_close": 121.0269,
+        "ret_1d_pct": -0.11,
+        "ret_5d_pct": -1.35,
+        "ret_20d_pct": -7.14,
+        "ret_60d_pct": -10.24,
+        "relative_strength_20d": -5.16,
+        "volume_ratio_20d": 0.995,
+        "rsi_14": 3.51,
+        "momentum_label": "DOWNTREND",
+        "expense_ratio_pct": null,
+        "dividend_yield_pct": null,
+        "total_assets_usd_bn": null,
+        "holdings_count": 5,
+        "top_holdings": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AMZN",
+          "META"
+        ],
+        "sector_weights": [
+          {
+            "sector": "Technology",
+            "weight_pct": 51.0
+          },
+          {
+            "sector": "Communication",
+            "weight_pct": 16.0
+          },
+          {
+            "sector": "Consumer Discretionary",
+            "weight_pct": 13.0
+          }
+        ],
+        "data_source": "synthetic_price",
+        "synthetic_price_fallback": true,
+        "quality_flag": "SYNTHETIC"
+      }
+    ],
+    "ra_work_support": {
+      "role_focus": "RA 1\uba85 (\ub9e4\ud06c\ub85c/ETF \uc804\ub7b5)",
+      "research_tasks": [
+        "\uae30\uc5c5 \uc7ac\ubb34/\ud68c\uacc4 \ud575\uc2ec\uc9c0\ud45c \uc5c5\ub370\uc774\ud2b8: AAPL, MSFT, NVDA",
+        "\uc139\ud130/\uc9c0\uc218 ETF \ubaa8\uba58\ud140 \ube44\uad50\ud45c \uc791\uc131 (5\uc77c/20\uc77c \uc218\uc775\ub960)",
+        "\ubc38\ub958\uc5d0\uc774\uc158 \ud3b8\ucc28(\ub3d9\uc885 \ub300\ube44 P/E) \uc810\uac80 \ubc0f \ucf54\uba58\ud2b8 \uc791\uc131",
+        "ETF \ubcf4\uc720\uc885\ubaa9/\uc139\ud130 \ube44\uc911 \uc2a4\ub0c5\uc0f7 \uc5c5\ub370\uc774\ud2b8 (top holdings + sector weights)"
+      ],
+      "seminar_material_points": [
+        "\ucd5c\uadfc \ub9e4\ud06c\ub85c \ud658\uacbd\uacfc ETF \uc790\uae08\ud750\ub984 \uc694\uc57d \uc2ac\ub77c\uc774\ub4dc",
+        "\uae30\uc5c5 \uc2e4\uc801/\ubc38\ub958\uc5d0\uc774\uc158 \uccb4\ucee4\ubcf4\ub4dc(ROE, \ub9c8\uc9c4, D/E, P/E) \uc5c5\ub370\uc774\ud2b8",
+        "\ub9ac\uc2a4\ud06c \uc2dc\ub098\ub9ac\uc624(\uae08\ub9ac/\uc720\uac00/\ub2ec\ub7ec)\ubcc4 \ub300\uc751 \ud3ec\uc778\ud2b8 \uc815\ub9ac"
+      ],
+      "cross_department_support_points": [
+        "\uc601\uc5c5/\uc6b4\uc6a9 \ud611\uc870\uc6a9 \uae30\uc5c5\ubcc4 one-page \ud329\ud2b8\uc2dc\ud2b8 \uc81c\uacf5",
+        "\uc678\ubd80 \uc138\ubbf8\ub098\uc6a9 \ud575\uc2ec \ub370\uc774\ud130 \ucd9c\ucc98 \ubc0f \uc0b0\uc2dd \uba85\uc2dc",
+        "SQL(PostgreSQL) \uae30\ubc18 \ub370\uc774\ud130 \ucd94\ucd9c \uc694\uccad \ub300\uc751"
+      ],
+      "data_update_note": "\uc7ac\ubb34\uc81c\ud45c \uae30\ubc18 \uc9c0\ud45c\ub294 \uacf5\uc2dc \uac31\uc2e0 \uc8fc\uae30(\ubd84\uae30/\uc5f0\uac04)\uc640 \uc2dc\ucc28\uac00 \uc788\uc73c\ubbc0\ub85c \uac00\uaca9\uc9c0\ud45c\uc640 \uc5c5\ub370\uc774\ud2b8 \uc8fc\uae30\ub97c \uad6c\ubd84\ud574 \uc6b4\uc6a9",
+      "etf_coverage_count": 10,
+      "company_coverage_count": 5
+    },
+    "postgresql": {
+      "enabled": true,
+      "dsn_configured": true,
+      "driver_available": true,
+      "stored_rows": 0,
+      "error": "postgres_connect_error:OperationalError:connection is bad: no error details available",
+      "table": "fi_ra.company_fundamentals"
+    },
+    "failures": [],
+    "internal_sql": {
+      "enabled": true,
+      "backend": "sqlite",
+      "db_path": "data/ra_research.db",
+      "table": "ra_company_fundamentals",
+      "upserted_rows": 5,
+      "total_rows": 10,
+      "distinct_tickers": 5,
+      "min_date": "2026-02-09",
+      "max_date": "2026-02-10",
+      "quality_checks": {
+        "missing_valuation_rows": 5,
+        "missing_financial_rows": 5,
+        "quality_flagged_rows": 5
+      },
+      "error": "",
+      "etf_table": "ra_etf_snapshot",
+      "etf_upserted_rows": 10,
+      "etf_total_rows": 20,
+      "etf_distinct_tickers": 10,
+      "etf_source_mix": [
+        {
+          "data_source": "synthetic_price",
+          "count": 10
+        },
+        {
+          "data_source": "financial_indicators,yfinance_price,yfinance_info",
+          "count": 6
+        },
+        {
+          "data_source": "yfinance_price,yfinance_info",
+          "count": 4
+        }
+      ],
+      "etf_quality_checks": {
+        "missing_return_rows": 0,
+        "missing_holdings_rows": 0,
+        "unexpected_quality_rows": 0
+      },
+      "sql_artifacts": {
+        "materialized_tables": [
+          "ra_valuation_snapshot_mv",
+          "ra_etf_momentum_snapshot_mv",
+          "ra_backtest_compare_mv",
+          "ra_allocation_signal_mv"
+        ],
+        "row_counts": {
+          "ra_valuation_snapshot_mv": 5,
+          "ra_etf_momentum_snapshot_mv": 10,
+          "ra_backtest_compare_mv": 6,
+          "ra_allocation_signal_mv": 1
+        },
+        "refreshed_at": "2026-02-10T02:43:04.227636"
+      },
+      "sql_preview_tables": {
+        "valuation_snapshot_mv": [
+          {
+            "ticker": "AAPL",
+            "sector": "Unknown",
+            "trailing_pe": null,
+            "price_to_book": null,
+            "ret_20d_pct": null,
+            "valuation_signal": "N/A",
+            "pe_bucket": "N/A"
+          },
+          {
+            "ticker": "JPM",
+            "sector": "Unknown",
+            "trailing_pe": null,
+            "price_to_book": null,
+            "ret_20d_pct": null,
+            "valuation_signal": "N/A",
+            "pe_bucket": "N/A"
+          },
+          {
+            "ticker": "MSFT",
+            "sector": "Unknown",
+            "trailing_pe": null,
+            "price_to_book": null,
+            "ret_20d_pct": null,
+            "valuation_signal": "N/A",
+            "pe_bucket": "N/A"
+          },
+          {
+            "ticker": "NVDA",
+            "sector": "Unknown",
+            "trailing_pe": null,
+            "price_to_book": null,
+            "ret_20d_pct": null,
+            "valuation_signal": "N/A",
+            "pe_bucket": "N/A"
+          },
+          {
+            "ticker": "XOM",
+            "sector": "Unknown",
+            "trailing_pe": null,
+            "price_to_book": null,
+            "ret_20d_pct": null,
+            "valuation_signal": "N/A",
+            "pe_bucket": "N/A"
+          }
+        ],
+        "etf_momentum_snapshot_mv": [
+          {
+            "ticker": "XLK",
+            "category": "sector",
+            "ret_5d_pct": 0.1,
+            "ret_20d_pct": 2.21,
+            "rank_ret_20d": 1,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "XLV",
+            "category": "sector",
+            "ret_5d_pct": -0.68,
+            "ret_20d_pct": -0.47,
+            "rank_ret_20d": 2,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "SPY",
+            "category": "market",
+            "ret_5d_pct": 0.09,
+            "ret_20d_pct": -1.98,
+            "rank_ret_20d": 3,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "XLE",
+            "category": "sector",
+            "ret_5d_pct": -0.24,
+            "ret_20d_pct": -2.49,
+            "rank_ret_20d": 4,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "GLD",
+            "category": "alternative",
+            "ret_5d_pct": -1.16,
+            "ret_20d_pct": -4.34,
+            "rank_ret_20d": 5,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "XLI",
+            "category": "sector",
+            "ret_5d_pct": -0.84,
+            "ret_20d_pct": -4.77,
+            "rank_ret_20d": 6,
+            "momentum_label": "NEUTRAL"
+          },
+          {
+            "ticker": "XLF",
+            "category": "sector",
+            "ret_5d_pct": -2.76,
+            "ret_20d_pct": -5.12,
+            "rank_ret_20d": 7,
+            "momentum_label": "DOWNTREND"
+          },
+          {
+            "ticker": "IWM",
+            "category": "market",
+            "ret_5d_pct": -1.42,
+            "ret_20d_pct": -5.79,
+            "rank_ret_20d": 8,
+            "momentum_label": "DOWNTREND"
+          }
+        ],
+        "backtest_compare_mv": [
+          {
+            "strategy_name": "EIMAS_AutoPaper_TargetPrice",
+            "total_return": 0.0767235445914436,
+            "annualized_return": 0.07768293904749868,
+            "sharpe_ratio": 1.1766372074487932,
+            "max_drawdown": -0.03691697095561108,
+            "sharpe_rank": 1
+          },
+          {
+            "strategy_name": "manual_smoke",
+            "total_return": 0.12,
+            "annualized_return": 0.08,
+            "sharpe_ratio": 1.1,
+            "max_drawdown": -0.12,
+            "sharpe_rank": 2
+          },
+          {
+            "strategy_name": "fast",
+            "total_return": 0.1,
+            "annualized_return": 0.08,
+            "sharpe_ratio": 1.0,
+            "max_drawdown": -0.1,
+            "sharpe_rank": 3
+          },
+          {
+            "strategy_name": "EIMAS_AutoPaper_TargetPrice",
+            "total_return": 0.014646892368341158,
+            "annualized_return": 0.007311383873406019,
+            "sharpe_ratio": 0.15816120302451708,
+            "max_drawdown": -0.07561208765695726,
+            "sharpe_rank": 4
+          },
+          {
+            "strategy_name": "EIMAS_AutoPaper_TargetPrice",
+            "total_return": 0.014646892368341158,
+            "annualized_return": 0.007311383873406019,
+            "sharpe_ratio": 0.15816120302451708,
+            "max_drawdown": -0.07561208765695726,
+            "sharpe_rank": 4
+          },
+          {
+            "strategy_name": "EIMAS_AutoPaper_TargetPrice",
+            "total_return": 0.0,
+            "annualized_return": 0.0,
+            "sharpe_ratio": 0.0,
+            "max_drawdown": 0.0,
+            "sharpe_rank": 6
+          }
+        ],
+        "allocation_signal_mv": [
+          {
+            "as_of_date": "2026-02-09",
+            "valuation_score": 0.0,
+            "etf_breadth_score": -40.0,
+            "macro_proxy_score": -3.577,
+            "composite_score": -14.715,
+            "signal_label": "RISK_OFF",
+            "n_companies": 5,
+            "n_etf": 10
+          }
+        ]
+      },
+      "validation_sql_examples": [
+        "SELECT COUNT(*) AS total_rows, COUNT(DISTINCT ticker) AS distinct_tickers, MIN(as_of_date) AS min_date, MAX(as_of_date) AS max_date FROM ra_company_fundamentals;",
+        "SELECT ticker, trailing_pe, price_to_book, revenue, net_income, quality_flag FROM ra_company_fundamentals ORDER BY as_of_date DESC, ticker LIMIT 10;",
+        "SELECT ticker, category, ret_20d_pct, momentum_label FROM ra_etf_snapshot ORDER BY as_of_date DESC, ret_20d_pct DESC LIMIT 10;",
+        "SELECT ticker, pe_bucket, trailing_pe, ret_20d_pct FROM ra_valuation_snapshot_mv ORDER BY trailing_pe LIMIT 10;",
+        "SELECT as_of_date, valuation_score, etf_breadth_score, macro_proxy_score, composite_score, signal_label FROM ra_allocation_signal_mv ORDER BY as_of_date DESC LIMIT 10;"
+      ]
+    }
+  },
+  "ark_analysis": {
+    "timestamp": "2026-02-10T02:30:34.887090",
+    "consensus_buys": [],
+    "consensus_sells": [],
+    "new_positions": [],
+    "top_increases": [],
+    "top_decreases": [],
+    "signals": []
+  },
+  "critical_path_monitoring": {},
+  "trading_db_status": "N/A",
+  "liquidity_analysis": {},
+  "etf_flow_result": {},
+  "hft_microstructure": {
+    "tick_rule": {
+      "buy_ratio": 0.5277777777777778,
+      "sell_ratio": 0.4722222222222222,
+      "interpretation": "NEUTRAL"
+    },
+    "kyles_lambda": {
+      "lambda": 1.2821942910981052e-09,
+      "r_squared": 0.5879200366578183,
+      "n_observations": 179,
+      "interpretation": "LOW_IMPACT"
+    },
+    "volume_clock": {
+      "original_samples": 180,
+      "volume_samples": 21,
+      "compression_ratio": 0.11666666666666667
+    }
+  },
+  "garch_volatility": {
+    "garch_params": {
+      "omega": 9.779690775965822e-06,
+      "alpha": 0.050000384204016105,
+      "beta": 0.8499995892385809,
+      "persistence": 0.899999973442597,
+      "half_life": 6.578811636438653,
+      "n_observations": 179,
+      "log_likelihood": 573.852915242208,
+      "aic": -1139.705830484416,
+      "bic": -1126.9562872610531
+    },
+    "volatility_forecast_10d": {
+      "1": 0.009121913951858001,
+      "2": 0.009201525487479455,
+      "3": 0.00927259147673736,
+      "4": 0.009336088362775446,
+      "5": 0.009392868560080618,
+      "6": 0.009443678851018218,
+      "7": 0.009489175497615531,
+      "8": 0.009529936770341727,
+      "9": 0.009566473421594331,
+      "10": 0.00959923750612332
+    },
+    "current_volatility": 0.1574232803275965,
+    "forecast_avg_volatility": 0.1491465414263901
+  },
+  "information_flow": {
+    "abnormal_volume": {
+      "abnormal_dates": [],
+      "total_abnormal_days": 0,
+      "abnormal_ratio": 0.0,
+      "max_ratio": 2.2625565880919543,
+      "interpretation": "LOW: 0.0%\uc758 \ub0a0\uc774 \uc774\uc0c1 \uac70\ub798 (\uc548\uc815\uc801)"
+    },
+    "capm_QQQ": {
+      "alpha": -0.0008191025504961316,
+      "beta": 0.9500485513751532,
+      "r_squared": 0.4943598973760208,
+      "n_observations": 179,
+      "alpha_interpretation": "UNDERPERFORM: -20.6%/year (\ube44\ud6a8\uc728\uc801)",
+      "beta_interpretation": "MARKET: \u03b2=0.95 (\uc2dc\uc7a5 \uc720\uc0ac)"
+    },
+    "capm_TLT": {
+      "alpha": 0.0003392830398408594,
+      "beta": -0.099058658200628,
+      "r_squared": 0.0341798684015957,
+      "n_observations": 179,
+      "alpha_interpretation": "OUTPERFORM: +8.5%/year (\uc815\ubcf4 \uc6b0\uc704 \uac00\ub2a5)",
+      "beta_interpretation": "INDEPENDENT: \u03b2=-0.10 (\uc2dc\uc7a5 \ubb34\uad00)"
+    },
+    "capm_GLD": {
+      "alpha": 0.0010286863278832251,
+      "beta": -0.004215795791609984,
+      "r_squared": 5.4173212224228884e-05,
+      "n_observations": 179,
+      "alpha_interpretation": "OUTPERFORM: +25.9%/year (\uc815\ubcf4 \uc6b0\uc704 \uac00\ub2a5)",
+      "beta_interpretation": "INDEPENDENT: \u03b2=-0.00 (\uc2dc\uc7a5 \ubb34\uad00)"
+    }
+  },
+  "proof_of_index": {
+    "index_value": 13.485245625819438,
+    "weights": {
+      "SPY": 0.4215470828290159,
+      "QQQ": 0.31627928164900937,
+      "TLT": 0.07396157099298523,
+      "GLD": 0.1882120645289896
+    },
+    "hash": "4dfc5f351233afb0b0283403d53966c5ec801ed10599903ba3f76c54d904d810",
+    "timestamp": "2026-02-10T02:43:08.552813",
+    "verification": {
+      "is_valid": true,
+      "hash_calculated": "4dfc5f351233afb0b0283403d53966c5ec801ed10599903ba3f76c54d904d810",
+      "hash_reference": "4dfc5f351233afb0b0283403d53966c5ec801ed10599903ba3f76c54d904d810",
+      "message": "\u2705 Hash verified. Index calculation is correct."
+    },
+    "mean_reversion_signal": {
+      "timestamp": "2026-02-10T02:43:08.556974",
+      "current_price": 568.4665954796931,
+      "mean": 584.1733061954501,
+      "std": 9.988999788703948,
+      "z_score": -1.5724007456200917,
+      "signal": "HOLD",
+      "strength": 0.7862003728100458,
+      "interpretation": "NORMAL: Z=-1.57 (within \u00b12.0)"
+    }
+  },
+  "dtw_similarity": {},
+  "dbscan_outliers": {},
+  "phase2_cache_stats": {
+    "enabled": true,
+    "ttl_seconds": 3600,
+    "hits": 1,
+    "misses": 0,
+    "bypassed": 0,
+    "keys": {
+      "ark_analysis": {
+        "hits": 1,
+        "misses": 0,
+        "bypassed": 0,
+        "last_hit_age_seconds": 753.699
+      }
+    }
+  },
+  "pipeline_phase_timings": {
+    "phase1_collect_data": {
+      "duration_sec": 2.724,
+      "status": "ok"
+    },
+    "phase2_basic_analyze": {
+      "duration_sec": 3.837,
+      "status": "ok"
+    },
+    "phase2_enhanced_analyze": {
+      "duration_sec": 0.716,
+      "status": "ok"
+    },
+    "phase2_sentiment_bubble": {
+      "duration_sec": 0.121,
+      "status": "ok"
+    },
+    "phase2_extended_adjustment": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase2_institutional_frameworks": {
+      "duration_sec": 0.001,
+      "status": "ok"
+    },
+    "phase2_adaptive_portfolio": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase3_debate": {
+      "duration_sec": 8.656,
+      "status": "ok"
+    },
+    "phase4_realtime": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase45_operational_report": {
+      "duration_sec": 0.067,
+      "status": "ok"
+    },
+    "phase46_paper_execution": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase5_storage": {
+      "duration_sec": 0.023,
+      "status": "ok"
+    },
+    "phase6_backtest": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase6_performance_attribution": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase6_stress_test": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase7_generate_report": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase7_validate_report": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase8_ai_validation": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase85_quick_validation": {
+      "duration_sec": 0.0,
+      "status": "ok"
+    },
+    "phase9_artifact_export": {
+      "duration_sec": 0.014,
+      "status": "ok"
+    },
+    "pipeline_total": {
+      "duration_sec": 16.16,
+      "status": "ok"
+    }
+  },
+  "pipeline_elapsed_sec": 16.16,
+  "extended_data": {},
+  "sentiment_analysis": {
+    "fear_greed": {
+      "value": 50,
+      "level": "neutral",
+      "previous_close": 50,
+      "week_ago": 50
+    }
+  },
+  "bubble_framework": {
+    "timestamp": "2026-02-10T02:43:08.931338",
+    "sector": "tech",
+    "stage": "SKIPPED_NETWORK",
+    "total_score": 0.0,
+    "stage_results": [],
+    "warning_flags": [],
+    "skipped": true,
+    "skip_reason": "dns_unavailable:guce.yahoo.com,query1.finance.yahoo.com"
+  },
+  "gap_analysis": {
+    "timestamp": "2026-02-10T02:43:08.931338",
+    "overall_signal": "NEUTRAL",
+    "opportunity": "Institutional network analysis skipped",
+    "market_too_pessimistic": false,
+    "market_too_optimistic": false,
+    "confidence": 0.0,
+    "gaps": [],
+    "skipped": true,
+    "skip_reason": "dns_unavailable:guce.yahoo.com,query1.finance.yahoo.com"
+  },
+  "fomc_analysis": {},
+  "institutional_analysis": {
+    "methodology_applied": [
+      "Bekaert VIX Risk Decomposition"
+    ],
+    "jpmorgan_framework": {},
+    "gap_bridging": {
+      "market_expectation": "MIXED",
+      "model_forecast": "NEUTRAL",
+      "gap_status": "UNCERTAIN",
+      "methodology": "Goldman Sachs Gap-Bridging (Market Implied vs Quantitative Forecast)"
+    },
+    "risk_premium_quantification": {
+      "primary_risk_source": "concentration",
+      "risk_contribution": "36.3%",
+      "methodology": "Bekaert et al. VIX Decomposition (Uncertainty + Risk Appetite)"
+    },
+    "narrative": "Goldman Sachs Gap-Bridging: \uc2dc\uc7a5 \uae30\ub300\uc640 \ubd84\uc11d \uacb0\uacfc \uac04 \uad34\ub9ac \uc874\uc7ac. \ucd94\uac00 \uac80\uc99d \ud544\uc694. Berkshire \ubcf4\uc218\uc801 \uc811\uadfc: \ub9ac\uc2a4\ud06c \uc810\uc218 \ub0ae\uc74c. \uc810\uc9c4\uc801 \ud3ec\uc9c0\uc158 \uad6c\ucd95 \uac00\ub2a5."
+  },
+  "agent_outputs": null,
+  "debate_results": null,
+  "verification": null,
+  "reasoning_chain": [
+    {
+      "step": 1,
+      "agent": "AnalysisAgent",
+      "input": "Market data + CriticalPath analysis",
+      "output": "Risk=23.6, Regime=TRANSITION",
+      "confidence": 36.900127661059095,
+      "key_factors": [],
+      "timestamp": "2026-02-10T02:43:13.232799"
+    },
+    {
+      "step": 2,
+      "agent": "ForecastAgent",
+      "input": "Market data + LASSO model",
+      "output": "Point forecast: 0.0",
+      "confidence": 1.2769435641036608,
+      "key_factors": [
+        "Ret_NVDA"
+      ],
+      "timestamp": "2026-02-10T02:43:14.942626"
+    },
+    {
+      "step": 3,
+      "agent": "DebateProtocol",
+      "input": "17 opinions on 5 topics",
+      "output": "Consensus on 5 topics",
+      "confidence": 54.0,
+      "key_factors": [
+        "regime_stability: Regime stable - low transition risk",
+        "primary_risk: Primary risk: concentration",
+        "crypto_correlation: Low crypto-equity correlation - decoupled"
+      ],
+      "timestamp": "2026-02-10T02:43:14.974299"
+    }
+  ],
+  "ai_report": null,
+  "allocation_result": {},
+  "rebalance_decision": {},
+  "allocation_strategy": "risk_parity",
+  "allocation_config": {},
+  "fair_value_analysis": {
+    "spx": {
+      "fed_model": {
+        "model": "Fed Model",
+        "current_price": 568.4665954796931,
+        "fair_price": 676.7459469996346,
+        "valuation_gap_pct": -16.000000000000004,
+        "current_pe": 20.0,
+        "fair_pe": 23.809523809523807,
+        "pe_premium_pct": -15.999999999999993,
+        "earnings_yield": 5.0,
+        "bond_yield": 4.2,
+        "signal": "UNDERVALUED"
+      },
+      "current_price": 568.4665954796931
+    }
+  },
+  "strategic_allocation": {
+    "stock_bond_allocation": {
+      "risk_tolerance": "moderate",
+      "base_allocation": {
+        "equity": 0.5,
+        "bond": 0.4,
+        "alternative": 0.1
+      },
+      "optimal_mvo": {
+        "stock": 0.5865077595241355,
+        "bond": 0.41349224047586447
+      },
+      "tactical_allocation": {
+        "stock": 0.5800000000000001,
+        "bond": 0.41999999999999993
+      },
+      "portfolio_metrics": {
+        "expected_return": 0.11340622860352645,
+        "volatility": 0.09711804433918148,
+        "sharpe_ratio": 1.1677153239150806
+      },
+      "fair_value_adjustment": -16.000000000000004
+    },
+    "tactical_signals": {
+      "us_equity": "OVERWEIGHT",
+      "korea_equity": "NEUTRAL",
+      "bonds": "NEUTRAL"
+    }
+  },
+  "operational_report": {
+    "signal_hierarchy": {
+      "core_signals": [
+        {
+          "name": "regime_signal",
+          "signal_type": "CORE",
+          "value": "NEUTRAL",
+          "source": "RegimeDetector",
+          "used_in_rules": [
+            "R1",
+            "R2",
+            "R5"
+          ],
+          "description": "Current market regime (BULL/BEAR/NEUTRAL)"
+        },
+        {
+          "name": "regime_confidence",
+          "signal_type": "CORE",
+          "value": 0.5,
+          "source": "RegimeDetector",
+          "used_in_rules": [
+            "R1",
+            "R2"
+          ],
+          "description": "Confidence in regime classification"
+        },
+        {
+          "name": "canonical_risk_score",
+          "signal_type": "CORE",
+          "value": 22.72750898274385,
+          "source": "ScoreDefinitions (unified)",
+          "used_in_rules": [
+            "R3",
+            "R6"
+          ],
+          "description": "Unified risk score (0-100)"
+        },
+        {
+          "name": "agent_consensus_stance",
+          "signal_type": "CORE",
+          "value": "NEUTRAL",
+          "source": "MetaOrchestrator",
+          "used_in_rules": [
+            "R4",
+            "R5",
+            "R7"
+          ],
+          "description": "Final consensus from agent debate"
+        },
+        {
+          "name": "agent_consensus_confidence",
+          "signal_type": "CORE",
+          "value": 0.54,
+          "source": "MetaOrchestrator",
+          "used_in_rules": [
+            "R3",
+            "R6"
+          ],
+          "description": "Confidence in agent consensus"
+        },
+        {
+          "name": "constraint_status",
+          "signal_type": "CORE",
+          "value": "OK",
+          "source": "ConstraintRepair",
+          "used_in_rules": [
+            "R7"
+          ],
+          "description": "Status of asset class constraints"
+        },
+        {
+          "name": "client_profile_status",
+          "signal_type": "CORE",
+          "value": "COMPLETE",
+          "source": "ClientProfile",
+          "used_in_rules": [
+            "R7"
+          ],
+          "description": "Client profile availability"
+        }
+      ],
+      "auxiliary_signals": [
+        {
+          "name": "aux_base_risk_score",
+          "signal_type": "AUXILIARY",
+          "value": 23.627508982743848,
+          "source": "CriticalPathAggregator",
+          "used_in_rules": [],
+          "description": "Base risk from critical path analysis (auxiliary)"
+        },
+        {
+          "name": "aux_microstructure_adjustment",
+          "signal_type": "AUXILIARY",
+          "value": -0.9,
+          "source": "MicrostructureAnalyzer",
+          "used_in_rules": [],
+          "description": "Market quality adjustment (auxiliary)"
+        },
+        {
+          "name": "aux_bubble_risk_adjustment",
+          "signal_type": "AUXILIARY",
+          "value": 0.0,
+          "source": "BubbleDetector",
+          "used_in_rules": [],
+          "description": "Bubble risk overlay (auxiliary)"
+        },
+        {
+          "name": "full_mode_position",
+          "signal_type": "AUXILIARY",
+          "value": "NEUTRAL",
+          "source": "MetaOrchestrator (full mode)",
+          "used_in_rules": [],
+          "description": "Position from full analysis mode (auxiliary)"
+        },
+        {
+          "name": "reference_mode_position",
+          "signal_type": "AUXILIARY",
+          "value": "NEUTRAL",
+          "source": "MetaOrchestrator (reference mode)",
+          "used_in_rules": [],
+          "description": "Position from reference mode (auxiliary)"
+        },
+        {
+          "name": "modes_agree",
+          "signal_type": "AUXILIARY",
+          "value": true,
+          "source": "DualModeAnalyzer",
+          "used_in_rules": [],
+          "description": "Whether full and reference modes agree (auxiliary)"
+        }
+      ],
+      "validation": {
+        "passed": true,
+        "errors": []
+      }
+    },
+    "hold_policy": {
+      "is_hold": false,
+      "hold_conditions": [
+        {
+          "priority": 1,
+          "condition_name": "Client Profile",
+          "is_triggered": false,
+          "reason_code": "CLIENT_PROFILE_MISSING",
+          "current_value": "COMPLETE",
+          "threshold": "COMPLETE or PARTIAL",
+          "description": "Client profile required for personalized allocation"
+        },
+        {
+          "priority": 2,
+          "condition_name": "Constraint Status",
+          "is_triggered": false,
+          "reason_code": "CONSTRAINT_VIOLATION_UNREPAIRED",
+          "current_value": "OK",
+          "threshold": "OK or REPAIRED",
+          "description": "Asset class constraints must be satisfied"
+        },
+        {
+          "priority": 3,
+          "condition_name": "Consensus Confidence",
+          "is_triggered": "False",
+          "reason_code": "LOW_CONFIDENCE",
+          "current_value": "0.54",
+          "threshold": ">= 0.50",
+          "description": "Minimum confidence required for action"
+        },
+        {
+          "priority": 4,
+          "condition_name": "Agent Agreement",
+          "is_triggered": false,
+          "reason_code": "AGENT_CONFLICT_UNRESOLVED",
+          "current_value": "agree=True, conf=0.54",
+          "threshold": "agree=True OR conf>=0.70",
+          "description": "Agents must agree or have high confidence"
+        },
+        {
+          "priority": 5,
+          "condition_name": "Regime-Stance Alignment",
+          "is_triggered": false,
+          "reason_code": "REGIME_STANCE_MISMATCH",
+          "current_value": "regime=NEUTRAL, stance=NEUTRAL",
+          "threshold": "Aligned OR high confidence",
+          "description": "Regime and consensus must align or have high confidence"
+        },
+        {
+          "priority": 6,
+          "condition_name": "Data Quality",
+          "is_triggered": false,
+          "reason_code": "DATA_QUALITY_ISSUE",
+          "current_value": "COMPLETE",
+          "threshold": "COMPLETE or PARTIAL",
+          "description": "Data quality must be acceptable"
+        }
+      ],
+      "triggered_conditions": [],
+      "primary_reason": "",
+      "exit_requirements": []
+    },
+    "decision_policy": {
+      "final_stance": "NEUTRAL",
+      "reason_codes": [
+        "LOW_RISK_BULLISH_ENVIRONMENT"
+      ],
+      "applied_rules": [
+        "RULE_7: NEUTRAL (low risk)"
+      ],
+      "regime_input": "NEUTRAL",
+      "risk_score_input": 22.72750898274385,
+      "confidence_input": 0.54,
+      "agent_consensus_input": "NEUTRAL",
+      "modes_agree_input": true,
+      "constraint_status_input": "OK",
+      "client_profile_status_input": "COMPLETE",
+      "rule_evaluation_log": [
+        {
+          "rule": "RULE_0_CLIENT_PROFILE",
+          "condition": "client_profile_status == MISSING",
+          "input": "COMPLETE",
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_1_DATA_QUALITY",
+          "condition": "data_quality == DEGRADED",
+          "input": "COMPLETE",
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_2_CONSTRAINT_STATUS",
+          "condition": "constraint_status == UNREPAIRED",
+          "input": "OK",
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_3_LOW_CONFIDENCE",
+          "condition": "confidence < 0.5",
+          "input": 0.54,
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_4_AGENT_CONFLICT",
+          "condition": "modes_agree == False AND confidence < high_threshold",
+          "input": "modes_agree=True, confidence=0.54",
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_5_REGIME_STANCE_CONSISTENCY",
+          "condition": "regime contradicts agent_consensus",
+          "input": "regime=NEUTRAL, consensus=NEUTRAL",
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_6_HIGH_RISK_OVERRIDE",
+          "condition": "risk_score >= 70.0",
+          "input": 22.72750898274385,
+          "result": "PASSED"
+        },
+        {
+          "rule": "RULE_7_DETERMINE_STANCE",
+          "condition": "All checks passed, use regime + consensus",
+          "input": "regime=NEUTRAL, consensus=NEUTRAL, conf=0.54",
+          "result": "NEUTRAL (low risk)"
+        }
+      ]
+    },
+    "score_definitions": {
+      "canonical_risk_score": 22.72750898274385,
+      "risk_level": "LOW",
+      "scale": {
+        "min": 0,
+        "max": 100,
+        "interpretation": {
+          "LOW": "0 - 30.0",
+          "MEDIUM": "30.0 - 70.0",
+          "HIGH": "70.0 - 100"
+        }
+      },
+      "auxiliary_sub_scores": {
+        "base_risk_score": {
+          "value": 23.627508982743848,
+          "source": "CriticalPathAggregator",
+          "note": "AUXILIARY - not used for decisions"
+        },
+        "microstructure_adjustment": {
+          "value": -0.9,
+          "source": "DailyMicrostructureAnalyzer",
+          "note": "AUXILIARY - not used for decisions"
+        },
+        "bubble_risk_adjustment": {
+          "value": 0.0,
+          "source": "BubbleDetector",
+          "note": "AUXILIARY - not used for decisions"
+        },
+        "extended_data_adjustment": {
+          "value": 0.0,
+          "source": "ExtendedDataCollector",
+          "note": "AUXILIARY - not used for decisions"
+        }
+      },
+      "formula": "canonical = base + microstructure_adj + bubble_adj + extended_adj",
+      "additional_auxiliary_metrics": []
+    },
+    "allocation": {},
+    "constraint_repair": {
+      "original_weights": {},
+      "repaired_weights": {},
+      "violations_found": [],
+      "repair_actions": [
+        "No violations found - no repair needed"
+      ],
+      "repair_successful": true,
+      "constraints_satisfied": true,
+      "force_hold": false,
+      "force_hold_reason": "",
+      "asset_class_comparison": [
+        {
+          "asset_class": "equity",
+          "original_weight": 0.0,
+          "repaired_weight": 0.0,
+          "delta": 0.0,
+          "min_bound": 0.0,
+          "max_bound": 1.0,
+          "status": "OK"
+        },
+        {
+          "asset_class": "bond",
+          "original_weight": 0.0,
+          "repaired_weight": 0.0,
+          "delta": 0.0,
+          "min_bound": 0.0,
+          "max_bound": 1.0,
+          "status": "OK"
+        },
+        {
+          "asset_class": "cash",
+          "original_weight": 0.0,
+          "repaired_weight": 0.0,
+          "delta": 0.0,
+          "min_bound": 0.0,
+          "max_bound": 0.2,
+          "status": "OK"
+        },
+        {
+          "asset_class": "commodity",
+          "original_weight": 0.0,
+          "repaired_weight": 0.0,
+          "delta": 0.0,
+          "min_bound": 0.0,
+          "max_bound": 0.2,
+          "status": "OK"
+        },
+        {
+          "asset_class": "crypto",
+          "original_weight": 0.0,
+          "repaired_weight": 0.0,
+          "delta": 0.0,
+          "min_bound": 0.0,
+          "max_bound": 0.1,
+          "status": "OK"
+        }
+      ],
+      "verification": {
+        "passed": true,
+        "details": [
+          "All asset class weights within bounds"
+        ]
+      }
+    },
+    "rebalance_plan": {
+      "execution": {
+        "should_execute": false,
+        "not_executed_reason": "No portfolio weights available (current or target)"
+      },
+      "trigger": {
+        "type": "MANUAL",
+        "reason": "No weights available"
+      },
+      "trades": [],
+      "asset_class_summary": [],
+      "summary": {
+        "total_turnover": 0.0,
+        "total_estimated_cost": 0.0,
+        "buy_count": 0,
+        "sell_count": 0,
+        "hold_count": 0
+      },
+      "cost_breakdown": {
+        "commission": 0.0,
+        "spread": 0.0,
+        "market_impact": 0.0,
+        "total": 0.0
+      },
+      "approval": {
+        "requires_human_approval": false,
+        "approval_reason": "",
+        "approval_checklist": []
+      },
+      "metadata": {
+        "turnover_cap_applied": false,
+        "original_turnover": 0.0
+      }
+    },
+    "audit_metadata": {
+      "timestamp": "2026-02-10T02:43:17.653325",
+      "system_version": "EIMAS v2.2.2",
+      "config_hash": "",
+      "input_data_hash": "",
+      "deterministic": true
+    }
+  },
+  "input_validation": {
+    "data_quality_status": "COMPLETE",
+    "core_indicators_checked": 6,
+    "core_indicators_valid": 6,
+    "missing_indicators": [],
+    "anomalies_detected": []
+  },
+  "indicator_classification": {
+    "core_indicators": [
+      {
+        "name": "regime_signal",
+        "value": "NEUTRAL",
+        "source": "RegimeDetector",
+        "used_in_rules": [
+          "RULE_5",
+          "RULE_7"
+        ]
+      },
+      {
+        "name": "regime_confidence",
+        "value": 0.5,
+        "source": "RegimeDetector",
+        "used_in_rules": [
+          "RULE_1",
+          "RULE_2"
+        ]
+      },
+      {
+        "name": "canonical_risk_score",
+        "value": 22.7,
+        "source": "ScoreDefinitions",
+        "used_in_rules": [
+          "RULE_4"
+        ]
+      },
+      {
+        "name": "agent_consensus_stance",
+        "value": "NEUTRAL",
+        "source": "MetaOrchestrator",
+        "used_in_rules": [
+          "RULE_5",
+          "RULE_6",
+          "RULE_7"
+        ]
+      },
+      {
+        "name": "agent_consensus_confidence",
+        "value": 0.54,
+        "source": "MetaOrchestrator",
+        "used_in_rules": [
+          "RULE_3",
+          "RULE_6"
+        ]
+      },
+      {
+        "name": "constraint_status",
+        "value": "OK",
+        "source": "ConstraintRepair",
+        "used_in_rules": [
+          "RULE_2"
+        ]
+      },
+      {
+        "name": "client_profile_status",
+        "value": "COMPLETE",
+        "source": "ClientConfig",
+        "used_in_rules": [
+          "RULE_1"
+        ]
+      }
+    ],
+    "auxiliary_indicators": [
+      {
+        "name": "base_risk_score",
+        "value": 23.6,
+        "source": "CriticalPathAggregator",
+        "description": "Base risk from critical path analysis"
+      },
+      {
+        "name": "microstructure_adjustment",
+        "value": -0.9,
+        "source": "DailyMicrostructureAnalyzer",
+        "description": "Market quality adjustment"
+      },
+      {
+        "name": "bubble_risk_adjustment",
+        "value": 0.0,
+        "source": "BubbleDetector",
+        "description": "Bubble risk overlay"
+      },
+      {
+        "name": "extended_data_adjustment",
+        "value": 0.0,
+        "source": "ExtendedDataCollector",
+        "description": "PCR/Sentiment/Credit adjustment"
+      },
+      {
+        "name": "full_mode_position",
+        "value": "NEUTRAL",
+        "source": "MetaOrchestrator (full mode)",
+        "description": "Position from full analysis mode"
+      },
+      {
+        "name": "reference_mode_position",
+        "value": "NEUTRAL",
+        "source": "MetaOrchestrator (reference mode)",
+        "description": "Position from reference mode"
+      },
+      {
+        "name": "modes_agree",
+        "value": true,
+        "source": "DualModeAnalyzer",
+        "description": "Whether full and reference modes agree"
+      }
+    ],
+    "note": "Only core_indicators are used in decision rules. auxiliary_indicators are for transparency only."
+  },
+  "trade_plan": [],
+  "operational_controls": {
+    "turnover_cap": 0.3,
+    "turnover_applied": 0.0,
+    "turnover_cap_triggered": false,
+    "constraints_satisfied": true,
+    "constraint_violations": []
+  },
+  "audit_metadata": {
+    "phase1_component_timings": {
+      "fred_data": {
+        "duration_sec": 0.022,
+        "status": "ok"
+      },
+      "extended_data": {
+        "duration_sec": 0.001,
+        "status": "skipped_network"
+      },
+      "market_data": {
+        "duration_sec": 0.0,
+        "status": "skipped_network"
+      },
+      "crypto_data": {
+        "duration_sec": 0.0,
+        "status": "skipped_network"
+      },
+      "offline_market_fallback": {
+        "duration_sec": 0.129,
+        "status": "ok"
+      },
+      "market_indicators": {
+        "duration_sec": 0.0,
+        "status": "skipped_quick_mode"
+      },
+      "company_ra_analysis": {
+        "duration_sec": 2.57,
+        "status": "ok"
+      },
+      "korea_assets": {
+        "duration_sec": 0.0,
+        "status": "skipped_env"
+      }
+    },
+    "phase1_elapsed_sec": 2.724,
+    "phase2_institutional_components": {
+      "bubble_framework": {
+        "duration_sec": 0.0,
+        "status": "skipped_network"
+      },
+      "gap_analysis": {
+        "duration_sec": 0.0,
+        "status": "skipped_network"
+      },
+      "fomc_analysis": {
+        "duration_sec": 0.0,
+        "status": "skipped_quick_mode"
+      }
+    },
+    "timestamp": "2026-02-10T02:43:01.530919",
+    "schema_version": "1.0.0",
+    "pipeline_version": "EIMAS v2.2.3",
+    "deterministic": true,
+    "execution_backend_source": "local_package",
+    "artifact_export": {
+      "enabled": true,
+      "json_path": "/home/tj/projects/autoai/eimas/outputs/verification_current/eimas_20260210_024317.json",
+      "json_bytes": 59434,
+      "html_path": "/home/tj/projects/autoai/eimas/outputs/verification_current/eimas_20260210_024317.html",
+      "html_bytes": 51377,
+      "html_json_ratio": 0.8644,
+      "html_checks": {
+        "non_empty": true,
+        "ratio_reasonable": true
+      },
+      "html_conversion_ok": true,
+      "pdf_requested": false,
+      "pdf_path": "",
+      "pdf_bytes": 0,
+      "pdf_html_ratio": 0.0,
+      "pdf_checks": {},
+      "pdf_conversion_ok": false,
+      "overall_ok": true
+    },
+    "pipeline_elapsed_sec": 16.16,
+    "pipeline_phase_count": 20,
+    "pipeline_timing_recorded_at": "2026-02-10T02:43:17.691435"
+  },
+  "approval_status": {
+    "requires_human_approval": false,
+    "approval_checklist": [],
+    "approval_granted": false,
+    "approval_reason": ""
+  },
+  "failsafe_status": {
+    "triggered": false,
+    "reason": null,
+    "fallback_action": null,
+    "original_recommendation": "NEUTRAL"
+  },
+  "backtest_metrics": {},
+  "backtest_run_id": null,
+  "performance_attribution": {},
+  "tactical_weights": {},
+  "stress_test_results": {},
+  "paper_execution": {},
+  "paper_execution_backtest": {},
+  "quick_validation": {}
+}

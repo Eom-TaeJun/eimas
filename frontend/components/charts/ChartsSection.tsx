@@ -17,6 +17,12 @@ import { SignalsPieChart } from "./SignalsPieChart";
 import { VolumeAnomalyScatter } from "./VolumeAnomalyScatter";
 import { CryptoRiskGauge } from "./CryptoRiskGauge";
 import { MarketRegimeRadar } from "./MarketRegimeRadar";
+// Enhanced interactive components
+import { PortfolioTimeSeriesChart } from "./PortfolioTimeSeriesChart";
+import { RiskTimelineChart } from "./RiskTimelineChart";
+import { EnhancedCorrelationHeatmap } from "./EnhancedCorrelationHeatmap";
+import { RegimeTransitionChart } from "./RegimeTransitionChart";
+import { PortfolioAllocationEvolution } from "./PortfolioAllocationEvolution";
 
 export function ChartsSection() {
   // Fetch latest EIMAS analysis every 5 seconds (same as MetricsGrid)
@@ -122,6 +128,22 @@ export function ChartsSection() {
       {/* Row 0: System Status Dashboard */}
       <SystemStatusDashboard />
 
+      {/* Row 0.25: New Time Series Charts */}
+      <div className="grid grid-cols-1 gap-6">
+        <PortfolioTimeSeriesChart />
+      </div>
+
+      {/* Row 0.3: Portfolio Allocation Evolution */}
+      <div className="grid grid-cols-1 gap-6">
+        <PortfolioAllocationEvolution />
+      </div>
+
+      {/* Row 0.5: Risk and Regime Timeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RiskTimelineChart />
+        <RegimeTransitionChart />
+      </div>
+
       {/* Row 0.5: New Visualizations - Sentiment & HFT */}
       {data.sentiment_analysis && data.hft_microstructure && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -189,12 +211,16 @@ export function ChartsSection() {
         )}
       </div>
 
-      {/* Row 3: Correlation Heatmap + Risk Heatmap */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CorrelationHeatmap
+      {/* Row 3: Enhanced Correlation Heatmap (full width for better interactivity) */}
+      <div className="grid grid-cols-1 gap-6">
+        <EnhancedCorrelationHeatmap
           tickers={correlationTickers}
           correlationMatrix={correlationMatrix}
         />
+      </div>
+
+      {/* Row 4: Risk Heatmap */}
+      <div className="grid grid-cols-1 gap-6">
         <RiskHeatmap assets={riskAssets} />
       </div>
 
