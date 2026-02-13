@@ -13,9 +13,7 @@ from types import ModuleType, SimpleNamespace
 import pandas as pd
 import pytest
 
-# Ensure project root is importable in pytest runs.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
+# Project root added via conftest.py
 import pipeline.collectors as bridge
 
 

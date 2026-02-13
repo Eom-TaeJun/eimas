@@ -1,0 +1,37 @@
+# Risk Adjustment Configuration
+# This file contains all threshold values for extended data risk adjustments
+# Used by Phase 2 Adjustment (phase2_adjustment.py)
+
+# Put/Call Ratio (PCR) Adjustments
+pcr:
+  high_threshold: 1.0         # Above this = Fear (negative adjustment)
+  high_adjustment: -5         # Adjustment when PCR > high_threshold
+  low_threshold: 0.7          # Below this = Greed (positive adjustment)
+  low_adjustment: 5           # Adjustment when PCR < low_threshold
+
+# Crypto Fear & Greed Index Adjustments
+crypto_fng:
+  fear_threshold: 25          # Below this = Extreme Fear
+  fear_adjustment: -3         # Adjustment when F&G < fear_threshold
+  greed_threshold: 75         # Above this = Extreme Greed
+  greed_adjustment: 5         # Adjustment when F&G > greed_threshold
+
+# News Sentiment Adjustments
+news_sentiment:
+  bearish_adjustment: -3      # Adjustment when sentiment = Bearish
+  bullish_adjustment: 2       # Adjustment when sentiment = Bullish
+
+# Credit Spreads Adjustments
+credit_spreads:
+  risk_off_adjustment: 3      # Adjustment when interpretation = Risk OFF
+  risk_on_adjustment: -2      # Adjustment when interpretation = Risk ON
+
+# Korea Risk (KRW) Adjustments
+korea_risk:
+  overheated_adjustment: 5    # Adjustment when status contains "Overheated"
+  volatile_adjustment: 3      # Adjustment when status contains "Volatile"
+
+# Global Constraints
+constraints:
+  min_adjustment: -15         # Minimum total adjustment allowed
+  max_adjustment: 15          # Maximum total adjustment allowed

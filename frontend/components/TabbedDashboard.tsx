@@ -18,10 +18,12 @@ import { ChartsSection } from "@/components/charts";
 import { SignalsTable } from "@/components/SignalsTable";
 import { FREDLiquidityDashboard } from "@/components/FREDLiquidityDashboard";
 import { EventFeed } from "@/components/EventFeed";
+import { SimpleEventFeed } from "@/components/SimpleEventFeed";
 import { StablecoinMonitor } from "@/components/StablecoinMonitor";
 import { CryptoStressTest } from "@/components/CryptoStressTest";
 import { VolumeAnomalies } from "@/components/VolumeAnomalies";
 import { ReasoningChainDisplay } from "@/components/ReasoningChainDisplay";
+import { BubbleRiskChart } from "@/components/BubbleRiskChart";
 import { fetchLatestAnalysis } from "@/lib/api";
 import type { EIMASAnalysis } from "@/lib/types";
 
@@ -104,6 +106,7 @@ export function TabbedDashboard() {
 
         {activeTab === "risk" && (
           <div className="space-y-6">
+            <BubbleRiskChart bubbleRisk={data?.bubble_risk || null} />
             <StablecoinMonitor />
             <CryptoStressTest />
           </div>
@@ -118,7 +121,7 @@ export function TabbedDashboard() {
 
         {activeTab === "events" && (
           <div className="space-y-6">
-            <EventFeed />
+            <SimpleEventFeed />
           </div>
         )}
       </div>

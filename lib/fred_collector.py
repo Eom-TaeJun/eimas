@@ -324,18 +324,29 @@ class FREDCollector:
 
     def calculate_yoy_change(self, series_name: str) -> Optional[float]:
         """YoY 변화율 계산 (인플레이션 등)"""
-        data = self.get_series(series_name, days=400)
-        if data is None or len(data) < 12:
+        try:
+            data = self.get_series(series_name, days=400)
+            # Relax threshold to 10 months (FRED API sometimes returns 11 months)
+            if data is None or len(data) < 10:
+                print(f"      ⚠️ {series_name}: Insufficient data (len={len(data) if data is not None else 0})")
+                return None
+
+            # 최근 값과 1년 전 값 비교
+            latest = data.iloc[0]
+            # Use available data: ideally 12 months, but accept 10-11
+            year_ago_idx = min(len(data) - 1, 12)
+            year_ago = data.iloc[year_ago_idx]
+
+            if year_ago > 0:
+                yoy = ((latest / year_ago) - 1) * 100
+                print(f"      ✓ {series_name} YoY: {yoy:.2f}% (using {year_ago_idx+1} month lag)")
+                return yoy
+
+            print(f"      ⚠️ {series_name}: Invalid year_ago value ({year_ago})")
             return None
-
-        # 최근 값과 1년 전 값 비교
-        latest = data.iloc[0]
-        year_ago_idx = min(12, len(data) - 1)  # 월간 데이터 기준
-        year_ago = data.iloc[year_ago_idx]
-
-        if year_ago > 0:
-            return ((latest / year_ago) - 1) * 100
-        return None
+        except Exception as e:
+            print(f"      ✗ {series_name} YoY calculation error: {e}")
+            return None
 
     def collect_rates(self) -> Dict[str, float]:
         """금리 데이터 수집"""

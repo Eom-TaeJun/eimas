@@ -30,6 +30,7 @@ from typing import Any, Callable, Dict, Optional
 
 import numpy as np
 
+from lib.expected_returns import ExpectedReturnCalculator
 from pipeline.analyzers import (
     analyze_ark_trades,
     analyze_dtw_similarity,
@@ -357,6 +358,9 @@ def analyze_enhanced(
         if run_tactical_allocation_fn is not None:
             safe_call(lambda: run_tactical_allocation_fn(result), error_msg="Tactical Allocation Error")
 
+    # Always calculate correlation matrix (lightweight, useful for visualization)
+    safe_call(lambda: calculate_correlation_matrix(result, market_data), error_msg="Correlation Error")
+
 
 def set_allocation_result(result: EIMASResult, market_data: Dict[str, Any]):
     """[Phase 2.11-2.12] Run allocation engine and rebalancing decision."""
@@ -442,24 +446,9 @@ def calculate_strategic_allocation_analysis(
             f"KOSPI {'✓' if 'kospi' in fair_value_results else '✗'}"
         )
 
-        market_stats = {
-            "stock_return": 0.08,
-            "bond_return": 0.04,
-            "stock_vol": 0.16,
-            "bond_vol": 0.06,
-            "correlation": 0.1,
-            "kospi_return": 0.06,
-            "kospi_vol": 0.20,
-            "us_korea_corr": 0.6,
-        }
-
-        if "SPY" in market_data:
-            spy_close = _extract_close_series(market_data["SPY"])
-            if spy_close is not None:
-                spy_returns = spy_close.pct_change().dropna()
-                if len(spy_returns) > 20:
-                    market_stats["stock_return"] = spy_returns.mean() * 252
-                    market_stats["stock_vol"] = spy_returns.std() * np.sqrt(252)
+        # Calculate market statistics using ExpectedReturnCalculator
+        calculator = ExpectedReturnCalculator()
+        market_stats = calculator.calculate_market_stats(market_data, lookback_days=252)
 
         include_korea = "korea_data" in market_data and market_data["korea_data"]
         allocation_results = calculate_strategic_allocation(
@@ -477,4 +466,58 @@ def calculate_strategic_allocation_analysis(
         print(f"  ✗ Strategic Allocation Error: {e}")
         import traceback
 
+        traceback.print_exc()
+
+
+def calculate_correlation_matrix(result: EIMASResult, market_data: Dict[str, Any]):
+    """Calculate correlation matrix for major assets."""
+    print("\n[Phase 2.14] Calculating Correlation Matrix...")
+
+    try:
+        # Define tickers to analyze
+        major_tickers = ["SPY", "QQQ", "IWM", "TLT", "GLD", "DIA"]
+        available_tickers = [t for t in major_tickers if t in market_data and market_data[t] is not None]
+
+        if len(available_tickers) < 2:
+            print("  ✗ Insufficient data for correlation (need at least 2 tickers)")
+            return
+
+        # Extract close prices
+        price_data = {}
+        for ticker in available_tickers:
+            close = _extract_close_series(market_data[ticker])
+            if close is not None and len(close) > 20:
+                price_data[ticker] = close
+
+        if len(price_data) < 2:
+            print("  ✗ Insufficient price data for correlation")
+            return
+
+        # Create DataFrame and calculate returns
+        import pandas as pd
+        df = pd.DataFrame(price_data)
+        returns = df.pct_change().dropna()
+
+        if len(returns) < 10:
+            print("  ✗ Insufficient return data for correlation")
+            return
+
+        # Calculate correlation matrix
+        corr_matrix = returns.corr()
+
+        # Convert to list format for JSON serialization
+        result.correlation_tickers = list(corr_matrix.columns)
+        result.correlation_matrix = corr_matrix.values.tolist()
+
+        print(f"  ✓ Correlation Matrix: {len(result.correlation_tickers)} assets")
+
+        # Print sample correlations
+        if len(result.correlation_tickers) >= 2:
+            t1, t2 = result.correlation_tickers[0], result.correlation_tickers[1]
+            corr_val = corr_matrix.loc[t1, t2]
+            print(f"      Sample: {t1}-{t2} = {corr_val:.2f}")
+
+    except Exception as e:
+        print(f"  ✗ Correlation Matrix Error: {e}")
+        import traceback
         traceback.print_exc()

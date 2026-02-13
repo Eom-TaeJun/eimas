@@ -18,6 +18,7 @@ from lib.liquidity_analysis import LiquidityMarketAnalyzer
 from lib.critical_path import CriticalPathAggregator
 from lib.etf_flow_analyzer import ETFFlowAnalyzer
 from lib.explanation_generator import MarketExplanationGenerator
+from lib.news_event_generator import generate_news_events
 
 # Schemas
 from pipeline.schemas import (
@@ -42,18 +43,26 @@ def detect_regime(ticker: str = 'SPY') -> RegimeResult:
             volatility=result.volatility_state.value if hasattr(result.volatility_state, 'value') else str(result.volatility_state),
             confidence=result.confidence / 100 if result.confidence > 1 else result.confidence,
             description=result.description,
-            strategy=result.strategy
+            strategy=result.strategy,
+            gmm_probabilities=result.gmm_probabilities if hasattr(result, 'gmm_probabilities') else None
         )
     except Exception as e:
         log_error(logger, "Regime detection failed", e)
         return RegimeResult(
             timestamp=datetime.now().isoformat(),
-            regime="Unknown", trend="Unknown", volatility="Unknown",
-            confidence=0.0, description="", strategy=""
+            regime="Unknown",
+            trend="Unknown",
+            volatility="Unknown",
+            confidence=0.0,
+            description="",
+            strategy="",
+            is_valid=False,
+            error_code="REGIME_DETECTION_ERROR",
+            error_msg=str(e)
         )
 
 def detect_events(fred_summary: FREDSummary, market_data: Dict[str, pd.DataFrame]) -> List[Event]:
-    """이벤트 탐지"""
+    """이벤트 탐지 (Liquidity + News + Market Signals)"""
     print("\n[2.2] Detecting events...")
     events = []
     try:
@@ -79,8 +88,34 @@ def detect_events(fred_summary: FREDSummary, market_data: Dict[str, pd.DataFrame
                 ))
                 print(f"      ⚠ {e.event_type.value}: {e.description}")
 
+        # 뉴스 기반 이벤트 (News + Price Signals)
+        try:
+            macro_analysis = {
+                'net_liquidity': fred_summary.net_liquidity if fred_summary else None,
+                'treasury_10y': fred_summary.treasury_10y if fred_summary else None,
+            } if fred_summary else None
+
+            news_events = generate_news_events(
+                macro_analysis=macro_analysis,
+                market_data=market_data,
+            )
+
+            for ne in news_events:
+                events.append(Event(
+                    type=ne['event_type'],
+                    importance=ne.get('severity', 'LOW'),
+                    description=f"[{ne['category'].upper()}] {ne['description']}",
+                    timestamp=ne['timestamp']
+                ))
+                print(f"      📰 {ne['event_type']}: {ne['title']}")
+
+        except Exception as e:
+            print(f"      ⚠ News event generation failed: {e}")
+
         if not events:
             print("      ✓ No events detected")
+        else:
+            print(f"      ✓ Detected {len(events)} events")
 
         return events
 
@@ -128,8 +163,13 @@ def analyze_critical_path(market_data: Dict[str, pd.DataFrame]) -> CriticalPathR
     except Exception as e:
         log_error(logger, "Critical path analysis failed", e)
         return CriticalPathResult(
-            risk_score=0.0, risk_level="Unknown",
-            primary_risk_path="N/A", details={}
+            risk_score=0.0,
+            risk_level="Unknown",
+            primary_risk_path="N/A",
+            details={},
+            is_valid=False,
+            error_code="CRITICAL_PATH_ERROR",
+            error_msg=str(e)
         )
 
 def analyze_etf_flow() -> ETFFlowResult:

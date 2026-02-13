@@ -9,6 +9,7 @@ import { RiskBreakdownChart } from "./RiskBreakdownChart";
 import { ConsensusComparisonChart } from "./ConsensusComparisonChart";
 import { SystemStatusDashboard } from "./SystemStatusDashboard";
 import { CorrelationHeatmap } from "./CorrelationHeatmap";
+import { RechartsCorrelationHeatmap } from "./RechartsCorrelationHeatmap";
 import { RiskHeatmap, AssetRisk } from "./RiskHeatmap";
 import { ArkAnalysisDashboard } from "./ArkAnalysisDashboard";
 import { DebateSchoolCards } from "./DebateSchoolCards";
@@ -186,6 +187,7 @@ export function ChartsSection() {
             base_risk={data.base_risk_score}
             microstructure_adj={data.microstructure_adjustment}
             bubble_adj={data.bubble_risk_adjustment}
+            extended_data_adj={data.extended_data_adjustment || 0}
             final_risk={data.risk_score}
           />
         ) : (
@@ -211,9 +213,9 @@ export function ChartsSection() {
         )}
       </div>
 
-      {/* Row 3: Enhanced Correlation Heatmap (full width for better interactivity) */}
+      {/* Row 3: Recharts Correlation Heatmap (full width for better interactivity) */}
       <div className="grid grid-cols-1 gap-6">
-        <EnhancedCorrelationHeatmap
+        <RechartsCorrelationHeatmap
           tickers={correlationTickers}
           correlationMatrix={correlationMatrix}
         />

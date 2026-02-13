@@ -4,6 +4,7 @@ Phase execution helpers for the integrated pipeline orchestrator.
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Tuple
@@ -81,6 +82,30 @@ def _run_phase2_enhanced(
     )
 
 
+async def _phase1_parallel_or_sequential(
+    runtime: PhaseRuntimeTracker,
+    result: EIMASResult,
+    quick_mode: bool,
+    use_parallel: bool,
+) -> Dict[str, Any]:
+    """Route Phase 1 to parallel or sequential execution."""
+    if not use_parallel:
+        return await phase1_collect_data(result, quick_mode)
+
+    try:
+        from pipeline.team_coordinator import TeamCoordinator
+    except ImportError:
+        logging.warning("team_coordinator not available; using sequential")
+        return await phase1_collect_data(result, quick_mode)
+
+    coordinator = TeamCoordinator(timeout_sec=120.0)
+    try:
+        return await coordinator.run_parallel_phase1(result, quick_mode)
+    except Exception as exc:
+        logging.warning("Parallel phase1 failed (%s); falling back to sequential", exc)
+        return await phase1_collect_data(result, quick_mode)
+
+
 async def run_pipeline_phases(
     *,
     runtime: PhaseRuntimeTracker,
@@ -105,6 +130,7 @@ async def run_pipeline_phases(
     debate_ref_lookback: int,
     debate_skip_reference: bool,
     pipeline_profile: PipelineProfile,
+    use_parallel: bool = False,
 ) -> Tuple[str | None, Dict[str, Any]]:
     """
     Execute phase 1~9 flow.
@@ -115,9 +141,8 @@ async def run_pipeline_phases(
     # Phase 1-2: Data & Analysis
     market_data = await runtime.run_async(
         "phase1_collect_data",
-        phase1_collect_data,
-        result,
-        quick_mode,
+        _phase1_parallel_or_sequential,
+        runtime, result, quick_mode, use_parallel,
     )
     events, regime_res = runtime.run_sync(
         "phase2_basic_analyze",
@@ -286,6 +311,7 @@ async def run_pipeline_phases(
         phase6_run_performance_attribution,
         result,
         effective_attribution,
+        market_data,
     )
     runtime.run_sync(
         "phase6_stress_test",

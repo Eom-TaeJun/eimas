@@ -12,20 +12,31 @@ export function CryptoRiskGauge() {
     })
 
     // Safe fallback if data is missing
-    if (error || !analysis || !analysis.crypto_stress_test) {
+    const test = analysis?.crypto_stress_test || {};
+    const isDataAvailable = test && Object.keys(test).length > 0 &&
+                           (test.depeg_probability !== undefined || test.total_var !== undefined);
+
+    if (error || !analysis || !isDataAvailable) {
         return (
             <Card className="bg-[#161b22] border-[#30363d] h-full">
                 <CardHeader>
-                    <div className="h-6 w-32 bg-gray-700/50 rounded animate-pulse" />
+                    <CardTitle className="text-white text-lg">Depeg Risk Gauge</CardTitle>
+                    <CardDescription className="text-gray-400">
+                        Probability of Stablecoin Deviation
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="h-[200px] flex items-center justify-center">
-                    <div className="text-gray-500 text-sm">Waiting for stress test data...</div>
+                    <div className="text-center">
+                        <div className="text-gray-500 text-sm mb-2">Data Not Available</div>
+                        <div className="text-xs text-gray-600">
+                            Crypto stress testing requires additional configuration
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         );
     }
 
-    const test = analysis.crypto_stress_test;
     const value = test.depeg_probability || 0; // 0 to 1 scale typically
     // If value is 0-1, convert to 0-100. If typically small (e.g. 0.05), maybe log scale?
     // Assuming depeg_probability is probability (0-1). Display as % (0-100).
@@ -87,7 +98,7 @@ export function CryptoRiskGauge() {
                     </div>
                 </div>
                 <div className="text-xs text-gray-400 text-center px-4">
-                    Scenario: <span className="text-gray-300">{test.scenario}</span>
+                    Scenario: <span className="text-gray-300">{test.scenario || "Standard"}</span>
                 </div>
             </CardContent>
         </Card>

@@ -35,30 +35,46 @@ async def get_latest_result():
     import os
     from pathlib import Path
 
-    # Find outputs directory
-    outputs_dir = Path(__file__).parent.parent.parent / "outputs"
+    # Use absolute path for outputs directory
+    outputs_dir = Path("/home/tj/projects/autoai/eimas/outputs")
 
     if not outputs_dir.exists():
-        raise HTTPException(status_code=404, detail="Outputs directory not found")
+        raise HTTPException(status_code=404, detail=f"Outputs directory not found: {outputs_dir}")
 
     # Get all EIMAS JSON files (new format first, then legacy)
     pattern_new = str(outputs_dir / "eimas_*.json")
     pattern_legacy = str(outputs_dir / "integrated_*.json")
-    
+
     files = glob.glob(pattern_new)
     if not files:
         # Fallback to legacy format
         files = glob.glob(pattern_legacy)
 
     if not files:
-        raise HTTPException(status_code=404, detail="No EIMAS results found. Run 'python main.py' first.")
+        raise HTTPException(status_code=404, detail=f"No EIMAS results found in {outputs_dir}. Run 'python main.py' first.")
 
     # Get the most recent file
     latest_file = max(files, key=os.path.getmtime)
 
     try:
-        with open(latest_file, 'r') as f:
+        with open(latest_file, 'r', encoding='utf-8') as f:
             data = json.load(f)
+
+        # Sanitize NaN/Infinity values for JSON compliance
+        def sanitize_value(obj):
+            """Recursively replace NaN/Infinity with None for JSON serialization."""
+            if isinstance(obj, dict):
+                return {k: sanitize_value(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [sanitize_value(item) for item in obj]
+            elif isinstance(obj, float):
+                import math
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+                return obj
+            return obj
+
+        data = sanitize_value(data)
 
         # Add metadata about the file
         data['_meta'] = {

@@ -33,6 +33,7 @@ from lib.bubble_framework import FiveStageBubbleFramework
 from lib.fomc_analyzer import FOMCDotPlotAnalyzer
 from lib.gap_analyzer import MarketModelGapAnalyzer
 from pipeline.analyzers import analyze_bubble_risk, analyze_sentiment, run_adaptive_portfolio
+from pipeline.risk_config import get_risk_config
 from pipeline.risk_utils import derive_risk_level
 from pipeline.schemas import BubbleRiskMetrics, EIMASResult
 
@@ -163,6 +164,7 @@ def _apply_microstructure_adjustment(result: EIMASResult) -> None:
     """
     Apply risk adjustment from HFT microstructure signals.
     Design goal: avoid persistent 0.0 when valid microstructure evidence exists.
+    Also populate MarketQualityMetrics for visualization.
     """
     hft = getattr(result, "hft_microstructure", {})
     if not isinstance(hft, dict) or not hft:
@@ -201,6 +203,40 @@ def _apply_microstructure_adjustment(result: EIMASResult) -> None:
     if has_signal and abs(micro_adj) < 0.1:
         micro_adj = -0.5 if buy_ratio >= 0.5 else +0.5
 
+    # Populate MarketQualityMetrics
+    from pipeline.schemas import MarketQualityMetrics
+
+    # Calculate liquidity score (0-100 scale, higher = better)
+    # Based on r_squared (data quality) and impact (liquidity)
+    base_liquidity = 50.0
+    if "LOW_IMPACT" in impact_label:
+        base_liquidity += 20.0  # Low impact = high liquidity
+    elif "HIGH_IMPACT" in impact_label:
+        base_liquidity -= 20.0  # High impact = low liquidity
+
+    if r_squared >= 0.5:
+        base_liquidity += 10.0  # High quality
+    elif r_squared < 0.2:
+        base_liquidity -= 10.0  # Low quality
+
+    avg_liquidity = max(0.0, min(100.0, base_liquidity))
+
+    # Data quality assessment
+    if r_squared >= 0.5:
+        data_quality = "COMPLETE"
+    elif r_squared >= 0.2:
+        data_quality = "PARTIAL"
+    else:
+        data_quality = "DEGRADED"
+
+    result.market_quality = MarketQualityMetrics(
+        avg_liquidity_score=avg_liquidity,
+        liquidity_scores={"SPY": avg_liquidity},  # Simplified - can expand per ticker
+        high_toxicity_tickers=[],  # Placeholder - can add VPIN analysis
+        illiquid_tickers=[] if avg_liquidity >= 50 else ["SPY"],
+        data_quality=data_quality
+    )
+
     if abs(micro_adj) < 0.1:
         return
 
@@ -213,8 +249,8 @@ def _apply_microstructure_adjustment(result: EIMASResult) -> None:
         f"({old_risk:.1f} -> {result.risk_score:.1f})"
     )
     print(
-        "        Details: "
-        f"buy_ratio={buy_ratio:.3f}, impact={impact_label or 'N/A'}, r2={r_squared:.3f}"
+        f"        Details: buy_ratio={buy_ratio:.3f}, impact={impact_label or 'N/A'}, "
+        f"r2={r_squared:.3f}, liquidity={avg_liquidity:.0f}"
     )
 
 
@@ -266,58 +302,68 @@ def apply_extended_data_adjustment(result: EIMASResult):
     if not result.extended_data:
         return
 
+    # Load configuration from YAML (cached)
+    config = get_risk_config()
+
     ext = result.extended_data
     adjustment = 0.0
     details = []
 
+    # PCR (Put/Call Ratio) adjustment
     pcr = ext.get("put_call_ratio", {})
     if pcr.get("ratio", 0) > 0:
         ratio = pcr["ratio"]
-        if ratio > 1.0:
-            adjustment -= 5
-            details.append(f"PCR={ratio:.2f} (Fear) -> -5")
-        elif ratio < 0.7:
-            adjustment += 5
-            details.append(f"PCR={ratio:.2f} (Greed) -> +5")
+        if ratio > config.pcr.high_threshold:
+            adjustment += config.pcr.high_adjustment
+            details.append(f"PCR={ratio:.2f} (Fear) -> {config.pcr.high_adjustment:+.0f}")
+        elif ratio < config.pcr.low_threshold:
+            adjustment += config.pcr.low_adjustment
+            details.append(f"PCR={ratio:.2f} (Greed) -> {config.pcr.low_adjustment:+.0f}")
 
+    # Crypto Fear & Greed Index adjustment
     fng = ext.get("crypto_fng", {})
     if fng.get("value", 0) > 0:
         val = fng["value"]
-        if val < 25:
-            adjustment -= 3
-            details.append(f"Crypto F&G={val} (Fear) -> -3")
-        elif val > 75:
-            adjustment += 5
-            details.append(f"Crypto F&G={val} (Greed) -> +5")
+        if val < config.crypto_fng.fear_threshold:
+            adjustment += config.crypto_fng.fear_adjustment
+            details.append(f"Crypto F&G={val} (Fear) -> {config.crypto_fng.fear_adjustment:+.0f}")
+        elif val > config.crypto_fng.greed_threshold:
+            adjustment += config.crypto_fng.greed_adjustment
+            details.append(f"Crypto F&G={val} (Greed) -> {config.crypto_fng.greed_adjustment:+.0f}")
 
+    # News Sentiment adjustment
     news = ext.get("news_sentiment", {})
     label = news.get("label", "")
     if label == "Bearish":
-        adjustment -= 3
-        details.append("News=Bearish -> -3")
+        adjustment += config.news_sentiment.bearish_adjustment
+        details.append(f"News=Bearish -> {config.news_sentiment.bearish_adjustment:+.0f}")
     elif label == "Bullish":
-        adjustment += 2
-        details.append("News=Bullish -> +2")
+        adjustment += config.news_sentiment.bullish_adjustment
+        details.append(f"News=Bullish -> {config.news_sentiment.bullish_adjustment:+.0f}")
 
+    # Credit Spreads adjustment
     credit = ext.get("credit_spreads", {})
     interp = credit.get("interpretation", "")
     if interp == "Risk OFF":
-        adjustment += 3
-        details.append("Credit=Risk OFF -> +3")
+        adjustment += config.credit_spreads.risk_off_adjustment
+        details.append(f"Credit=Risk OFF -> {config.credit_spreads.risk_off_adjustment:+.0f}")
     elif interp == "Risk ON":
-        adjustment -= 2
-        details.append("Credit=Risk ON -> -2")
+        adjustment += config.credit_spreads.risk_on_adjustment
+        details.append(f"Credit=Risk ON -> {config.credit_spreads.risk_on_adjustment:+.0f}")
 
+    # Korea Risk (KRW) adjustment
     krw = ext.get("korea_risk", {})
     status = krw.get("status", "")
     if "Overheated" in status:
-        adjustment += 5
-        details.append("KRW=Overheated -> +5")
+        adjustment += config.korea_risk.overheated_adjustment
+        details.append(f"KRW=Overheated -> {config.korea_risk.overheated_adjustment:+.0f}")
     elif "Volatile" in status:
-        adjustment += 3
-        details.append("KRW=Volatile -> +3")
+        adjustment += config.korea_risk.volatile_adjustment
+        details.append(f"KRW=Volatile -> {config.korea_risk.volatile_adjustment:+.0f}")
 
-    adjustment = max(-15, min(15, adjustment))
+    # Apply global constraints
+    adjustment = max(config.constraints.min_adjustment, min(config.constraints.max_adjustment, adjustment))
+
     if adjustment != 0:
         result.extended_data_adjustment = adjustment
         old_risk = result.risk_score

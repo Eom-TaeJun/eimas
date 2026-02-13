@@ -1,9 +1,5 @@
-import sys
+# Project root added via conftest.py
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
 from pipeline.phases.phase7_report import _apply_ai_report_fallback_enrichment
 from pipeline.phases.phase8_validation import run_ai_validation_phase

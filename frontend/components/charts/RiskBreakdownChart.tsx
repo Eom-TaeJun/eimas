@@ -16,6 +16,7 @@ interface RiskBreakdownChartProps {
   base_risk: number;
   microstructure_adj: number;
   bubble_adj: number;
+  extended_data_adj?: number;
   final_risk: number;
 }
 
@@ -23,6 +24,7 @@ export function RiskBreakdownChart({
   base_risk,
   microstructure_adj,
   bubble_adj,
+  extended_data_adj = 0,
   final_risk,
 }: RiskBreakdownChartProps) {
   const data = [
@@ -39,7 +41,12 @@ export function RiskBreakdownChart({
     {
       name: "Bubble Adj",
       value: bubble_adj,
-      fill: "#f85149", // red
+      fill: bubble_adj >= 0 ? "#f85149" : "#3fb950", // red if positive, green if negative
+    },
+    {
+      name: "Extended Adj",
+      value: extended_data_adj,
+      fill: extended_data_adj >= 0 ? "#f85149" : "#3fb950", // red if positive, green if negative
     },
   ];
 
@@ -68,10 +75,13 @@ export function RiskBreakdownChart({
       <CardContent>
         <div className="mb-4">
           <p className="text-sm text-gray-400">
-            Final = Base + Micro Adj + Bubble Adj
+            Final = Base + Micro Adj + Bubble Adj + Extended Adj
           </p>
           <p className="text-2xl font-bold text-white mt-2">
             {final_risk.toFixed(1)} / 100
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {base_risk.toFixed(1)} + ({microstructure_adj >= 0 ? "+" : ""}{microstructure_adj.toFixed(1)}) + ({bubble_adj >= 0 ? "+" : ""}{bubble_adj.toFixed(1)}) + ({extended_data_adj >= 0 ? "+" : ""}{extended_data_adj.toFixed(1)}) = {final_risk.toFixed(1)}
           </p>
         </div>
         <ResponsiveContainer width="100%" height={200}>
@@ -100,7 +110,7 @@ export function RiskBreakdownChart({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+        <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-[#58a6ff] rounded"></div>
             <span className="text-gray-400">Base: {base_risk.toFixed(1)}</span>
@@ -117,9 +127,19 @@ export function RiskBreakdownChart({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-[#f85149] rounded"></div>
+            <div className={`w-3 h-3 rounded ${
+                bubble_adj >= 0 ? "bg-[#f85149]" : "bg-[#3fb950]"
+              }`}></div>
             <span className="text-gray-400">
-              Bubble: +{bubble_adj.toFixed(1)}
+              Bubble: {bubble_adj >= 0 ? "+" : ""}{bubble_adj.toFixed(1)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded ${
+                extended_data_adj >= 0 ? "bg-[#f85149]" : "bg-[#3fb950]"
+              }`}></div>
+            <span className="text-gray-400">
+              Extended: {extended_data_adj >= 0 ? "+" : ""}{extended_data_adj.toFixed(1)}
             </span>
           </div>
         </div>

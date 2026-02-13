@@ -5,6 +5,7 @@ export { RiskBreakdownChart } from "./RiskBreakdownChart";
 export { ConsensusComparisonChart } from "./ConsensusComparisonChart";
 export { SystemStatusDashboard } from "./SystemStatusDashboard";
 export { CorrelationHeatmap } from "./CorrelationHeatmap";
+export { RechartsCorrelationHeatmap } from "./RechartsCorrelationHeatmap";
 export { RiskHeatmap } from "./RiskHeatmap";
 export { ChartsSection } from "./ChartsSection";
 

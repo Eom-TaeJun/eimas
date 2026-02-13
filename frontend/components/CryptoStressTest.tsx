@@ -13,11 +13,35 @@ export function CryptoStressTest() {
     refreshInterval: 5000,
   })
 
-  if (error || !analysis || !analysis.crypto_stress_test) {
-    return null
-  }
+  const test = analysis?.crypto_stress_test || {}
+  const isDataAvailable = test && Object.keys(test).length > 0 &&
+                         (test.total_value !== undefined || test.depeg_probability !== undefined)
 
-  const test = analysis.crypto_stress_test
+  if (error || !analysis || !isDataAvailable) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Shield className="w-6 h-6 text-orange-400" />
+          <h2 className="text-xl font-bold text-white">Crypto Stress Test</h2>
+        </div>
+        <Card className="bg-[#161b22] border-[#30363d]">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium text-gray-400">
+              Depeg Scenario Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="py-8">
+            <div className="text-center">
+              <div className="text-gray-500 text-sm mb-2">Data Not Available</div>
+              <div className="text-xs text-gray-600">
+                Crypto stress testing requires additional configuration or data collection
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   // Using imported formatMoney from @/lib/format
 
@@ -37,9 +61,11 @@ export function CryptoStressTest() {
       <div className="flex items-center gap-2">
         <Shield className="w-6 h-6 text-orange-400" />
         <h2 className="text-xl font-bold text-white">Crypto Stress Test</h2>
-        <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">
-          {test.scenario}
-        </Badge>
+        {test.scenario && (
+          <Badge variant="outline" className="bg-orange-500/10 text-orange-400 border-orange-500/20">
+            {test.scenario}
+          </Badge>
+        )}
       </div>
 
       {/* Summary Card */}

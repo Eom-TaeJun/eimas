@@ -14,6 +14,7 @@ Usage in main.py:
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional
+from dataclasses import dataclass
 import logging
 
 from lib.korea_data_collector import KoreaDataCollector, ParallelKoreaCollector
@@ -24,20 +25,69 @@ from lib.evidence_based_allocator import EvidenceBasedAllocator
 logger = logging.getLogger(__name__)
 
 
-def _extract_valuation_gap(valuation_block: Dict) -> float:
-    """Extract valuation gap percentage from fair value block with safe fallback."""
+@dataclass
+class ValuationGap:
+    """Valuation gap result with source tracking"""
+    gap_pct: float
+    source: str  # 'consensus', 'fed_model', or 'fallback'
+    is_valid: bool
+    error_msg: Optional[str] = None
+
+    def to_dict(self) -> Dict:
+        return {
+            'gap_pct': self.gap_pct,
+            'source': self.source,
+            'is_valid': self.is_valid,
+            'error_msg': self.error_msg
+        }
+
+
+def _extract_valuation_gap(valuation_block: Dict) -> ValuationGap:
+    """Extract valuation gap percentage from fair value block with source tracking."""
     if not isinstance(valuation_block, dict):
-        return 0.0
+        return ValuationGap(
+            gap_pct=0.0,
+            source='fallback',
+            is_valid=False,
+            error_msg='Invalid valuation_block type (not a dict)'
+        )
 
     try:
+        # Try consensus first
         if "consensus" in valuation_block:
-            return float(valuation_block["consensus"].get("valuation_gap_pct", 0.0))
-        if "fed_model" in valuation_block:
-            return float(valuation_block["fed_model"].get("valuation_gap_pct", 0.0))
-    except (TypeError, ValueError):
-        return 0.0
+            gap_value = valuation_block["consensus"].get("valuation_gap_pct")
+            if gap_value is not None:
+                return ValuationGap(
+                    gap_pct=float(gap_value),
+                    source='consensus',
+                    is_valid=True
+                )
 
-    return 0.0
+        # Try fed_model second
+        if "fed_model" in valuation_block:
+            gap_value = valuation_block["fed_model"].get("valuation_gap_pct")
+            if gap_value is not None:
+                return ValuationGap(
+                    gap_pct=float(gap_value),
+                    source='fed_model',
+                    is_valid=True
+                )
+
+        # No valid data found
+        return ValuationGap(
+            gap_pct=0.0,
+            source='fallback',
+            is_valid=False,
+            error_msg='No valuation_gap_pct found in consensus or fed_model'
+        )
+
+    except (TypeError, ValueError) as e:
+        return ValuationGap(
+            gap_pct=0.0,
+            source='fallback',
+            is_valid=False,
+            error_msg=f'Error extracting valuation gap: {str(e)}'
+        )
 
 
 def collect_korea_assets(
@@ -236,8 +286,12 @@ def calculate_strategic_allocation(
     """
     results = {}
     # Keep these initialized for both evidence-based and fallback paths.
-    us_fair_gap = _extract_valuation_gap(fair_value_results.get("spx", {}))
-    korea_fair_gap = _extract_valuation_gap(fair_value_results.get("kospi", {}))
+    us_gap_result = _extract_valuation_gap(fair_value_results.get("spx", {}))
+    korea_gap_result = _extract_valuation_gap(fair_value_results.get("kospi", {}))
+
+    # Extract numeric values for backward compatibility
+    us_fair_gap = us_gap_result.gap_pct
+    korea_fair_gap = korea_gap_result.gap_pct
 
     try:
         # NEW: Evidence-Based Allocation (Full 모드 JSON 활용)
@@ -335,6 +389,12 @@ def calculate_strategic_allocation(
                 tactical_signals['korea_equity'] = 'UNDERWEIGHT'
 
         results['tactical_signals'] = tactical_signals
+
+        # Add valuation gap source tracking
+        results['valuation_gap_sources'] = {
+            'us': us_gap_result.to_dict(),
+            'korea': korea_gap_result.to_dict()
+        }
 
     except Exception as e:
         logger.error(f"Strategic allocation failed: {e}")

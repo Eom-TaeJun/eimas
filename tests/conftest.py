@@ -1,6 +1,15 @@
 """
 Pytest configuration and shared fixtures
 """
+import sys
+from pathlib import Path
+
+# Add project root to sys.path for all tests (centralized)
+project_root = Path(__file__).resolve().parent.parent
+project_root_str = str(project_root)
+if project_root_str not in sys.path:
+    sys.path.insert(0, project_root_str)
+
 import pytest
 import pandas as pd
 import numpy as np

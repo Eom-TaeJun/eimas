@@ -135,9 +135,17 @@ class RegimeResult:
     confidence: float
     description: str
     strategy: str
+    gmm_probabilities: Optional[Dict[str, float]] = None  # GMM regime probabilities
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
-        return asdict(self)
+        result = asdict(self)
+        # Only include gmm_probabilities if it exists and is not None
+        if self.gmm_probabilities is None:
+            result.pop('gmm_probabilities', None)
+        return result
 
 @dataclass
 class Event:
@@ -163,6 +171,9 @@ class CriticalPathResult:
     risk_level: str
     primary_risk_path: str
     details: Dict
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -227,6 +238,9 @@ class GeniusActResult:
     signals: List[Dict]
     digital_m2: float
     details: Dict
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -237,6 +251,9 @@ class ThemeETFResult:
     score: float
     constituents: List[str]
     details: Dict
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -247,6 +264,9 @@ class ShockAnalysisResult:
     contagion_path: List[str]
     vulnerable_assets: List[str]
     details: Dict
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
         return asdict(self)
@@ -258,6 +278,9 @@ class PortfolioResult:
     diversification_ratio: float
     mst_hubs: List[str]
     details: Dict
+    is_valid: bool = True
+    error_code: Optional[str] = None
+    error_msg: Optional[str] = None
 
     def to_dict(self) -> Dict:
         return asdict(self)

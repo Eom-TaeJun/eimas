@@ -53,6 +53,7 @@ export interface EIMASAnalysis {
   base_risk_score: number
   microstructure_adjustment: number
   bubble_risk_adjustment: number
+  extended_data_adjustment?: number
 
   // Market quality (v2.1.1)
   market_quality: {

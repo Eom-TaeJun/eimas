@@ -13,6 +13,7 @@ from typing import Dict, Any
 
 from lib.adapters import StressTestEngine, TacticalAssetAllocator, TradingCostModel
 from lib.backtest import BacktestEngine, BacktestConfig
+from lib.expected_returns import ExpectedReturnCalculator
 from lib.performance_attribution import BrinsonAttribution, InformationRatio, ActiveShare
 from lib.ra_sql_store import save_backtest_metrics_to_sql
 from lib.trading_db import TradingDB
@@ -221,7 +222,7 @@ def run_backtest(result: EIMASResult, market_data: Dict, enable: bool):
         traceback.print_exc()
 
 
-def run_performance_attribution(result: EIMASResult, enable: bool):
+def run_performance_attribution(result: EIMASResult, enable: bool, market_data: Dict[str, Any] = None):
     """[Phase 6.2] 성과 귀속 분석 (Optional)"""
     if not enable:
         return
@@ -254,10 +255,21 @@ def run_performance_attribution(result: EIMASResult, enable: bool):
         if total > 0:
             benchmark_weights = {k: v/total for k, v in benchmark_weights.items()}
 
-        # Use assumed returns (would need actual returns from market data)
-        # This is a simplified example - real implementation would calculate from prices
-        portfolio_returns = {ticker: 0.10 for ticker in portfolio_weights.keys()}
-        benchmark_returns = {ticker: 0.08 for ticker in benchmark_weights.keys()}
+        # Calculate expected returns using ExpectedReturnCalculator
+        calculator = ExpectedReturnCalculator()
+        if market_data:
+            # Use dynamic calculation from market data
+            portfolio_returns = calculator.calculate_from_market_data(
+                market_data,
+                method="historical_mean",
+                lookback_days=252,
+                use_shrinkage=True
+            )
+            benchmark_returns = portfolio_returns.copy()
+        else:
+            # Fallback to default returns
+            portfolio_returns = {ticker: calculator._get_default_return(ticker) for ticker in portfolio_weights.keys()}
+            benchmark_returns = {ticker: calculator._get_default_return(ticker) for ticker in benchmark_weights.keys()}
 
         # Brinson Attribution
         brinson = BrinsonAttribution()

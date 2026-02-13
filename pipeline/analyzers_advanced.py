@@ -76,7 +76,15 @@ def analyze_genius_act() -> GeniusActResult:
         )
     except Exception as e:
         log_error(logger, "Genius Act analysis failed", e)
-        return GeniusActResult(regime="N/A", signals=[], digital_m2=0.0, details={})
+        return GeniusActResult(
+            regime="N/A",
+            signals=[],
+            digital_m2=0.0,
+            details={},
+            is_valid=False,
+            error_code="GENIUS_ACT_ERROR",
+            error_msg=str(e)
+        )
 
 def analyze_theme_etf() -> ThemeETFResult:
     """테마 ETF 분석 - 간소화 버전"""
@@ -121,7 +129,15 @@ def analyze_theme_etf() -> ThemeETFResult:
         )
     except Exception as e:
         log_error(logger, "Theme ETF analysis failed", e)
-        return ThemeETFResult(theme="N/A", score=0.0, constituents=[], details={})
+        return ThemeETFResult(
+            theme="N/A",
+            score=0.0,
+            constituents=[],
+            details={},
+            is_valid=False,
+            error_code="THEME_ETF_ERROR",
+            error_msg=str(e)
+        )
 
 def analyze_shock_propagation(market_data: Dict[str, pd.DataFrame]) -> ShockAnalysisResult:
     """충격 전파 시뮬레이션"""
@@ -165,26 +181,70 @@ def analyze_shock_propagation(market_data: Dict[str, pd.DataFrame]) -> ShockAnal
         )
     except Exception as e:
         log_error(logger, "Shock propagation analysis failed", e)
-        return ShockAnalysisResult(impact_score=0.0, contagion_path=[], vulnerable_assets=[], details={})
+        return ShockAnalysisResult(
+            impact_score=0.0,
+            contagion_path=[],
+            vulnerable_assets=[],
+            details={},
+            is_valid=False,
+            error_code="SHOCK_PROPAGATION_ERROR",
+            error_msg=str(e)
+        )
 
 def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioResult:
     """GC-HRP 및 MST 기반 포트폴리오 최적화"""
     print("\n[2.10] Graph-Clustered Portfolio optimization...")
     try:
-        # returns DataFrame 생성
-        returns_df = pd.DataFrame()
+        # Type guard: filter out non-DataFrame entries (like nested dicts)
+        valid_data = {}
         for ticker, df in market_data.items():
             if isinstance(df, pd.DataFrame) and not df.empty and 'Close' in df.columns:
+                valid_data[ticker] = df
+            else:
+                logger.debug(f"Skipping non-DataFrame entry: {ticker} (type: {type(df)})")
+
+        logger.debug(f"Valid market data entries: {len(valid_data)} out of {len(market_data)}")
+
+        # returns DataFrame 생성
+        returns_df = pd.DataFrame()
+        for ticker, df in valid_data.items():
+            try:
                 returns_df[ticker] = df['Close'].pct_change()
+            except Exception as e:
+                logger.debug(f"Failed to calculate returns for {ticker}: {e}")
+                continue
+
         returns_df = returns_df.dropna()
+        logger.debug(f"Returns DataFrame shape: {returns_df.shape}, columns: {list(returns_df.columns)}")
 
         if len(returns_df.columns) < 3:
-            raise ValueError("Need at least 3 assets for portfolio optimization")
+            raise ValueError(f"Need at least 3 assets for portfolio optimization, got {len(returns_df.columns)}")
 
+        # Run GC-HRP optimizer
         optimizer = GraphClusteredPortfolio()
         allocation = optimizer.fit(returns_df)
 
-        weights = allocation.weights
+        weights = allocation.weights if allocation.weights else {}
+        logger.debug(f"GC-HRP returned {len(weights)} weights")
+
+        # Equal-weight fallback if GC-HRP returns empty weights
+        if not weights or len(weights) == 0:
+            logger.warning("GC-HRP returned empty weights, falling back to equal-weight allocation")
+            n_assets = len(returns_df.columns)
+            weights = {ticker: 1.0 / n_assets for ticker in returns_df.columns}
+            allocation.weights = weights
+            allocation.methodology = "Equal-Weight (GC-HRP fallback)"
+            allocation.diversification_ratio = 1.0
+            allocation.effective_n = n_assets
+
+            # Calculate simple risk contributions
+            volatilities = returns_df.std()
+            total_vol = volatilities.sum()
+            allocation.risk_contributions = {
+                ticker: (volatilities[ticker] / total_vol) if total_vol > 0 else 0.0
+                for ticker in returns_df.columns
+            }
+
         mst_info = {}
         if allocation.mst_analysis:
             # MSTAnalysisResult 속성 안전하게 접근
@@ -198,6 +258,7 @@ def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioRes
 
         print(f"      ✓ Top Allocation: {top_str}")
         print(f"      ✓ Diversification Ratio: {allocation.diversification_ratio:.2f}")
+        print(f"      ✓ Methodology: {allocation.methodology}")
 
         return PortfolioResult(
             weights=weights,
@@ -208,7 +269,35 @@ def optimize_portfolio_mst(market_data: Dict[str, pd.DataFrame]) -> PortfolioRes
         )
     except Exception as e:
         log_error(logger, "Portfolio optimization failed", e)
-        return PortfolioResult(weights={}, risk_contribution={}, diversification_ratio=0.0, mst_hubs=[], details={})
+
+        # Final fallback: equal-weight on all tickers if available
+        try:
+            valid_tickers = [t for t, d in market_data.items()
+                           if isinstance(d, pd.DataFrame) and not d.empty and 'Close' in d.columns]
+            if valid_tickers:
+                n = len(valid_tickers)
+                fallback_weights = {ticker: 1.0 / n for ticker in valid_tickers}
+                logger.info(f"Using emergency equal-weight fallback for {n} assets")
+                return PortfolioResult(
+                    weights=fallback_weights,
+                    risk_contribution={ticker: 1.0/n for ticker in valid_tickers},
+                    diversification_ratio=1.0,
+                    mst_hubs=[],
+                    details={'effective_n': n, 'methodology': 'Equal-Weight (Emergency Fallback)'}
+                )
+        except Exception as fallback_error:
+            logger.error(f"Emergency fallback also failed: {fallback_error}")
+
+        return PortfolioResult(
+            weights={},
+            risk_contribution={},
+            diversification_ratio=0.0,
+            mst_hubs=[],
+            details={},
+            is_valid=False,
+            error_code="PORTFOLIO_OPTIMIZATION_ERROR",
+            error_msg=str(e)
+        )
 
 def analyze_volume_anomalies(market_data: Dict[str, pd.DataFrame]) -> List[Dict]:
     """거래량 이상 징후 탐지"""

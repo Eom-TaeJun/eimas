@@ -190,6 +190,7 @@ async def run_integrated_pipeline(
     debate_ref_lookback: int = 90,
     debate_skip_reference: bool = False,
     pipeline_profile_name: str = "legacy",
+    use_parallel: bool = False,
 ) -> EIMASResult:
     """
     Execute the EIMAS integrated analysis pipeline.
@@ -292,6 +293,7 @@ async def run_integrated_pipeline(
         debate_ref_lookback=debate_ref_lookback,
         debate_skip_reference=debate_skip_reference,
         pipeline_profile=pipeline_profile,
+        use_parallel=use_parallel,
     )
 
     # Summary
@@ -348,6 +350,7 @@ def _build_main_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument('--output-dir', default='outputs', help='Output directory for artifacts')
     parser.add_argument('--cron-mode', action='store_true', help='Scheduled mode (skip AI report generation)')
+    parser.add_argument('--parallel', action='store_true', help='Enable parallel data collection in Phase 1 (experimental)')
     return parser
 
 
@@ -385,6 +388,7 @@ def _build_pipeline_kwargs(args: argparse.Namespace) -> dict[str, Any]:
         "debate_ref_lookback": args.debate_ref_lookback,
         "debate_skip_reference": args.debate_skip_reference,
         "pipeline_profile_name": args.profile,
+        "use_parallel": args.parallel,
     }
 
 

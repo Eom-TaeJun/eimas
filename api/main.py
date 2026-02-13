@@ -21,20 +21,7 @@ Endpoints:
     POST /api/paper-trade       - 페이퍼 트레이드 실행
 """
 
-import sys
 from pathlib import Path
-
-
-def _ensure_project_root_for_script_mode() -> None:
-    if __package__:
-        return
-    project_root = Path(__file__).resolve().parents[1]
-    project_root_str = str(project_root)
-    if project_root_str not in sys.path:
-        sys.path.insert(0, project_root_str)
-
-
-_ensure_project_root_for_script_mode()
 
 from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,7 +72,7 @@ app.add_middleware(
 from api.routes.analysis import router as analysis_router
 
 # Include routers
-app.include_router(analysis_router, prefix="")
+app.include_router(analysis_router, prefix="/api")
 
 
 @app.get("/health")
