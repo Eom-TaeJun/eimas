@@ -1,0 +1,107 @@
+# EIMAS Thresholds Configuration
+# =================================
+# Centralized threshold values for decision-making
+# Used by agents and analysis modules
+
+# Risk Score Thresholds (0-100 scale)
+risk_thresholds:
+  critical: 80        # > 80 = Critical risk, reduce all exposure
+  high: 70            # 70-80 = High risk regime
+  medium_high: 60     # 60-70 = Medium-high risk
+  medium: 50          # 40-60 = Medium risk
+  low: 30             # < 30 = Low risk, safe to increase exposure
+
+  # Context: Used in agents/orchestrator.py, agents/research_agent.py
+  # Economic Rationale: VaR 95% confidence intervals
+
+# Confidence Thresholds (0-1 scale)
+confidence_thresholds:
+  strong: 0.70        # >= 70% = Strong signal (BULLISH/BEARISH)
+  moderate: 0.50      # 50-70% = Moderate signal
+  weak: 0.30          # 30-50% = Weak signal
+  no_signal: 0.20     # < 20% = No actionable signal (HOLD)
+
+  # Context: Used in agents/research_agent.py, agents/strategy_agent.py
+  # Economic Rationale: Grinold & Kahn (2000) - IC > 0.05 유의미
+
+# Regime Transition Probability Thresholds (0-1 scale)
+regime_transition:
+  high_probability: 0.5      # >= 50% = High probability of regime change
+  medium_probability: 0.3    # 30-50% = Medium probability
+  warning_threshold: 0.3     # >= 30% = Issue warning to user
+  low_probability: 0.1       # < 10% = Stable regime
+
+  # Context: Used in agents/orchestrator.py, agents/strategy_agent.py
+  # Economic Rationale: Hamilton (1989) regime-switching model
+
+# Volatility Thresholds (percentile or absolute)
+volatility:
+  vix_extreme: 35      # VIX > 35 = Extreme volatility (crisis)
+  vix_high: 25         # VIX 25-35 = High volatility
+  vix_elevated: 18     # VIX 18-25 = Elevated volatility
+  vix_normal: 12       # VIX < 12 = Low volatility
+
+  percentile_high: 80  # > 80th percentile = High volatility regime
+  percentile_medium: 70  # 70-80th percentile = Medium-high
+  percentile_calm: 50  # < 50th percentile = Calm market
+
+  # Context: Used in agents/strategy_agent.py
+  # Economic Rationale: Historical VIX distribution
+
+# Debate Protocol Thresholds (percentage)
+debate:
+  consensus_agreement: 85.0    # >= 85% agreement = Consensus reached
+  strong_agreement: 90.0       # >= 90% = Strong consensus
+  modification_significant: 5.0  # >= 5% change = Significant modification
+  modification_minor: 2.0      # 2-5% = Minor adjustment
+
+  # Context: Used in agents/orchestrator.py, core/debate.py
+  # Already in configs/default.yaml but repeated here for clarity
+
+# Anomaly Detection Thresholds (standard deviations)
+anomaly_detection:
+  volume_spike: 3.0      # Volume > 3σ = Abnormal volume
+  price_move: 2.0        # Price change > 2% = Significant move
+  volatility_spike: 2.0  # Volatility > 2σ = Elevated volatility
+
+  # Context: Used in lib/event_framework/detector.py
+
+# Network/Correlation Thresholds (0-1 scale)
+network:
+  strong_correlation: 0.7     # >= 0.7 = Strong correlation
+  moderate_correlation: 0.3   # 0.3-0.7 = Moderate correlation
+  weak_correlation: 0.1       # < 0.1 = Weak/no correlation
+
+  # Context: Used in lib/graph_clustered_portfolio.py
+
+# Microstructure Quality Thresholds
+microstructure:
+  depth_threshold: 0.1        # Order book depth threshold
+  volume_zscore: 3.0          # Volume Z-score threshold
+  vpin_high: 0.7              # VPIN > 0.7 = High toxicity
+  vpin_moderate: 0.5          # VPIN 0.5-0.7 = Moderate
+  ofi_threshold: 0.3          # Order flow imbalance threshold
+
+  # Context: Used in lib/microstructure/config.py, lib/realtime_pipeline.py
+
+# Economic Indicator Thresholds
+economy:
+  gdp_strong_growth: 2.0      # GDP growth > 2% = Strong economy
+  unemployment_low: 5.0       # Unemployment < 5% = Tight labor market
+
+  # Context: Used in agents/strategy_agent.py (line 873)
+
+# Asset Class Contribution Thresholds
+asset_contribution:
+  dominant: 40.0        # > 40% contribution = Dominant factor
+  significant: 25.0     # 25-40% = Significant contributor
+  moderate: 10.0        # 10-25% = Moderate contributor
+
+  # Context: Used in agents/analysis_agent.py (line 290)
+
+# Warning System Thresholds
+warnings:
+  max_active_warnings: 5      # > 5 active warnings = Severe risk state
+  critical_warning_count: 3   # >= 3 warnings = Heightened alert
+
+  # Context: Used in agents/analysis_agent.py, agents/orchestrator.py

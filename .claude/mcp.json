@@ -6,6 +6,13 @@
       "env": {
         "V0_API_KEY": "v1:qMIpFmfXeBAD7qZPdB0WhbaY:ozbQzMAeB5S0taqluE0MhD2t"
       }
+    },
+    "codex": {
+      "type": "stdio",
+      "command": "codex",
+      "args": ["mcp"],
+      "env": {},
+      "description": "Anthropic Codex CLI for token-efficient code editing and review"
     }
   }
 }

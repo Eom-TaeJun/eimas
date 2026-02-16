@@ -1,0 +1,81 @@
+# EIMAS Paths Configuration
+# ==========================
+# Centralized file and directory paths
+# Supports environment variable overrides
+
+# Database Paths
+# All paths relative to project root (/home/tj/projects/autoai/eimas/)
+database:
+  main: "data/eimas.db"
+  events: "data/events.db"
+  data_pipeline: "data/eimas_data.db"
+  realtime_signals: "outputs/realtime_signals.db"
+  ra_research: "data/ra_research.db"  # Override: EIMAS_RA_SQLITE_PATH
+  volatile_realtime: "data/volatile/realtime.db"
+
+  # Backtest databases (Phase 6)
+  backtest_daily_nav: "data/backtest_daily_nav.db"
+  backtest_snapshots: "data/backtest_snapshots.db"
+  backtest_metrics: "data/backtest_metrics.db"
+
+# Output Directories
+output:
+  base: "outputs"
+  dashboards: "outputs/dashboards"
+  reports: "outputs/reports"
+  artifacts: "outputs/artifacts"
+  general_lane: "outputs/general_lane"  # Override: GENERAL_LANE_OUTPUT_DIR
+
+  # Legacy/temporary
+  backtest_results: "outputs/backtest_equal_weight.json"
+  event_tracking: "outputs/event_tracking_test.json"
+  validation_cache: "outputs/.validation_cache.json"
+
+# Data Directories
+data:
+  base: "data"
+  historical: "data/backtest_historical.parquet"
+  cache: "data/cache"
+  volatile: "data/volatile"
+
+# Cache Directories
+cache:
+  yfinance: "/tmp/eimas_yfinance_cache"  # Override: EIMAS_YFINANCE_CACHE_DIR
+  # Set to "off", "none", "disable", "false", or "0" to disable caching
+
+# Config Directories
+config:
+  base: "configs"
+  risk_adjustments: "configs/risk_adjustments.yaml"
+  default: "configs/default.yaml"
+  tickers: "configs/tickers.yaml"
+  thresholds: "configs/thresholds.yaml"
+  paths: "configs/paths.yaml"  # This file
+
+# API Endpoints (moved from hardcoded strings)
+# NOTE: These should be moved to core/config.py as constants
+api:
+  anthropic: "https://api.anthropic.com"
+  openai: "https://api.openai.com/v1"
+  perplexity: "https://api.perplexity.ai"
+  perplexity_chat: "https://api.perplexity.ai/chat/completions"
+  gemini: "https://generativelanguage.googleapis.com"
+
+# Filename Patterns
+patterns:
+  eimas_json: "eimas_*.json"
+  eimas_md: "eimas_*.md"
+  report_json: "report_*.json"
+  validation_json: "*_validation_*.json"
+
+# Environment Variable Overrides
+# ================================
+# These paths can be overridden via environment variables:
+#
+# - EIMAS_YFINANCE_CACHE_DIR: yfinance cache location
+# - EIMAS_RA_SQLITE_PATH: RA research database
+# - GENERAL_LANE_OUTPUT_DIR: General lane output directory
+#
+# Example:
+#   export EIMAS_YFINANCE_CACHE_DIR="/mnt/fast-ssd/eimas_cache"
+#   python main.py

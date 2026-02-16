@@ -82,17 +82,45 @@ Blocked: <list>
 
 ## Token Budget (Codex-First Strategy)
 
+**Source: Validated by auth-system project (2026-02-12)**
+
+### Per-Task Budget
+
 | Agent | Model | Tokens/Task | What They Do |
 |-------|-------|-------------|--------------|
-| alpha-lead | Opus | 500 | Planning only |
-| codex-executor | Haiku | 50 | Runs `codex exec` |
-| beta-lead | Haiku | 100 | Runs commands |
-| beta-codex | Haiku | 100 | Runs `codex review` |
-| **Total Claude** | | **750** | **vs 104k before** |
+| alpha-lead | Opus | 100-300 | Planning, strategy only |
+| codex-executor | Haiku | 30-100 | Delegates to `codex exec` |
+| alpha-codex | Haiku | 100-300 | Runs `codex review` |
+| beta-lead | Haiku | 100 | Queue monitor |
+| beta-codex | Haiku | 100 | Runs `codex review --uncommitted` |
+| beta-qa | Haiku | 100-300 | Test execution only |
+| **Total Claude** | | **530-1,300** | **vs 12,700 traditional** |
 
 **Actual work done by Codex CLI (uses Codex capacity, not Claude!)**
 
-**Savings: 99.3%**
+**Savings: 87-96% per task** ⭐
+
+### Detailed Savings Breakdown
+
+| Task Type | Traditional | Codex-First | Savings |
+|-----------|-------------|-------------|---------|
+| Code writing | 8,000 tokens | 100 tokens | **99%** |
+| Test writing | 3,000 tokens | 100 tokens | **97%** |
+| Code review | 1,000 tokens | 800 tokens | 20% |
+| Architecture | 500 tokens | 400 tokens | 20% |
+| **Total** | **12,700** | **1,600** | **87%** |
+
+### Weekly Capacity Planning
+
+**Without Codex:**
+- 5 features/week = 63,500 tokens
+- ⚠️ Risk of hitting Claude weekly limit
+
+**With Codex:**
+- 5 features/week = 8,000 Claude tokens
+- ✅ Codex handles heavy lifting
+- ✅ Safe capacity margin
+- 💰 $50-100/week savings (estimated)
 
 ## Example: Tasks 1-5 Review
 
@@ -117,8 +145,41 @@ Critical: .env permissions ✅ FIXED
 Block: Test failures need Alpha fix
 ```
 
+## Context Management (NEW: 2026-02-16)
+
+**See: `.claude/CONTEXT_MANAGEMENT.md` for full guide**
+
+### When to /clear
+
+**ALWAYS clear:**
+- Switching projects (EIMAS → other)
+- API key exposed (security)
+- 3+ failed approaches (context pollution)
+
+**NEVER clear:**
+- Mid-feature work (loses progress)
+- Normal iterations (auto-compression handles it)
+
+### Token Budget Awareness
+
+```
+With Codex-first strategy:
+- Alpha-lead: 500 tokens/task (planning only)
+- Codex-executor: 50 tokens/task (delegation)
+- Beta-codex: 100 tokens/task (review)
+Total: 650 tokens/task (vs 10,500 traditional)
+
+Key: Codex does work, doesn't use Claude tokens!
+```
+
+**See: `.claude/CODEX_STRATEGY.md` for Codex usage patterns**
+
+---
+
 ## Canonical Files
 - This model: `.claude/OPERATING_MODEL.md`
+- Context guide: `.claude/CONTEXT_MANAGEMENT.md` ⭐ NEW
+- Codex guide: `.claude/CODEX_STRATEGY.md` ⭐ NEW
 - Agent defs: `.claude/agents/*.yaml`
 - Queue: `.claude/sync/tasks/`
 - Helpers: `scripts/team-helpers/`
