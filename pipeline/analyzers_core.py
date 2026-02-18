@@ -17,8 +17,6 @@ from lib.event_framework import QuantitativeEventDetector
 from lib.liquidity_analysis import LiquidityMarketAnalyzer
 from lib.critical_path import CriticalPathAggregator
 from lib.etf_flow_analyzer import ETFFlowAnalyzer
-from lib.explanation_generator import MarketExplanationGenerator
-from lib.news_event_generator import generate_news_events
 
 # Schemas
 from pipeline.schemas import (
@@ -90,24 +88,14 @@ def detect_events(fred_summary: FREDSummary, market_data: Dict[str, pd.DataFrame
 
         # 뉴스 기반 이벤트 (News + Price Signals)
         try:
+            from lib.news_correlator import NewsCorrelator  # news_event_generator 대체
             macro_analysis = {
                 'net_liquidity': fred_summary.net_liquidity if fred_summary else None,
                 'treasury_10y': fred_summary.treasury_10y if fred_summary else None,
             } if fred_summary else None
 
-            news_events = generate_news_events(
-                macro_analysis=macro_analysis,
-                market_data=market_data,
-            )
-
-            for ne in news_events:
-                events.append(Event(
-                    type=ne['event_type'],
-                    importance=ne.get('severity', 'LOW'),
-                    description=f"[{ne['category'].upper()}] {ne['description']}",
-                    timestamp=ne['timestamp']
-                ))
-                print(f"      📰 {ne['event_type']}: {ne['title']}")
+            # news_event_generator 삭제됨 - 뉴스 이벤트 생성 스킵
+            news_events = []
 
         except Exception as e:
             print(f"      ⚠ News event generation failed: {e}")
@@ -192,16 +180,6 @@ def analyze_etf_flow() -> ETFFlowResult:
         return ETFFlowResult(rotation_signal="N/A", style_signal="N/A", details={})
 
 def generate_explanation(market_data: Dict[str, pd.DataFrame]) -> Dict:
-    """SHAP 기반 시장 설명"""
-    print("\n[2.6] Generating market explanation (SHAP)...")
-    try:
-        generator = MarketExplanationGenerator()
-        explanation = generator.generate_explanation(market_data)
-
-        if "narrative" in explanation:
-            print(f"      ✓ Narrative: {explanation['narrative'][:50]}...")
-
-        return explanation
-    except Exception as e:
-        log_error(logger, "Explanation generation failed", e)
-        return {}
+    """SHAP 기반 시장 설명 (explanation_generator 삭제로 비활성화)"""
+    print("\n[2.6] Market explanation skipped (explanation_generator removed)")
+    return {"narrative": "N/A", "skipped": True}

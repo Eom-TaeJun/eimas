@@ -396,3 +396,138 @@ async def run_pipeline_phases(
         result.audit_metadata["artifact_export"] = artifact_export
 
     return output_file, market_data
+
+
+# =============================================================================
+# --short 전용 파이프라인
+# =============================================================================
+
+def _load_latest_full_result(output_dir: str = "outputs") -> dict:
+    """
+    outputs/ 디렉토리에서 가장 최신 eimas_*.json 파일을 로드.
+    --short 모드에서 --full 결과를 재활용하기 위해 사용.
+    """
+    import json
+    import glob
+
+    pattern = f"{output_dir}/eimas_*.json"
+    files = sorted(glob.glob(pattern), reverse=True)
+    if not files:
+        logging.warning("[short] No full result JSON found in %s — running without prior context", output_dir)
+        return {}
+
+    latest = files[0]
+    try:
+        with open(latest, encoding="utf-8") as f:
+            data = json.load(f)
+        logging.info("[short] Loaded full result from %s", latest)
+        return data
+    except Exception as e:
+        logging.warning("[short] Failed to load %s: %s", latest, e)
+        return {}
+
+
+async def run_short_pipeline_phases(
+    *,
+    runtime: PhaseRuntimeTracker,
+    result: EIMASResult,
+    output_path: Path,
+    enable_realtime: bool,
+    realtime_duration: int,
+    enable_paper_auto: bool,
+    paper_account: str,
+    paper_capital: float,
+    paper_poll_only: bool,
+    paper_backtest: bool,
+    paper_enforce_approval: bool,
+    output_dir: str = "outputs",
+    use_parallel: bool = False,
+) -> Tuple[str | None, Dict[str, Any]]:
+    """
+    --short 전용 파이프라인.
+
+    흐름:
+        Phase 1  : 경량 데이터 수집 (quick_mode=True)
+        Phase 4  : 실시간 스트리밍 (VPIN/OFI, --realtime 시)
+        Phase 4.5: 운용 의사결정 (최신 full 결과 기반)
+        Phase 4.6: 모의주문 자동 실행 (--paper-auto 시)
+        Phase 5  : DB 적재 (JSON 저장)
+        Phase 9  : 아티팩트 Export
+
+    full 결과 활용:
+        outputs/ 디렉토리의 최신 eimas_*.json을 로드해
+        Phase 4.5 운용 의사결정의 컨텍스트로 주입.
+    """
+    # 최신 full 결과 로드 (컨텍스트 주입)
+    prior_full_result = _load_latest_full_result(output_dir)
+    if prior_full_result:
+        result.audit_metadata["short_mode_prior_full"] = {
+            "timestamp": prior_full_result.get("timestamp", "unknown"),
+            "final_recommendation": prior_full_result.get("final_recommendation", ""),
+            "risk_level": prior_full_result.get("risk_level", ""),
+            "confidence": prior_full_result.get("confidence", 0.0),
+        }
+        # full 결과의 핵심 필드를 result에 반영 (없는 경우만)
+        if not result.final_recommendation and prior_full_result.get("final_recommendation"):
+            result.final_recommendation = f"[from full] {prior_full_result['final_recommendation']}"
+        if not result.risk_score and prior_full_result.get("risk_score"):
+            result.risk_score = prior_full_result["risk_score"]
+
+    # Phase 1: 경량 데이터 수집 (quick_mode=True)
+    market_data = await runtime.run_async(
+        "phase1_collect_data",
+        _phase1_parallel_or_sequential,
+        runtime, result, True, use_parallel,  # quick_mode=True
+    )
+
+    # Phase 4: 실시간 스트리밍 (--realtime 시)
+    await runtime.run_async(
+        "phase4_realtime",
+        phase4_run_realtime,
+        result,
+        enable_realtime,
+        realtime_duration,
+    )
+
+    # Phase 4.5: 운용 의사결정 (full 결과 컨텍스트 포함)
+    runtime.run_sync(
+        "phase45_operational_report",
+        phase45_generate_operational_report,
+        result,
+    )
+
+    # Phase 4.6: 모의주문 자동 실행
+    runtime.run_sync(
+        "phase46_paper_execution",
+        phase46_run_paper_execution,
+        result,
+        enable=enable_paper_auto,
+        account_name=paper_account,
+        initial_capital=paper_capital,
+        poll_only=paper_poll_only,
+        run_backtest=paper_backtest,
+        enforce_human_approval=paper_enforce_approval,
+    )
+
+    # Phase 5: DB 적재
+    from pipeline.phases.phase5_storage import save_results as phase5_save_results_local
+    output_file = runtime.run_sync(
+        "phase5_storage",
+        phase5_save_results_local,
+        result,
+        [],  # events: short 모드에서는 이벤트 탐지 생략
+        output_path,
+    )
+
+    # Phase 9: 아티팩트 Export
+    artifact_export = runtime.run_sync(
+        "phase9_artifact_export",
+        phase9_export_artifacts,
+        output_file,
+        output_path,
+        False,  # full_mode=False
+    )
+    if artifact_export:
+        result.audit_metadata["artifact_export"] = artifact_export
+
+    return output_file, market_data

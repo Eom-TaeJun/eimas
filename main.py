@@ -162,6 +162,7 @@ from pipeline.app import (
     resolve_output_path,
     resolve_pipeline_profile,
     run_pipeline_phases,
+    run_short_pipeline_phases,
 )
 
 # ============================================================================
@@ -270,31 +271,52 @@ async def run_integrated_pipeline(
     runtime.print_pipeline_banner(output_path, cron_mode=cron_mode)
     print(f"  Profile: {pipeline_profile.name}")
 
-    output_file, _ = await run_pipeline_phases(
-        runtime=runtime,
-        result=result,
-        output_path=output_path,
-        quick_mode=quick_mode,
-        enable_realtime=enable_realtime,
-        realtime_duration=realtime_duration,
-        enable_backtest=enable_backtest,
-        enable_attribution=enable_attribution,
-        enable_stress_test=enable_stress_test,
-        should_generate_report=should_generate_report,
-        full_mode=full_mode,
-        quick_validation_mode=quick_validation_mode,
-        enable_paper_auto=enable_paper_auto,
-        paper_account=paper_account,
-        paper_capital=paper_capital,
-        paper_poll_only=paper_poll_only,
-        paper_backtest=paper_backtest,
-        paper_enforce_approval=paper_enforce_approval,
-        debate_full_lookback=debate_full_lookback,
-        debate_ref_lookback=debate_ref_lookback,
-        debate_skip_reference=debate_skip_reference,
-        pipeline_profile=pipeline_profile,
-        use_parallel=use_parallel,
-    )
+    if quick_mode:
+        # --short: 경량 수집 → 실시간 → 운용 → 모의주문 → DB 적재
+        print("  Mode: SHORT (realtime response + DB ingest)")
+        output_file, _ = await run_short_pipeline_phases(
+            runtime=runtime,
+            result=result,
+            output_path=output_path,
+            enable_realtime=enable_realtime,
+            realtime_duration=realtime_duration,
+            enable_paper_auto=enable_paper_auto,
+            paper_account=paper_account,
+            paper_capital=paper_capital,
+            paper_poll_only=paper_poll_only,
+            paper_backtest=paper_backtest,
+            paper_enforce_approval=paper_enforce_approval,
+            output_dir=output_dir,
+            use_parallel=use_parallel,
+        )
+    else:
+        # --full: 전체 시장환경 분석 파이프라인
+        print("  Mode: FULL (market environment analysis)")
+        output_file, _ = await run_pipeline_phases(
+            runtime=runtime,
+            result=result,
+            output_path=output_path,
+            quick_mode=quick_mode,
+            enable_realtime=enable_realtime,
+            realtime_duration=realtime_duration,
+            enable_backtest=enable_backtest,
+            enable_attribution=enable_attribution,
+            enable_stress_test=enable_stress_test,
+            should_generate_report=should_generate_report,
+            full_mode=full_mode,
+            quick_validation_mode=quick_validation_mode,
+            enable_paper_auto=enable_paper_auto,
+            paper_account=paper_account,
+            paper_capital=paper_capital,
+            paper_poll_only=paper_poll_only,
+            paper_backtest=paper_backtest,
+            paper_enforce_approval=paper_enforce_approval,
+            debate_full_lookback=debate_full_lookback,
+            debate_ref_lookback=debate_ref_lookback,
+            debate_skip_reference=debate_skip_reference,
+            pipeline_profile=pipeline_profile,
+            use_parallel=use_parallel,
+        )
 
     # Summary
     elapsed = perf_counter() - start_perf

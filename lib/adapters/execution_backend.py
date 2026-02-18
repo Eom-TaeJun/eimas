@@ -12,7 +12,6 @@ import logging
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
-from lib.path_bootstrap import ensure_path
 
 Bundle = Dict[str, Any]
 logger = logging.getLogger(__name__)
@@ -120,7 +119,9 @@ def _load_external_builder() -> Optional[Callable[..., Bundle]]:
     if not external_root.exists():
         return None
 
-    ensure_path(external_root)
+    import sys
+    if str(external_root) not in sys.path:
+        sys.path.insert(0, str(external_root))
 
     try:
         from execution_intelligence.bridge import generate_operational_bundle as external_builder

@@ -1,24 +1,26 @@
 """
-EIMAS Reports - 리포트 생성 모듈
-================================
-Report generation modules for various output formats.
+EIMAS Reports — 리포트 생성 패키지
+====================================
+모든 리포트 관련 모듈의 단일 진입점.
 
-Modules:
-    - ai_report: AI-powered narrative report generator
-    - final_report: Final comprehensive report agent
-    - portfolio_report: Portfolio analysis report generator
-    - dashboard: HTML dashboard generator
+기존 경로(from lib.ai_report_generator import ...)는 그대로 유지됨.
+신규 권장 경로: from lib.reports import AIReportGenerator
 """
 
 from lib.ai_report_generator import AIReportGenerator
 from lib.final_report_agent import FinalReportAgent
+from lib.allocation_report_agent import AllocationReportAgent
 from lib.report_generator import ReportGenerator
+from lib.whitening_engine import WhiteningEngine
+from lib.json_to_html_converter import convert_json_to_html
 from lib.json_to_md_converter import convert_json_to_md
 
 __all__ = [
     'AIReportGenerator',
     'FinalReportAgent',
+    'AllocationReportAgent',
     'ReportGenerator',
+    'WhiteningEngine',
+    'convert_json_to_html',
     'convert_json_to_md',
 ]
-

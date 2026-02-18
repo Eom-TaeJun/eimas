@@ -10,8 +10,6 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from lib.path_bootstrap import ensure_path
-
 ModelExports = Dict[str, Any]
 
 
@@ -63,7 +61,9 @@ def _external_exports() -> Optional[ModelExports]:
     if not external_root.exists():
         return None
 
-    ensure_path(external_root)
+    import sys
+    if str(external_root) not in sys.path:
+        sys.path.insert(0, str(external_root))
 
     try:
         from execution_intelligence.models import (

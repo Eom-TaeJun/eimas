@@ -37,7 +37,6 @@ import pandas as pd
 from lib.fred_collector import FREDCollector
 from lib.data_collector import DataManager
 from lib.market_indicators import MarketIndicatorsCollector
-from lib.path_bootstrap import ensure_path
 from lib.ra_sql_store import ingest_company_ra_analysis_to_sql
 from pipeline.schemas import FREDSummary, IndicatorsSummary
 from pipeline.exceptions import get_logger, log_error, CollectionError
@@ -655,7 +654,9 @@ def _load_financial_indicators() -> Dict[str, Any]:
         return {}
 
     try:
-        ensure_path(fi_root.parent)
+        import sys
+        if str(fi_root.parent) not in sys.path:
+            sys.path.insert(0, str(fi_root.parent))
         package_name = fi_root.name
         if not package_name.isidentifier():
             logger.warning("financial_indicators package name invalid: %s", package_name)
