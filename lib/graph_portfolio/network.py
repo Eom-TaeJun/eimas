@@ -35,6 +35,13 @@ except ImportError:
     csr_matrix = None
     minimum_spanning_tree = None
 
+# scikit-learn imports (optional)
+try:
+    from sklearn.cluster import DBSCAN as _SklearnDBSCAN  # noqa: F401
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
 
 class CorrelationNetwork:
     """
@@ -712,5 +719,4 @@ class CorrelationNetwork:
                 print(f"  - {node}: {freq}/{len(results)} periods ({pct:.1f}%)")
 
         return results
-
 

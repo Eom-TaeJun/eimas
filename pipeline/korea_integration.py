@@ -13,7 +13,7 @@ Usage in main.py:
 
 import pandas as pd
 import numpy as np
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from dataclasses import dataclass
 import logging
 
@@ -23,6 +23,44 @@ from lib.strategic_allocation import StrategicAssetAllocator, GlobalAssetAllocat
 from lib.evidence_based_allocator import EvidenceBasedAllocator
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_close_series(frame: object) -> Optional[pd.Series]:
+    """Safely extract a numeric Close series from market frames."""
+    if not isinstance(frame, pd.DataFrame) or frame.empty:
+        return None
+    if "Close" not in frame.columns:
+        return None
+
+    close = frame["Close"]
+    if isinstance(close, pd.DataFrame):
+        if close.shape[1] == 0:
+            return None
+        close = close.iloc[:, 0]
+    if not isinstance(close, pd.Series):
+        return None
+
+    close = pd.to_numeric(close, errors="coerce").dropna()
+    if close.empty:
+        return None
+    return close
+
+
+def _to_float(value: Any, default: float = 0.0) -> float:
+    """Convert scalar-like pandas/numpy values to python float."""
+    try:
+        if hasattr(value, "item"):
+            value = value.item()
+        if isinstance(value, (pd.Series, pd.DataFrame, np.ndarray)):
+            if np.size(value) == 0:
+                return default
+            value = np.ravel(value)[0]
+        val = float(value)
+        if np.isnan(val):
+            return default
+        return val
+    except Exception:
+        return default
 
 
 @dataclass
@@ -124,22 +162,23 @@ def collect_korea_assets(
         latest_prices = {}
         for category, assets in data.items():
             for name, df in assets.items():
-                if not df.empty and 'Close' in df.columns:
-                    latest_prices[f"{category}_{name}"] = float(df['Close'].iloc[-1])
+                close = _extract_close_series(df)
+                if close is not None:
+                    latest_prices[f"{category}_{name}"] = _to_float(close.iloc[-1], default=0.0)
 
         # KOSPI statistics
         kospi_stats = {}
         if 'indices' in data and 'KOSPI' in data['indices']:
             kospi_df = data['indices']['KOSPI']
-            if not kospi_df.empty:
-                prices = kospi_df['Close']
+            prices = _extract_close_series(kospi_df)
+            if prices is not None and len(prices) > 1:
                 returns = prices.pct_change().dropna()
 
                 kospi_stats = {
-                    'current_price': float(prices.iloc[-1]),
-                    'ytd_return': (prices.iloc[-1] / prices.iloc[0] - 1) * 100,
-                    'volatility': returns.std() * np.sqrt(252) * 100,
-                    'sharpe': (returns.mean() / returns.std()) * np.sqrt(252) if returns.std() > 0 else 0
+                    'current_price': _to_float(prices.iloc[-1], default=0.0),
+                    'ytd_return': _to_float((prices.iloc[-1] / prices.iloc[0] - 1) * 100, default=0.0),
+                    'volatility': _to_float(returns.std() * np.sqrt(252) * 100, default=0.0),
+                    'sharpe': _to_float((returns.mean() / returns.std()) * np.sqrt(252), default=0.0) if returns.std() > 0 else 0.0
                 }
 
         summary = {
@@ -189,9 +228,9 @@ def calculate_fair_values(
 
     try:
         # SPX Fair Value (if data available)
-        if 'SPY' in market_data:
-            spy_data = market_data['SPY']
-            current_price = float(spy_data['Close'].iloc[-1])
+        spy_close = _extract_close_series(market_data.get('SPY'))
+        if spy_close is not None:
+            current_price = _to_float(spy_close.iloc[-1], default=0.0)
 
             # Estimate EPS (proxy: P/E = 20)
             eps_estimate = current_price / 20
@@ -222,30 +261,34 @@ def calculate_fair_values(
             kospi_indices = market_data['korea_data']['indices']
             if 'KOSPI' in kospi_indices:
                 kospi_data = kospi_indices['KOSPI']
-                current_price = float(kospi_data['Close'].iloc[-1])
-
-                eps_estimate = current_price / 12  # KOSPI P/E typically lower
-
-                if mode == 'comprehensive':
-                    kospi_analysis = calculator.calculate_comprehensive_fair_value(
-                        current_price=current_price,
-                        eps=eps_estimate,
-                        average_earnings_10y=eps_estimate * 0.9,
-                        dividend=eps_estimate * 0.5,  # Higher payout in Korea
-                        bond_yield=bond_yields.get('korea_10y', 0.035),
-                        earnings_growth=0.05,
-                        market='kospi'
-                    )
-                    results['kospi'] = kospi_analysis
+                kospi_close = _extract_close_series(kospi_data)
+                if kospi_close is None:
+                    logger.warning("KOSPI Close series unavailable; skipping KOSPI fair value")
                 else:
-                    # Quick mode
-                    fed_result = calculator.calculate_fed_model_fair_value(
-                        current_price=current_price,
-                        earnings_per_share=eps_estimate,
-                        bond_yield_10y=bond_yields.get('korea_10y', 0.035),
-                        market='kospi'
-                    )
-                    results['kospi'] = {'fed_model': fed_result, 'current_price': current_price}
+                    current_price = _to_float(kospi_close.iloc[-1], default=0.0)
+
+                    eps_estimate = current_price / 12  # KOSPI P/E typically lower
+
+                    if mode == 'comprehensive':
+                        kospi_analysis = calculator.calculate_comprehensive_fair_value(
+                            current_price=current_price,
+                            eps=eps_estimate,
+                            average_earnings_10y=eps_estimate * 0.9,
+                            dividend=eps_estimate * 0.5,  # Higher payout in Korea
+                            bond_yield=bond_yields.get('korea_10y', 0.035),
+                            earnings_growth=0.05,
+                            market='kospi'
+                        )
+                        results['kospi'] = kospi_analysis
+                    else:
+                        # Quick mode
+                        fed_result = calculator.calculate_fed_model_fair_value(
+                            current_price=current_price,
+                            earnings_per_share=eps_estimate,
+                            bond_yield_10y=bond_yields.get('korea_10y', 0.035),
+                            market='kospi'
+                        )
+                        results['kospi'] = {'fed_model': fed_result, 'current_price': current_price}
 
         # Comparison (if both available)
         if 'spx' in results and 'kospi' in results and mode == 'comprehensive':

@@ -102,6 +102,7 @@ class RiskSignal:
         }
 
 
+@dataclass
 class JPMorganFrameworkResult:
     """JP Morgan 5단계 버블 프레임워크 분석 결과"""
     current_stage: 'JPMorganBubbleStage'
@@ -120,6 +121,7 @@ class JPMorganFrameworkResult:
         }
 
 
+@dataclass
 class BubbleDetectionResult:
     """버블 탐지 결과"""
     ticker: str
@@ -210,6 +212,7 @@ class StageResult:
     data: Dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass
 class BubbleFrameworkResult:
     """5단계 버블 평가 종합 결과"""
     timestamp: str
@@ -236,4 +239,3 @@ class BubbleFrameworkResult:
             ],
             'warning_flags': self.warning_flags
         }
-

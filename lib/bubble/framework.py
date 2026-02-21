@@ -15,6 +15,7 @@ Class:
 
 import pandas as pd
 import numpy as np
+import yfinance as yf
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 import logging

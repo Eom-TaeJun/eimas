@@ -39,6 +39,32 @@ class ExpectedReturnCalculator:
         """
         self.risk_free_rate = risk_free_rate
 
+    def _extract_close_series(self, frame: object) -> Optional[pd.Series]:
+        """
+        Extract a numeric Close series from potentially irregular payloads.
+
+        Notes:
+        - Ignores non-DataFrame payloads (e.g. nested dicts like `korea_data`)
+        - Handles duplicate/MultiIndex-derived Close columns that may return DataFrame
+        """
+        if not isinstance(frame, pd.DataFrame) or frame.empty:
+            return None
+        if "Close" not in frame.columns:
+            return None
+
+        close = frame["Close"]
+        if isinstance(close, pd.DataFrame):
+            if close.shape[1] == 0:
+                return None
+            close = close.iloc[:, 0]
+        if not isinstance(close, pd.Series):
+            return None
+
+        close = pd.to_numeric(close, errors="coerce").dropna()
+        if close.empty:
+            return None
+        return close
+
     def calculate_historical_mean(
         self,
         market_data: Dict[str, pd.DataFrame],
@@ -65,13 +91,13 @@ class ExpectedReturnCalculator:
         expected_returns = {}
 
         for ticker, df in market_data.items():
-            if df is None or df.empty or 'Close' not in df.columns:
-                # Use default if no data available
-                expected_returns[ticker] = self._get_default_return(ticker)
+            # Skip non-price payloads (e.g. nested dicts) and invalid frames.
+            close = self._extract_close_series(df)
+            if close is None:
                 continue
 
             # Calculate daily returns
-            prices = df['Close'].tail(lookback_days)
+            prices = close.tail(lookback_days)
             if len(prices) < 20:  # Need minimum data points
                 expected_returns[ticker] = self._get_default_return(ticker)
                 continue
@@ -231,11 +257,11 @@ class ExpectedReturnCalculator:
         returns_list = []
 
         for ticker in tickers:
-            df = market_data.get(ticker)
-            if df is None or df.empty or 'Close' not in df.columns:
+            close = self._extract_close_series(market_data.get(ticker))
+            if close is None:
                 return None
 
-            prices = df['Close'].tail(lookback_days)
+            prices = close.tail(lookback_days)
             if len(prices) < 20:
                 return None
 
@@ -353,28 +379,28 @@ class ExpectedReturnCalculator:
             stats['bond_return'] = 0.04  # Default
 
         # Calculate volatilities
-        if 'SPY' in market_data and not market_data['SPY'].empty:
-            spy_returns = market_data['SPY']['Close'].pct_change().dropna()
-            stats['stock_vol'] = spy_returns.std() * np.sqrt(252)
+        spy_close = self._extract_close_series(market_data.get("SPY"))
+        if spy_close is not None:
+            spy_returns = spy_close.pct_change().dropna()
+            stats['stock_vol'] = float(spy_returns.std() * np.sqrt(252))
         else:
             stats['stock_vol'] = 0.16  # Default
 
-        if 'TLT' in market_data and not market_data['TLT'].empty:
-            tlt_returns = market_data['TLT']['Close'].pct_change().dropna()
-            stats['bond_vol'] = tlt_returns.std() * np.sqrt(252)
+        tlt_close = self._extract_close_series(market_data.get("TLT"))
+        if tlt_close is not None:
+            tlt_returns = tlt_close.pct_change().dropna()
+            stats['bond_vol'] = float(tlt_returns.std() * np.sqrt(252))
         else:
             stats['bond_vol'] = 0.06  # Default
 
         # Calculate correlation
-        if ('SPY' in market_data and 'TLT' in market_data and
-            not market_data['SPY'].empty and not market_data['TLT'].empty):
-            spy_ret = market_data['SPY']['Close'].pct_change().dropna()
-            tlt_ret = market_data['TLT']['Close'].pct_change().dropna()
-
+        if spy_close is not None and tlt_close is not None:
+            spy_ret = spy_close.pct_change().dropna()
+            tlt_ret = tlt_close.pct_change().dropna()
             # Align indices
             common_idx = spy_ret.index.intersection(tlt_ret.index)
             if len(common_idx) > 20:
-                stats['correlation'] = spy_ret.loc[common_idx].corr(tlt_ret.loc[common_idx])
+                stats['correlation'] = float(spy_ret.loc[common_idx].corr(tlt_ret.loc[common_idx]))
             else:
                 stats['correlation'] = 0.1  # Default
         else:
@@ -384,23 +410,28 @@ class ExpectedReturnCalculator:
         kospi_tickers = ['KOSPI', '^KS11', '005930.KS']
         kospi_ticker = None
         for ticker in kospi_tickers:
-            if ticker in market_data and not market_data[ticker].empty:
+            if self._extract_close_series(market_data.get(ticker)) is not None:
                 kospi_ticker = ticker
                 break
 
         if kospi_ticker:
             stats['kospi_return'] = returns.get(kospi_ticker, 0.08)
-            kospi_returns = market_data[kospi_ticker]['Close'].pct_change().dropna()
-            stats['kospi_vol'] = kospi_returns.std() * np.sqrt(252)
+            kospi_close = self._extract_close_series(market_data.get(kospi_ticker))
+            if kospi_close is not None:
+                kospi_returns = kospi_close.pct_change().dropna()
+                stats['kospi_vol'] = float(kospi_returns.std() * np.sqrt(252))
+            else:
+                kospi_returns = pd.Series(dtype=float)
+                stats['kospi_vol'] = 0.20
 
             # US-Korea correlation
-            if 'SPY' in market_data and not market_data['SPY'].empty:
-                spy_ret = market_data['SPY']['Close'].pct_change().dropna()
+            if spy_close is not None and not kospi_returns.empty:
+                spy_ret = spy_close.pct_change().dropna()
                 common_idx = spy_ret.index.intersection(kospi_returns.index)
                 if len(common_idx) > 20:
-                    stats['us_korea_corr'] = spy_ret.loc[common_idx].corr(
+                    stats['us_korea_corr'] = float(spy_ret.loc[common_idx].corr(
                         kospi_returns.loc[common_idx]
-                    )
+                    ))
                 else:
                     stats['us_korea_corr'] = 0.6  # Default
             else:

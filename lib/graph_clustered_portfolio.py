@@ -14,6 +14,7 @@ from lib.graph_portfolio import (
     ClusteringMethod,
     RepresentativeMethod,
 )
+from lib.graph_portfolio.network import CorrelationNetwork
 
 __all__ = [
     "GraphClusteredPortfolio",
@@ -22,4 +23,5 @@ __all__ = [
     "MSTAnalysisResult",
     "ClusteringMethod",
     "RepresentativeMethod",
+    "CorrelationNetwork",
 ]
