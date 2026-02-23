@@ -129,7 +129,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-4 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-4 rounded-md shadow-lg">
           <p className="text-white font-semibold mb-2">{data.timestamp}</p>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -183,14 +183,14 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
               Historical regime transitions with probability distributions
             </p>
           </div>
-          <div className="flex gap-1 bg-[#161b22] rounded-lg p-1">
+          <div className="flex gap-1 bg-surface-card rounded-lg p-1">
             {(["probabilities", "volatility"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 className={`px-3 py-1 text-xs rounded transition-colors capitalize ${
                   viewMode === mode
-                    ? "bg-[#238636] text-white"
+                    ? "bg-secondary text-white"
                     : "text-gray-400 hover:text-white"
                 }`}
               >
@@ -203,7 +203,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
       <CardContent>
         {/* Summary Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Current Regime</div>
             <Badge variant="outline" className={`${getRegimeColor(currentRegime.regime)} mb-1`}>
               {getRegimeIcon(currentRegime.regime)}
@@ -213,18 +213,18 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
               {(currentRegime.confidence * 100).toFixed(0)}% conf
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Avg Confidence</div>
             <div className="text-lg font-bold text-white">
               {(avgConfidence * 100).toFixed(0)}%
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Transitions</div>
             <div className="text-lg font-bold text-white">{transitions}</div>
             <div className="text-xs text-gray-400">in {chartData.length} days</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Distribution</div>
             <div className="flex gap-2 text-xs mt-1">
               <span className="text-green-400">{regimeCounts.Bull || 0}🟢</span>
@@ -240,16 +240,16 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="bullGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3fb950" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="#3fb950" stopOpacity={0.1} />
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
                 </linearGradient>
                 <linearGradient id="neutralGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#d29922" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="#d29922" stopOpacity={0.1} />
+                  <stop offset="5%" stopColor="#d97706" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#d97706" stopOpacity={0.1} />
                 </linearGradient>
                 <linearGradient id="bearGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f85149" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="#f85149" stopOpacity={0.1} />
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
@@ -282,7 +282,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
                 type="monotone"
                 dataKey="bull_prob"
                 stackId="1"
-                stroke="#3fb950"
+                stroke="#10B981"
                 fill="url(#bullGradient)"
                 name="Bull Probability"
               />
@@ -290,7 +290,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
                 type="monotone"
                 dataKey="neutral_prob"
                 stackId="1"
-                stroke="#d29922"
+                stroke="#d97706"
                 fill="url(#neutralGradient)"
                 name="Neutral Probability"
               />
@@ -298,7 +298,7 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
                 type="monotone"
                 dataKey="bear_prob"
                 stackId="1"
-                stroke="#f85149"
+                stroke="#ef4444"
                 fill="url(#bearGradient)"
                 name="Bear Probability"
               />
@@ -332,15 +332,15 @@ export function RegimeTransitionChart({ data }: RegimeTransitionProps) {
               />
               <ReferenceLine
                 y={20}
-                stroke="#d29922"
+                stroke="#d97706"
                 strokeDasharray="3 3"
-                label={{ value: "Normal", fill: "#d29922", fontSize: 10 }}
+                label={{ value: "Normal", fill: "#d97706", fontSize: 10 }}
               />
               <ReferenceLine
                 y={30}
-                stroke="#f85149"
+                stroke="#ef4444"
                 strokeDasharray="3 3"
-                label={{ value: "High", fill: "#f85149", fontSize: 10 }}
+                label={{ value: "High", fill: "#ef4444", fontSize: 10 }}
               />
             </LineChart>
           )}

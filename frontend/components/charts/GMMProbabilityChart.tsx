@@ -21,9 +21,9 @@ interface GMMProbabilityChartProps {
 }
 
 const REGIME_COLORS = {
-  Bull: "#3fb950",
-  Neutral: "#d29922",
-  Bear: "#f85149",
+  Bull: "#10B981",
+  Neutral: "#d97706",
+  Bear: "#ef4444",
 };
 
 export function GMMProbabilityChart({
@@ -50,9 +50,9 @@ export function GMMProbabilityChart({
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-3 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-3 rounded-md shadow-lg">
           <p className="text-white font-semibold">{payload[0].payload.regime}</p>
-          <p className="text-[#58a6ff]">{payload[0].value.toFixed(1)}%</p>
+          <p className="text-primary-400">{payload[0].value.toFixed(1)}%</p>
         </div>
       );
     }
@@ -77,7 +77,7 @@ export function GMMProbabilityChart({
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white">GMM Regime Probabilities</CardTitle>
       </CardHeader>

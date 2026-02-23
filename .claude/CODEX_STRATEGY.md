@@ -934,9 +934,9 @@ codex exec "..." # Works without MCP
 
 ### External Resources
 
-- **Auth-system project:** `/home/tj/projects/auth-system/` (reference implementation)
-- **Capacity optimization:** `/home/tj/projects/auth-system/.claude/CAPACITY_OPTIMIZATION_STRATEGY.md`
-- **Dual account strategy:** `/home/tj/projects/auth-system/.claude/DUAL_ACCOUNT_STRATEGY.md`
+- **Auth-system project:** `/home/tj/projects/auth/` (reference implementation)
+- **Capacity optimization:** `/home/tj/projects/auth/.claude/CAPACITY_OPTIMIZATION_STRATEGY.md`
+- **Dual account strategy:** `/home/tj/projects/auth/.claude/DUAL_ACCOUNT_STRATEGY.md`
 
 ### Token Savings Proof
 

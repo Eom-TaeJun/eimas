@@ -27,7 +27,7 @@ export function LoadingState({ message, type = "default" }: LoadingStateProps) {
   const defaultMessage = loadingMessages[type];
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardContent className="p-12">
         <div className="flex flex-col items-center justify-center text-center">
           <Icon className="w-12 h-12 text-purple-400 animate-spin mb-4" />
@@ -54,7 +54,7 @@ export function LoadingState({ message, type = "default" }: LoadingStateProps) {
 
 export function SkeletonCard() {
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardContent className="p-6">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-700 rounded w-1/3"></div>

@@ -61,7 +61,7 @@ export function SystemStatusDashboard() {
   }, [health?.timestamp]);
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-white flex items-center gap-2">
@@ -84,7 +84,7 @@ export function SystemStatusDashboard() {
       <CardContent>
         <div className="space-y-4">
           {/* Backend Server */}
-          <div className="flex items-center justify-between p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="flex items-center justify-between p-3 bg-surface-card rounded-lg border border-border">
             <div className="flex items-center gap-3">
               <Server className={`w-5 h-5 ${isOnline ? "text-green-400" : "text-red-400"}`} />
               <div>
@@ -98,7 +98,7 @@ export function SystemStatusDashboard() {
           </div>
 
           {/* Analysis Engine */}
-          <div className="flex items-center justify-between p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="flex items-center justify-between p-3 bg-surface-card rounded-lg border border-border">
             <div className="flex items-center gap-3">
               <Activity className={`w-5 h-5 ${health?.last_analysis_id ? "text-blue-400" : "text-gray-400"}`} />
               <div>
@@ -112,7 +112,7 @@ export function SystemStatusDashboard() {
           </div>
 
           {/* Last Analysis */}
-          <div className="flex items-center justify-between p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="flex items-center justify-between p-3 bg-surface-card rounded-lg border border-border">
             <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-yellow-400" />
               <div>
@@ -125,7 +125,7 @@ export function SystemStatusDashboard() {
           </div>
 
           {/* Status Message */}
-          <div className="mt-4 p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="mt-4 p-3 bg-surface-card rounded-lg border border-border">
             <p className="text-xs text-gray-400">
               {isOnline ? (
                 <>

@@ -31,7 +31,7 @@ export function DebateSchoolCards({ data }: DebateSchoolCardsProps) {
     }
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
             <CardHeader>
                 <CardTitle className="text-xl font-bold text-white flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-blue-400" />
@@ -44,8 +44,8 @@ export function DebateSchoolCards({ data }: DebateSchoolCardsProps) {
             <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {schools.map((school, idx) => (
-                        <Card key={idx} className="bg-[#0d1117] border border-[#30363d] overflow-hidden">
-                            <div className="p-4 border-b border-[#30363d] flex items-center justify-between bg-[#1c2128]/50">
+                        <Card key={idx} className="bg-surface border border-border overflow-hidden">
+                            <div className="p-4 border-b border-border flex items-center justify-between bg-surface-overlay/50">
                                 <div className="flex items-center gap-2">
                                     {getSchoolIcon(school.school)}
                                     <span className="font-semibold text-gray-200 text-sm">{school.school}</span>
@@ -59,7 +59,7 @@ export function DebateSchoolCards({ data }: DebateSchoolCardsProps) {
                                     <ul className="space-y-3">
                                         {school.reasoning.map((point, i) => (
                                             <li key={i} className="text-sm text-gray-400 leading-relaxed flex items-start gap-2">
-                                                <span className="text-[#30363d] mt-1.5">•</span>
+                                                <span className="text-gray-600 mt-1.5">•</span>
                                                 <span>{point}</span>
                                             </li>
                                         ))}

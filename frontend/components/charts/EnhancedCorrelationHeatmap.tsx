@@ -115,7 +115,7 @@ export function EnhancedCorrelationHeatmap({
   const displayedMatrix = matrix.slice(0, 12).map((row) => row.slice(0, 12));
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -134,7 +134,7 @@ export function EnhancedCorrelationHeatmap({
               variant="outline"
               size="sm"
               onClick={exportData}
-              className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+              className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
             >
               <Download className="w-4 h-4 mr-1" />
               Export CSV
@@ -145,19 +145,19 @@ export function EnhancedCorrelationHeatmap({
       <CardContent>
         {/* Statistics Grid */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Avg Correlation</div>
             <div className="text-lg font-bold text-white">{avgCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Max (Positive)</div>
             <div className="text-lg font-bold text-red-400">{maxCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Min (Negative)</div>
             <div className="text-lg font-bold text-blue-400">{minCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Strong Pairs</div>
             <div className="text-lg font-bold text-white">
               {highCorrelations} <span className="text-xs text-gray-400">(&gt;0.7)</span>
@@ -201,7 +201,7 @@ export function EnhancedCorrelationHeatmap({
             {/* Matrix rows */}
             {displayedTickers.map((ticker, i) => (
               <div key={`row-${i}`} className="flex">
-                <div className="w-16 h-16 flex items-center justify-center text-xs font-medium text-gray-300 border-r border-[#30363d]">
+                <div className="w-16 h-16 flex items-center justify-center text-xs font-medium text-gray-300 border-r border-border">
                   {ticker}
                 </div>
 
@@ -214,7 +214,7 @@ export function EnhancedCorrelationHeatmap({
                   return (
                     <div
                       key={`cell-${i}-${j}`}
-                      className={`w-16 h-16 flex items-center justify-center text-xs font-bold border border-[#30363d] transition-all duration-200 ${
+                      className={`w-16 h-16 flex items-center justify-center text-xs font-bold border border-border transition-all duration-200 ${
                         isFiltered
                           ? "bg-gray-800 opacity-30"
                           : getCorrelationColor(value, isHovered || isSelected)
@@ -236,7 +236,7 @@ export function EnhancedCorrelationHeatmap({
 
         {/* Selected Cell Details */}
         {selectedCell && (
-          <div className="mt-6 p-4 bg-[#161b22] rounded-lg border-2 border-[#238636]">
+          <div className="mt-6 p-4 bg-surface-card rounded-lg border-2 border-secondary">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <h4 className="text-white font-bold text-lg mb-1">
@@ -290,7 +290,7 @@ export function EnhancedCorrelationHeatmap({
 
         {/* Hover Tooltip */}
         {hoveredCell && !selectedCell && (
-          <div className="mt-4 p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="mt-4 p-3 bg-surface-card rounded-lg border border-border">
             <p className="text-sm text-white">
               <span className="font-bold">{displayedTickers[hoveredCell.i]}</span>
               {" ↔ "}

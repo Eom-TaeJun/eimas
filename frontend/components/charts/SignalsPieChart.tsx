@@ -7,9 +7,9 @@ import { fetchSignals } from "@/lib/api"
 import type { Signal } from "@/lib/types"
 
 const COLORS = {
-    BUY: "#3fb950",   // Green
-    SELL: "#f85149",  // Red
-    HOLD: "#d29922",  // Yellow
+    BUY: "#10B981",   // Green
+    SELL: "#ef4444",  // Red
+    HOLD: "#d97706",  // Yellow
 }
 
 export function SignalsPieChart() {
@@ -32,7 +32,7 @@ export function SignalsPieChart() {
     if (chartData.length === 0) return null;
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d] h-full">
+        <Card className="bg-surface-card border-border h-full">
             <CardHeader>
                 <CardTitle className="text-gray-200 text-sm">Signal Distribution</CardTitle>
             </CardHeader>

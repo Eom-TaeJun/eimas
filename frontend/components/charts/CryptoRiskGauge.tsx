@@ -18,7 +18,7 @@ export function CryptoRiskGauge() {
 
     if (error || !analysis || !isDataAvailable) {
         return (
-            <Card className="bg-[#161b22] border-[#30363d] h-full">
+            <Card className="bg-surface-card border-border h-full">
                 <CardHeader>
                     <CardTitle className="text-white text-lg">Depeg Risk Gauge</CardTitle>
                     <CardDescription className="text-gray-400">
@@ -50,9 +50,9 @@ export function CryptoRiskGauge() {
     ];
 
     // Determine color based on risk
-    let riskColor = "#3fb950"; // Green (Low)
-    if (percentValue > 30) riskColor = "#d29922"; // Yellow (Medium)
-    if (percentValue > 70) riskColor = "#f85149"; // Red (High)
+    let riskColor = "#10B981"; // Green (Low)
+    if (percentValue > 30) riskColor = "#d97706"; // Yellow (Medium)
+    if (percentValue > 70) riskColor = "#ef4444"; // Red (High)
 
     const cx = "50%";
     const cy = "70%";
@@ -60,7 +60,7 @@ export function CryptoRiskGauge() {
     const oR = 80;
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d] h-full flex flex-col">
+        <Card className="bg-surface-card border-border h-full flex flex-col">
             <CardHeader className="pb-2">
                 <CardTitle className="text-white text-lg">Depeg Risk Gauge</CardTitle>
                 <CardDescription className="text-gray-400">

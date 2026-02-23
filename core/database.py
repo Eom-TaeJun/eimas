@@ -4,13 +4,25 @@ EIMAS Database Manager
 ======================
 SQLite 기반 분석 결과 저장소
 
-Tables:
+Tables (Core):
 - ark_holdings: ARK ETF 일별 보유종목
 - ark_weight_changes: 비중 변화 이력
 - etf_analysis: ETF 분석 결과
 - market_regime: 시장 레짐 이력
 - signals: 생성된 신호
 - actions: 권고 액션
+
+Tables (fi_ra Staging — Track E):
+- stg_ra_macro_regime: 레짐 분석 원시 적재 (staging)
+- stg_ra_etf_signal: ETF 신호 원시 적재 (staging)
+
+Tables (fi_ra Mart — Track E):
+- mart_ra_macro_regime: 레짐 집계 결과 (mart)
+- mart_ra_etf_signal: ETF 신호 + 레짐 컨텍스트 집계 (mart)
+
+Views (fi_ra — Track E):
+- v_ra_macro_regime: 최신 레짐 분석 통합 뷰 (mart + staging fallback)
+- v_ra_etf_signal: ETF 신호 + 레짐 컨텍스트 조인 뷰
 """
 
 import sqlite3
@@ -37,6 +49,10 @@ class DatabaseManager:
         # 조회
         holdings = db.get_ark_holdings(date="2025-01-01", etf="ARKK")
         signals = db.get_signals(start_date="2025-01-01", ticker="TSLA")
+
+        # Track E — fi_ra 뷰 기반 조회
+        regime = db.get_latest_regime()
+        signals_by_regime = db.get_signals_by_regime("RISK_ON")
     """
 
     def __init__(self, db_path: str = None):
@@ -225,6 +241,240 @@ class DatabaseManager:
                     error_message TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP
                 )
+            """)
+
+            # ================================================================
+            # Track E — fi_ra Staging 테이블
+            # ================================================================
+            # stg_ra_macro_regime: 레짐 분석 결과 원시 적재
+            # ETL 파이프라인에서 외부 소스 데이터를 그대로 적재.
+            # mart로 집계되기 전 중간 저장소 역할.
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS stg_ra_macro_regime (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_run_id TEXT,           -- 분석 실행 ID (배치 추적용)
+                    regime_date TEXT NOT NULL,    -- 레짐 기준 날짜
+                    regime_type TEXT,             -- RISK_ON, RISK_OFF, NEUTRAL
+                    cycle_phase TEXT,             -- EARLY, MID, LATE, RECESSION
+                    style_bias TEXT,              -- GROWTH, VALUE, BALANCED
+                    confidence REAL,              -- 레짐 신뢰도 (0.0~1.0)
+                    risk_appetite_score REAL,     -- 위험 선호 점수
+                    breadth_score REAL,           -- 시장 폭 점수
+                    vix_estimate REAL,            -- VIX 추정치
+                    growth_value_spread REAL,     -- 성장/가치 스프레드
+                    equity_bond_spread REAL,      -- 주식/채권 스프레드
+                    hy_treasury_spread REAL,      -- HY/국채 스프레드
+                    key_indicators_json TEXT,     -- 핵심 지표 JSON (dict)
+                    raw_signals_json TEXT,        -- 원시 신호 JSON (list)
+                    loaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(source_run_id, regime_date)
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stg_macro_regime_date
+                ON stg_ra_macro_regime(regime_date)
+            """)
+
+            # stg_ra_etf_signal: ETF 신호 원시 적재
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS stg_ra_etf_signal (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_run_id TEXT,           -- 분석 실행 ID
+                    signal_date TEXT NOT NULL,    -- 신호 발생 날짜
+                    etf TEXT NOT NULL,            -- ETF 심볼 (ARKK, ARKG, ...)
+                    ticker TEXT NOT NULL,         -- 종목 심볼
+                    signal_type TEXT,             -- etf_flow, weight_change, sector_rotation
+                    direction TEXT,               -- long, short, neutral
+                    confidence REAL,              -- 신뢰도 (0.0~1.0)
+                    indicator TEXT,               -- 신호 지표명
+                    indicator_value REAL,         -- 지표 값
+                    z_score REAL,                 -- Z-점수
+                    level TEXT,                   -- WARNING, ALERT, CRITICAL
+                    description TEXT,             -- 신호 설명
+                    horizon TEXT,                 -- short, medium, long
+                    metadata_json TEXT,           -- 추가 메타데이터 JSON
+                    loaded_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(source_run_id, signal_date, etf, ticker, signal_type)
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stg_etf_signal_date
+                ON stg_ra_etf_signal(signal_date)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_stg_etf_signal_etf_ticker
+                ON stg_ra_etf_signal(etf, ticker)
+            """)
+
+            # ================================================================
+            # Track E — fi_ra Mart 테이블
+            # ================================================================
+            # mart_ra_macro_regime: 레짐 분석 집계 결과
+            # staging에서 ETL 처리 후 분석에 직접 사용하는 mart 테이블.
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS mart_ra_macro_regime (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    regime_date TEXT NOT NULL UNIQUE, -- 집계 기준 날짜 (일별 1행)
+                    regime_type TEXT NOT NULL,        -- 최종 확정 레짐 유형
+                    cycle_phase TEXT,                 -- 사이클 국면
+                    style_bias TEXT,                  -- 스타일 편향
+                    avg_confidence REAL,              -- 평균 신뢰도
+                    max_confidence REAL,              -- 최대 신뢰도
+                    avg_risk_appetite REAL,           -- 평균 위험 선호 점수
+                    avg_breadth_score REAL,           -- 평균 시장 폭 점수
+                    avg_vix_estimate REAL,            -- 평균 VIX 추정치
+                    avg_growth_value_spread REAL,     -- 평균 성장/가치 스프레드
+                    avg_equity_bond_spread REAL,      -- 평균 주식/채권 스프레드
+                    avg_hy_treasury_spread REAL,      -- 평균 HY/국채 스프레드
+                    source_run_count INTEGER,         -- 집계에 사용된 소스 실행 수
+                    key_indicators_json TEXT,         -- 대표 핵심 지표 JSON
+                    etl_processed_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mart_macro_regime_date
+                ON mart_ra_macro_regime(regime_date)
+            """)
+
+            # mart_ra_etf_signal: ETF 신호 + 레짐 컨텍스트 집계
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS mart_ra_etf_signal (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    signal_date TEXT NOT NULL,        -- 신호 날짜
+                    etf TEXT NOT NULL,                -- ETF 심볼
+                    ticker TEXT NOT NULL,             -- 종목 심볼
+                    signal_type TEXT NOT NULL,        -- 신호 유형
+                    direction TEXT,                   -- 방향성
+                    avg_confidence REAL,              -- 평균 신뢰도
+                    max_confidence REAL,              -- 최대 신뢰도
+                    avg_z_score REAL,                 -- 평균 Z-점수
+                    dominant_level TEXT,              -- 지배적 경보 수준
+                    horizon TEXT,                     -- 투자 시계
+                    regime_type TEXT,                 -- 조인된 레짐 유형 (당일)
+                    regime_confidence REAL,           -- 레짐 신뢰도
+                    regime_aligned INTEGER,           -- 레짐 정렬 여부 (1/0)
+                    signal_count INTEGER,             -- 집계 신호 수
+                    description TEXT,                 -- 대표 설명
+                    etl_processed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(signal_date, etf, ticker, signal_type)
+                )
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mart_etf_signal_date
+                ON mart_ra_etf_signal(signal_date)
+            """)
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_mart_etf_signal_regime
+                ON mart_ra_etf_signal(regime_type)
+            """)
+
+            # ================================================================
+            # Track E — fi_ra SQL Views
+            # ================================================================
+
+            # v_ra_macro_regime: 레짐 분석 통합 조회 뷰
+            #
+            # 우선순위: mart 테이블 (ETL 완료) → market_regime 코어 테이블 (fallback)
+            # mart에 데이터가 있으면 mart 기준, 없으면 market_regime 원본 사용.
+            # 컬럼: regime_date, regime_type, cycle_phase, style_bias,
+            #        confidence, risk_appetite_score, breadth_score,
+            #        vix_estimate, key_indicators_json, data_source
+            cursor.execute("""
+                CREATE VIEW IF NOT EXISTS v_ra_macro_regime AS
+                SELECT
+                    m.regime_date,
+                    m.regime_type,
+                    m.cycle_phase,
+                    m.style_bias,
+                    m.avg_confidence        AS confidence,
+                    m.avg_risk_appetite     AS risk_appetite_score,
+                    m.avg_breadth_score     AS breadth_score,
+                    m.avg_vix_estimate      AS vix_estimate,
+                    m.avg_growth_value_spread AS growth_value_spread,
+                    m.avg_equity_bond_spread  AS equity_bond_spread,
+                    m.avg_hy_treasury_spread  AS hy_treasury_spread,
+                    m.source_run_count,
+                    m.key_indicators_json,
+                    m.etl_processed_at,
+                    'mart' AS data_source
+                FROM mart_ra_macro_regime m
+
+                UNION ALL
+
+                SELECT
+                    r.date                  AS regime_date,
+                    r.sentiment             AS regime_type,
+                    r.cycle_phase,
+                    r.style_rotation        AS style_bias,
+                    NULL                    AS confidence,
+                    r.risk_appetite_score,
+                    r.breadth_score,
+                    r.vix_estimate,
+                    r.growth_value_spread,
+                    r.equity_bond_spread,
+                    r.hy_treasury_spread,
+                    NULL                    AS source_run_count,
+                    NULL                    AS key_indicators_json,
+                    r.created_at            AS etl_processed_at,
+                    'core' AS data_source
+                FROM market_regime r
+                WHERE r.date NOT IN (
+                    SELECT regime_date FROM mart_ra_macro_regime
+                )
+            """)
+
+            # ================================================================
+            # Korea Savings Bank Indicators 테이블
+            # ================================================================
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS korea_savings_bank (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL UNIQUE,
+                    npl_ratio REAL,           -- 고정이하여신비율 (%)
+                    bis_capital_ratio REAL,   -- BIS 자기자본비율 (%)
+                    roa REAL,                 -- 총자산순이익률 (%)
+                    data_source TEXT,         -- "fred+fss_mock", "fss_mock", etc.
+                    signals_json TEXT,        -- 경보 신호 목록 JSON
+                    note TEXT,
+                    is_valid INTEGER DEFAULT 1,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute(
+                "CREATE INDEX IF NOT EXISTS idx_ksb_date ON korea_savings_bank(date)"
+            )
+
+            # v_ra_etf_signal: ETF 신호 + 레짐 컨텍스트 조인 뷰
+            #
+            # mart_ra_etf_signal을 기반으로 당일 레짐 정보를 함께 노출.
+            # 레짐 정보는 v_ra_macro_regime 뷰에서 조인하여 최신 데이터 보장.
+            # 컬럼: signal_date, etf, ticker, signal_type, direction,
+            #        confidence, z_score, level, regime_type, regime_confidence,
+            #        regime_aligned, horizon, description
+            cursor.execute("""
+                CREATE VIEW IF NOT EXISTS v_ra_etf_signal AS
+                SELECT
+                    s.signal_date,
+                    s.etf,
+                    s.ticker,
+                    s.signal_type,
+                    s.direction,
+                    s.avg_confidence        AS confidence,
+                    s.avg_z_score           AS z_score,
+                    s.dominant_level        AS level,
+                    s.horizon,
+                    s.signal_count,
+                    s.description,
+                    COALESCE(s.regime_type, r.regime_type) AS regime_type,
+                    COALESCE(s.regime_confidence, r.confidence) AS regime_confidence,
+                    s.regime_aligned,
+                    r.cycle_phase           AS regime_cycle_phase,
+                    r.style_bias            AS regime_style_bias,
+                    r.risk_appetite_score   AS regime_risk_appetite,
+                    s.etl_processed_at
+                FROM mart_ra_etf_signal s
+                LEFT JOIN v_ra_macro_regime r
+                    ON s.signal_date = r.regime_date
             """)
 
     # ========================================================================
@@ -637,6 +887,54 @@ class DatabaseManager:
             return None
 
     # ========================================================================
+    # Korea Savings Bank 메서드
+    # ========================================================================
+
+    def save_korea_savings_bank(self, data: Dict[str, Any], date_str: str = None):
+        """한국 저축은행 건전성 지표 저장"""
+        if date_str is None:
+            date_str = date.today().isoformat()
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO korea_savings_bank
+                (date, npl_ratio, bis_capital_ratio, roa,
+                 data_source, signals_json, note, is_valid)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                date_str,
+                data.get("npl_ratio", 0.0),
+                data.get("bis_capital_ratio", 0.0),
+                data.get("roa", 0.0),
+                data.get("data_source", "fss_mock"),
+                json.dumps(data.get("signals", [])),
+                data.get("note", ""),
+                1 if data.get("is_valid", True) else 0,
+            ))
+
+    def get_korea_savings_bank(self, date_str: str = None) -> Optional[Dict[str, Any]]:
+        """한국 저축은행 건전성 지표 조회 (기본: 최신)"""
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            if date_str:
+                cursor.execute(
+                    "SELECT * FROM korea_savings_bank WHERE date = ?", (date_str,)
+                )
+            else:
+                cursor.execute(
+                    "SELECT * FROM korea_savings_bank ORDER BY date DESC LIMIT 1"
+                )
+            row = cursor.fetchone()
+            if row:
+                result = dict(row)
+                raw = result.get("signals_json")
+                result["signals"] = json.loads(raw) if raw else []
+                result["is_valid"] = bool(result.get("is_valid"))
+                return result
+            return None
+
+    # ========================================================================
     # 분석 로그 메서드
     # ========================================================================
 
@@ -655,6 +953,368 @@ class DatabaseManager:
                  records_processed, error_message)
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (date_str, analysis_type, status, duration, records, error))
+
+    # ========================================================================
+    # Track E — fi_ra Staging 적재 메서드
+    # ========================================================================
+
+    def stage_macro_regime(self, regime: Dict[str, Any],
+                           run_id: str = None,
+                           date_str: str = None) -> int:
+        """
+        레짐 분석 결과를 staging 테이블에 적재
+
+        Args:
+            regime: 레짐 분석 결과 딕셔너리
+            run_id: 배치 실행 ID (추적용, 기본: 타임스탬프)
+            date_str: 레짐 기준 날짜 (기본: 오늘)
+
+        Returns:
+            삽입된 행의 ID
+        """
+        if date_str is None:
+            date_str = date.today().isoformat()
+        if run_id is None:
+            run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO stg_ra_macro_regime
+                (source_run_id, regime_date, regime_type, cycle_phase, style_bias,
+                 confidence, risk_appetite_score, breadth_score, vix_estimate,
+                 growth_value_spread, equity_bond_spread, hy_treasury_spread,
+                 key_indicators_json, raw_signals_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                run_id,
+                date_str,
+                regime.get('sentiment') or regime.get('regime_type', ''),
+                regime.get('cycle_phase', ''),
+                regime.get('style_rotation') or regime.get('style_bias', ''),
+                regime.get('confidence'),
+                regime.get('risk_appetite_score'),
+                regime.get('breadth_score'),
+                regime.get('vix_estimate'),
+                regime.get('growth_value_spread'),
+                regime.get('equity_bond_spread'),
+                regime.get('hy_treasury_spread'),
+                json.dumps(regime.get('key_indicators', {})),
+                json.dumps(regime.get('signals', []))
+            ))
+            return cursor.lastrowid
+
+    def stage_etf_signals(self, signals: List[Dict[str, Any]],
+                          run_id: str = None,
+                          date_str: str = None) -> int:
+        """
+        ETF 신호 목록을 staging 테이블에 적재
+
+        Args:
+            signals: 신호 딕셔너리 리스트
+            run_id: 배치 실행 ID
+            date_str: 신호 날짜 (기본: 오늘)
+
+        Returns:
+            적재된 신호 수
+        """
+        if date_str is None:
+            date_str = date.today().isoformat()
+        if run_id is None:
+            run_id = f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        count = 0
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            for sig in signals:
+                cursor.execute("""
+                    INSERT OR REPLACE INTO stg_ra_etf_signal
+                    (source_run_id, signal_date, etf, ticker, signal_type,
+                     direction, confidence, indicator, indicator_value, z_score,
+                     level, description, horizon, metadata_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    run_id,
+                    date_str,
+                    sig.get('etf', ''),
+                    sig.get('ticker', ''),
+                    sig.get('type') or sig.get('signal_type', ''),
+                    sig.get('direction', ''),
+                    sig.get('confidence'),
+                    sig.get('indicator', ''),
+                    sig.get('value') or sig.get('indicator_value'),
+                    sig.get('z_score'),
+                    sig.get('level', ''),
+                    sig.get('description', ''),
+                    sig.get('horizon', ''),
+                    json.dumps(sig.get('metadata', {}))
+                ))
+                count += 1
+        return count
+
+    # ========================================================================
+    # Track E — ETL: Staging → Mart
+    # ========================================================================
+
+    def etl_regime_to_mart(self, regime_date: str = None) -> int:
+        """
+        stg_ra_macro_regime → mart_ra_macro_regime ETL 실행
+
+        staging 테이블의 레짐 데이터를 집계하여 mart 테이블에 upsert.
+        같은 날짜에 여러 실행(run)이 있을 경우 평균값 사용.
+
+        Args:
+            regime_date: 특정 날짜만 처리 (None이면 미처리 전체)
+
+        Returns:
+            처리된 날짜 수
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            date_filter = "WHERE regime_date = ?" if regime_date else ""
+            params = (regime_date,) if regime_date else ()
+
+            cursor.execute(f"""
+                INSERT OR REPLACE INTO mart_ra_macro_regime
+                (regime_date, regime_type, cycle_phase, style_bias,
+                 avg_confidence, max_confidence,
+                 avg_risk_appetite, avg_breadth_score, avg_vix_estimate,
+                 avg_growth_value_spread, avg_equity_bond_spread,
+                 avg_hy_treasury_spread, source_run_count, key_indicators_json)
+                SELECT
+                    regime_date,
+                    -- 최다 출현 레짐 유형 선택 (GROUP_CONCAT + 서브쿼리 대신 단순화)
+                    regime_type,
+                    cycle_phase,
+                    style_bias,
+                    AVG(COALESCE(confidence, 0.5))          AS avg_confidence,
+                    MAX(COALESCE(confidence, 0.0))          AS max_confidence,
+                    AVG(COALESCE(risk_appetite_score, 0))   AS avg_risk_appetite,
+                    AVG(COALESCE(breadth_score, 0))         AS avg_breadth_score,
+                    AVG(COALESCE(vix_estimate, 0))          AS avg_vix_estimate,
+                    AVG(COALESCE(growth_value_spread, 0))   AS avg_growth_value_spread,
+                    AVG(COALESCE(equity_bond_spread, 0))    AS avg_equity_bond_spread,
+                    AVG(COALESCE(hy_treasury_spread, 0))    AS avg_hy_treasury_spread,
+                    COUNT(DISTINCT source_run_id)           AS source_run_count,
+                    -- 가장 최근 실행의 key_indicators 사용
+                    MAX(key_indicators_json)                AS key_indicators_json
+                FROM stg_ra_macro_regime
+                {date_filter}
+                GROUP BY regime_date, regime_type, cycle_phase, style_bias
+            """, params)
+
+            return cursor.rowcount
+
+    def etl_etf_signals_to_mart(self, signal_date: str = None) -> int:
+        """
+        stg_ra_etf_signal → mart_ra_etf_signal ETL 실행
+
+        staging 신호를 집계하고 당일 레짐 정보를 조인하여 mart에 upsert.
+
+        Args:
+            signal_date: 특정 날짜만 처리 (None이면 미처리 전체)
+
+        Returns:
+            처리된 행 수
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            date_filter = "WHERE s.signal_date = ?" if signal_date else ""
+            params = (signal_date,) if signal_date else ()
+
+            cursor.execute(f"""
+                INSERT OR REPLACE INTO mart_ra_etf_signal
+                (signal_date, etf, ticker, signal_type, direction,
+                 avg_confidence, max_confidence, avg_z_score, dominant_level,
+                 horizon, regime_type, regime_confidence, regime_aligned,
+                 signal_count, description)
+                SELECT
+                    s.signal_date,
+                    s.etf,
+                    s.ticker,
+                    s.signal_type,
+                    s.direction,
+                    AVG(COALESCE(s.confidence, 0))          AS avg_confidence,
+                    MAX(COALESCE(s.confidence, 0))          AS max_confidence,
+                    AVG(COALESCE(s.z_score, 0))             AS avg_z_score,
+                    -- 가장 높은 경보 수준 선택 (CRITICAL > ALERT > WARNING)
+                    CASE
+                        WHEN MAX(CASE s.level
+                            WHEN 'CRITICAL' THEN 3
+                            WHEN 'ALERT'    THEN 2
+                            WHEN 'WARNING'  THEN 1
+                            ELSE 0 END) = 3 THEN 'CRITICAL'
+                        WHEN MAX(CASE s.level
+                            WHEN 'CRITICAL' THEN 3
+                            WHEN 'ALERT'    THEN 2
+                            WHEN 'WARNING'  THEN 1
+                            ELSE 0 END) = 2 THEN 'ALERT'
+                        WHEN MAX(CASE s.level
+                            WHEN 'CRITICAL' THEN 3
+                            WHEN 'ALERT'    THEN 2
+                            WHEN 'WARNING'  THEN 1
+                            ELSE 0 END) = 1 THEN 'WARNING'
+                        ELSE NULL
+                    END                                     AS dominant_level,
+                    s.horizon,
+                    r.sentiment                             AS regime_type,
+                    r.risk_appetite_score                   AS regime_confidence,
+                    -- regime_aligned: 신호 방향과 레짐 일치 여부
+                    CASE
+                        WHEN r.sentiment = 'RISK_ON'  AND s.direction = 'long'  THEN 1
+                        WHEN r.sentiment = 'RISK_OFF' AND s.direction = 'short' THEN 1
+                        WHEN r.sentiment = 'NEUTRAL'                             THEN 1
+                        ELSE 0
+                    END                                     AS regime_aligned,
+                    COUNT(*)                                AS signal_count,
+                    MAX(s.description)                      AS description
+                FROM stg_ra_etf_signal s
+                LEFT JOIN market_regime r ON s.signal_date = r.date
+                {date_filter}
+                GROUP BY s.signal_date, s.etf, s.ticker, s.signal_type,
+                         s.direction, s.horizon, r.sentiment, r.risk_appetite_score
+            """, params)
+
+            return cursor.rowcount
+
+    # ========================================================================
+    # Track E — fi_ra View 기반 조회 함수
+    # ========================================================================
+
+    def get_latest_regime(self) -> Optional[Dict[str, Any]]:
+        """
+        v_ra_macro_regime 뷰에서 최신 레짐 분석 결과 조회
+
+        mart 데이터를 우선 사용하고, 없으면 core market_regime 테이블 사용.
+
+        Returns:
+            최신 레짐 딕셔너리 또는 None
+            {
+                'regime_date': str,
+                'regime_type': str,   # RISK_ON / RISK_OFF / NEUTRAL
+                'cycle_phase': str,   # EARLY / MID / LATE / RECESSION
+                'style_bias': str,    # GROWTH / VALUE / BALANCED
+                'confidence': float,
+                'risk_appetite_score': float,
+                'breadth_score': float,
+                'vix_estimate': float,
+                'growth_value_spread': float,
+                'equity_bond_spread': float,
+                'hy_treasury_spread': float,
+                'key_indicators': dict,
+                'data_source': str,   # 'mart' or 'core'
+            }
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT *
+                FROM v_ra_macro_regime
+                ORDER BY regime_date DESC
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if row:
+                result = dict(row)
+                # key_indicators_json 파싱
+                raw_ki = result.get('key_indicators_json')
+                result['key_indicators'] = json.loads(raw_ki) if raw_ki else {}
+                return result
+            return None
+
+    def get_regime_history(self, days: int = 30) -> List[Dict[str, Any]]:
+        """
+        v_ra_macro_regime 뷰에서 레짐 이력 조회
+
+        Args:
+            days: 조회할 최근 일수
+
+        Returns:
+            레짐 이력 리스트 (최신순)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT *
+                FROM v_ra_macro_regime
+                ORDER BY regime_date DESC
+                LIMIT ?
+            """, (days,))
+            results = []
+            for row in cursor.fetchall():
+                r = dict(row)
+                raw_ki = r.get('key_indicators_json')
+                r['key_indicators'] = json.loads(raw_ki) if raw_ki else {}
+                results.append(r)
+            return results
+
+    def get_signals_by_regime(self, regime_type: str,
+                               min_confidence: float = 0.0,
+                               limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        v_ra_etf_signal 뷰에서 특정 레짐에 속한 ETF 신호 조회
+
+        mart 테이블과 레짐 뷰를 조인한 결과를 반환.
+
+        Args:
+            regime_type: 레짐 유형 필터 (예: "RISK_ON", "RISK_OFF", "NEUTRAL")
+            min_confidence: 최소 신뢰도 필터 (0.0~1.0)
+            limit: 최대 반환 행 수
+
+        Returns:
+            신호 딕셔너리 리스트
+            각 딕셔너리 포함 컬럼:
+            signal_date, etf, ticker, signal_type, direction,
+            confidence, z_score, level, horizon, signal_count,
+            regime_type, regime_confidence, regime_aligned,
+            regime_cycle_phase, regime_style_bias, regime_risk_appetite
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT *
+                FROM v_ra_etf_signal
+                WHERE regime_type = ?
+                  AND COALESCE(confidence, 0) >= ?
+                ORDER BY signal_date DESC, confidence DESC
+                LIMIT ?
+            """, (regime_type, min_confidence, limit))
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_latest_etf_signals(self, etf: str = None,
+                                ticker: str = None,
+                                limit: int = 20) -> List[Dict[str, Any]]:
+        """
+        v_ra_etf_signal 뷰에서 최신 ETF 신호 조회
+
+        Args:
+            etf: ETF 심볼 필터 (예: "ARKK")
+            ticker: 종목 심볼 필터 (예: "TSLA")
+            limit: 최대 반환 행 수
+
+        Returns:
+            ETF 신호 딕셔너리 리스트 (레짐 컨텍스트 포함)
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            query = "SELECT * FROM v_ra_etf_signal WHERE 1=1"
+            params: List[Any] = []
+
+            if etf:
+                query += " AND etf = ?"
+                params.append(etf)
+            if ticker:
+                query += " AND ticker = ?"
+                params.append(ticker)
+
+            query += " ORDER BY signal_date DESC, confidence DESC LIMIT ?"
+            params.append(limit)
+
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
 
     # ========================================================================
     # 유틸리티 메서드
@@ -686,19 +1346,27 @@ class DatabaseManager:
             }
 
             tables = ['ark_holdings', 'ark_weight_changes', 'market_regime',
-                      'signals', 'actions', 'etf_analysis', 'analysis_log']
+                      'signals', 'actions', 'etf_analysis', 'analysis_log',
+                      'stg_ra_macro_regime', 'stg_ra_etf_signal',
+                      'mart_ra_macro_regime', 'mart_ra_etf_signal',
+                      'korea_savings_bank']
 
             for table in tables:
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
                 count = cursor.fetchone()[0]
 
-                cursor.execute(f"SELECT MIN(date), MAX(date) FROM {table}")
-                row = cursor.fetchone()
+                # date 컬럼이 없는 테이블은 NULL 처리
+                try:
+                    cursor.execute(f"SELECT MIN(date), MAX(date) FROM {table}")
+                    row = cursor.fetchone()
+                    min_date, max_date = row[0], row[1]
+                except Exception:
+                    min_date, max_date = None, None
 
                 stats['tables'][table] = {
                     'count': count,
-                    'min_date': row[0],
-                    'max_date': row[1]
+                    'min_date': min_date,
+                    'max_date': max_date
                 }
 
             return stats
@@ -784,14 +1452,64 @@ if __name__ == "__main__":
     db.save_market_regime(test_regime)
     print("    Saved market regime")
 
+    # Track E — Staging 적재 테스트
+    print("\n[6] Testing Track E — Staging Load...")
+    run_id = "test_run_001"
+    stg_id = db.stage_macro_regime(test_regime, run_id=run_id)
+    print(f"    Staged macro regime, stg id: {stg_id}")
+
+    etf_signals = [
+        {
+            'etf': 'ARKK', 'ticker': 'TSLA', 'type': 'etf_flow',
+            'direction': 'long', 'confidence': 0.80,
+            'indicator': 'weight_change', 'value': 1.5,
+            'z_score': 2.1, 'level': 'ALERT',
+            'description': 'ARKK TSLA weight increase alert',
+            'horizon': 'short'
+        },
+        {
+            'etf': 'ARKG', 'ticker': 'RXRX', 'type': 'etf_flow',
+            'direction': 'long', 'confidence': 0.65,
+            'indicator': 'weight_change', 'value': 0.8,
+            'z_score': 1.5, 'level': 'WARNING',
+            'description': 'ARKG RXRX weight increase',
+            'horizon': 'medium'
+        },
+    ]
+    stg_count = db.stage_etf_signals(etf_signals, run_id=run_id)
+    print(f"    Staged {stg_count} ETF signals")
+
+    # Track E — ETL 실행 테스트
+    print("\n[7] Testing Track E — ETL to Mart...")
+    etl_regime_rows = db.etl_regime_to_mart()
+    print(f"    ETL regime → mart: {etl_regime_rows} rows processed")
+    etl_signal_rows = db.etl_etf_signals_to_mart()
+    print(f"    ETL etf_signal → mart: {etl_signal_rows} rows processed")
+
+    # Track E — View 기반 조회 테스트
+    print("\n[8] Testing Track E — View Queries...")
+    latest_regime = db.get_latest_regime()
+    if latest_regime:
+        print(f"    get_latest_regime(): {latest_regime.get('regime_type')} "
+              f"({latest_regime.get('data_source')}) "
+              f"date={latest_regime.get('regime_date')}")
+    else:
+        print("    get_latest_regime(): No data")
+
+    signals_by_regime = db.get_signals_by_regime("RISK_ON")
+    print(f"    get_signals_by_regime('RISK_ON'): {len(signals_by_regime)} signals")
+
+    latest_etf = db.get_latest_etf_signals(etf='ARKK')
+    print(f"    get_latest_etf_signals(etf='ARKK'): {len(latest_etf)} signals")
+
     # 통계 출력
-    print("\n[6] Database Stats:")
+    print("\n[9] Database Stats:")
     stats = db.get_stats()
     for table, info in stats['tables'].items():
-        print(f"    {table:20s}: {info['count']:5d} records")
+        print(f"    {table:30s}: {info['count']:5d} records")
 
     # 최신 날짜
-    print("\n[7] Latest Dates:")
+    print("\n[10] Latest Dates:")
     dates = db.get_latest_dates()
     for table, d in dates.items():
         print(f"    {table:20s}: {d}")

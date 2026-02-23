@@ -66,10 +66,10 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-4 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-4 rounded-md shadow-lg">
           <p className="text-white font-semibold mb-2">{data.timestamp}</p>
           <div className="space-y-1">
-            <p className="text-[#58a6ff] text-sm">
+            <p className="text-primary-400 text-sm">
               Value: ${data.total_value.toLocaleString()}
             </p>
             <p className={`text-sm ${data.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
@@ -84,7 +84,7 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -93,14 +93,14 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
           </div>
           <div className="flex items-center gap-2">
             {/* Time Range Selector */}
-            <div className="flex gap-1 bg-[#161b22] rounded-lg p-1">
+            <div className="flex gap-1 bg-surface-card rounded-lg p-1">
               {(["7D", "30D", "90D"] as const).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
                   className={`px-3 py-1 text-xs rounded transition-colors ${
                     timeRange === range
-                      ? "bg-[#238636] text-white"
+                      ? "bg-secondary text-white"
                       : "text-gray-400 hover:text-white"
                   }`}
                 >
@@ -109,14 +109,14 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
               ))}
             </div>
             {/* View Mode Selector */}
-            <div className="flex gap-1 bg-[#161b22] rounded-lg p-1">
+            <div className="flex gap-1 bg-surface-card rounded-lg p-1">
               {(["value", "pnl"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   className={`px-3 py-1 text-xs rounded transition-colors capitalize ${
                     viewMode === mode
-                      ? "bg-[#238636] text-white"
+                      ? "bg-secondary text-white"
                       : "text-gray-400 hover:text-white"
                   }`}
                 >
@@ -130,19 +130,19 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
       <CardContent>
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Current Value</div>
             <div className="text-xl font-bold text-white">
               ${latestValue.total_value.toLocaleString()}
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Total Return</div>
             <div className={`text-xl font-bold ${totalReturn >= 0 ? "text-green-400" : "text-red-400"}`}>
               {totalReturn >= 0 ? "+" : ""}${totalReturn.toLocaleString()}
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Return %</div>
             <div className={`text-xl font-bold ${parseFloat(totalReturnPct) >= 0 ? "text-green-400" : "text-red-400"}`}>
               {parseFloat(totalReturnPct) >= 0 ? "+" : ""}{totalReturnPct}%
@@ -156,8 +156,8 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#58a6ff" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#58a6ff" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#60A5FA" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#60A5FA" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
@@ -179,7 +179,7 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
               <Area
                 type="monotone"
                 dataKey="total_value"
-                stroke="#58a6ff"
+                stroke="#60A5FA"
                 strokeWidth={2}
                 fill="url(#colorValue)"
               />
@@ -205,7 +205,7 @@ export function PortfolioTimeSeriesChart({ data }: PortfolioTimeSeriesProps) {
               <Line
                 type="monotone"
                 dataKey="pnl"
-                stroke="#3fb950"
+                stroke="#10B981"
                 strokeWidth={2}
                 dot={false}
               />

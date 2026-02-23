@@ -27,7 +27,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
 
   if (!data) {
     return (
-      <Card className="bg-[#0d1117] border-[#30363d] p-8">
+      <Card className="bg-surface border-border p-8">
         <div className="text-center text-gray-400">
           <Brain className="w-16 h-16 mx-auto mb-4 text-purple-400 animate-pulse" />
           <h3 className="text-xl font-bold text-white mb-2">Loading AI Reasoning...</h3>
@@ -93,7 +93,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
   return (
     <div className="space-y-6">
       {/* Header Card */}
-      <Card className="bg-[#0d1117] border-[#30363d]">
+      <Card className="bg-surface border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -113,7 +113,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                 variant="outline"
                 size="sm"
                 onClick={expandAll}
-                className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+                className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
               >
                 <ChevronDown className="w-4 h-4 mr-1" />
                 Expand All
@@ -122,7 +122,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                 variant="outline"
                 size="sm"
                 onClick={collapseAll}
-                className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+                className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
               >
                 <ChevronUp className="w-4 h-4 mr-1" />
                 Collapse All
@@ -131,7 +131,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                 variant="outline"
                 size="sm"
                 onClick={exportReasoning}
-                className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+                className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
               >
                 <Download className="w-4 h-4 mr-1" />
                 Export
@@ -142,7 +142,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
       </Card>
 
       {/* Final Consensus Summary */}
-      <Card className={`bg-[#161b22] border-2 ${getRecommendationColor(data.final_recommendation)}`}>
+      <Card className={`bg-surface-card border-2 ${getRecommendationColor(data.final_recommendation)}`}>
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
             <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0 mt-1" />
@@ -195,11 +195,11 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
         <div className="space-y-4">
           <h3 className="text-lg font-bold text-white">Reasoning Steps</h3>
           {data.reasoning_chain.map((step, index) => (
-            <Card key={index} className="bg-[#0d1117] border-[#30363d]">
+            <Card key={index} className="bg-surface border-border">
               <CardContent className="p-0">
                 <button
                   onClick={() => toggleStep(index)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-[#161b22] transition-colors"
+                  className="w-full p-4 flex items-center justify-between hover:bg-surface-card transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/10 text-purple-400 font-bold">
@@ -223,7 +223,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                 </button>
 
                 {expandedSteps.has(index) && (
-                  <div className="p-6 pt-0 border-t border-[#30363d]">
+                  <div className="p-6 pt-0 border-t border-border">
                     <div className="space-y-4">
                       {step.key_factors && step.key_factors.length > 0 && (
                         <div>
@@ -249,7 +249,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
 
       {/* Enhanced Debate Section */}
       {data.debate_consensus?.enhanced && (
-        <Card className="bg-[#0d1117] border-[#30363d]">
+        <Card className="bg-surface border-border">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-blue-400" />
@@ -261,7 +261,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
             {data.debate_consensus.enhanced.interpretation && (
               <div>
                 <h4 className="text-sm font-semibold text-gray-300 mb-3">Economic School Interpretation</h4>
-                <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+                <div className="bg-surface-card rounded-lg p-4 border border-border">
                   <div className="mb-3">
                     <span className="text-gray-400 text-sm">Recommended Action: </span>
                     <Badge
@@ -277,7 +277,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                   {data.debate_consensus.enhanced.interpretation.school_interpretations && (
                     <div className="space-y-3 mt-4">
                       {data.debate_consensus.enhanced.interpretation.school_interpretations.map((school, i) => (
-                        <div key={i} className="bg-[#0d1117] rounded-lg p-3 border border-[#30363d]">
+                        <div key={i} className="bg-surface rounded-lg p-3 border border-border">
                           <div className="flex items-center justify-between mb-2">
                             <span className="font-semibold text-white">{school.school} School</span>
                             <Badge variant="outline" className={getRecommendationColor(school.stance)}>
@@ -332,7 +332,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
             {data.debate_consensus.enhanced.methodology && (
               <div>
                 <h4 className="text-sm font-semibold text-gray-300 mb-3">Selected Methodology</h4>
-                <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+                <div className="bg-surface-card rounded-lg p-4 border border-border">
                   <div className="font-semibold text-white mb-2">
                     {data.debate_consensus.enhanced.methodology.selected_methodology}
                   </div>
@@ -348,7 +348,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
 
       {/* Verification Results */}
       {data.debate_consensus?.verification && (
-        <Card className="bg-[#0d1117] border-[#30363d]">
+        <Card className="bg-surface border-border">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
               <Shield className="w-5 h-5 text-green-400" />
@@ -357,13 +357,13 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+              <div className="bg-surface-card rounded-lg p-4 border border-border">
                 <div className="text-sm text-gray-400 mb-1">Overall Score</div>
                 <div className="text-2xl font-bold text-white">
                   {data.debate_consensus.verification.overall_score?.toFixed(0)}/100
                 </div>
               </div>
-              <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+              <div className="bg-surface-card rounded-lg p-4 border border-border">
                 <div className="text-sm text-gray-400 mb-1">Status</div>
                 <Badge
                   variant="outline"
@@ -376,7 +376,7 @@ export function ReasoningChainDisplay({ data }: ReasoningChainDisplayProps) {
                   {data.debate_consensus.verification.passed ? "✅ Passed" : "❌ Failed"}
                 </Badge>
               </div>
-              <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+              <div className="bg-surface-card rounded-lg p-4 border border-border">
                 <div className="text-sm text-gray-400 mb-1">Hallucination Risk</div>
                 <div className="text-2xl font-bold text-white">
                   {(data.debate_consensus.verification.hallucination_risk * 100).toFixed(0)}%

@@ -28,12 +28,12 @@ export function MarketRegimeRadar() {
 
     // Determine dominant regime color
     let color = "#8884d8";
-    if (probabilities.Bull > 0.5) color = "#3fb950";
-    else if (probabilities.Bear > 0.5) color = "#f85149";
-    else color = "#d29922"; // Neutral/Mixed
+    if (probabilities.Bull > 0.5) color = "#10B981";
+    else if (probabilities.Bear > 0.5) color = "#ef4444";
+    else color = "#d97706"; // Neutral/Mixed
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d] h-full">
+        <Card className="bg-surface-card border-border h-full">
             <CardHeader>
                 <CardTitle className="text-white text-lg">Market Regime Probability</CardTitle>
                 <CardDescription className="text-gray-400">

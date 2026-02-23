@@ -66,7 +66,7 @@ export function FREDLiquidityDashboard() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* RRP Card */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-400">Reverse Repo (RRP)</CardTitle>
           </CardHeader>
@@ -84,7 +84,7 @@ export function FREDLiquidityDashboard() {
         </Card>
 
         {/* TGA Card */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-400">Treasury Gen. Acct (TGA)</CardTitle>
           </CardHeader>
@@ -102,7 +102,7 @@ export function FREDLiquidityDashboard() {
         </Card>
 
         {/* Net Liquidity Card */}
-        <Card className="bg-[#161b22] border-[#30363d] border-l-4 border-l-blue-500">
+        <Card className="bg-surface-card border-border border-l-4 border-l-blue-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-blue-400">Net Liquidity</CardTitle>
           </CardHeader>
@@ -115,7 +115,7 @@ export function FREDLiquidityDashboard() {
         </Card>
 
         {/* Yield Curve Card */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-400">Yield Curve (10Y-2Y)</CardTitle>
           </CardHeader>
@@ -133,7 +133,7 @@ export function FREDLiquidityDashboard() {
       {/* Detailed Visualizations */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* Liquidity Composition Bar */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-300">Fed Liquidity Composition</CardTitle>
           </CardHeader>
@@ -163,7 +163,7 @@ export function FREDLiquidityDashboard() {
         </Card>
 
         {/* Key Interest Rates */}
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-300">Key Interest Rates</CardTitle>
           </CardHeader>

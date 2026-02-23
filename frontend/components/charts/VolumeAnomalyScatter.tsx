@@ -27,7 +27,7 @@ export function VolumeAnomalyScatter() {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
             return (
-                <div className="bg-[#1c2128] border border-[#30363d] p-3 rounded-lg shadow-xl text-xs">
+                <div className="bg-surface-overlay border border-border p-3 rounded-lg shadow-xl text-xs">
                     <p className="font-bold text-gray-200 mb-1">{d.ticker}</p>
                     <p className="text-gray-400">Z-Score: <span className="text-blue-400">{d.y.toFixed(1)}σ</span></p>
                     <p className="text-gray-400">Price 1D: <span className={d.x > 0 ? "text-green-400" : "text-red-400"}>{d.x > 0 ? "+" : ""}{d.x.toFixed(2)}%</span></p>
@@ -39,7 +39,7 @@ export function VolumeAnomalyScatter() {
     };
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
             <CardHeader>
                 <CardTitle className="text-white text-lg">Volume Anomaly Scatter</CardTitle>
                 <CardDescription className="text-gray-400">
@@ -72,8 +72,8 @@ export function VolumeAnomalyScatter() {
                             <Scatter name="Anomalies" data={data} fill="#8884d8">
                                 {data.map((entry, index) => {
                                     let fill = "#a371f7"; // purple (neutral/unknown)
-                                    if (entry.type.includes("surge")) fill = "#3fb950"; // green
-                                    if (entry.type.includes("drop")) fill = "#f85149"; // red
+                                    if (entry.type.includes("surge")) fill = "#10B981"; // green
+                                    if (entry.type.includes("drop")) fill = "#ef4444"; // red
                                     return <Cell key={`cell-${index}`} fill={fill} />
                                 })}
                             </Scatter>

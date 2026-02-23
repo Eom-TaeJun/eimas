@@ -31,22 +31,22 @@ export function RiskBreakdownChart({
     {
       name: "Base Risk",
       value: base_risk,
-      fill: "#58a6ff", // blue
+      fill: "#60A5FA", // blue
     },
     {
       name: "Micro Adj",
       value: microstructure_adj,
-      fill: microstructure_adj >= 0 ? "#f85149" : "#3fb950", // red if positive, green if negative
+      fill: microstructure_adj >= 0 ? "#ef4444" : "#10B981", // red if positive, green if negative
     },
     {
       name: "Bubble Adj",
       value: bubble_adj,
-      fill: bubble_adj >= 0 ? "#f85149" : "#3fb950", // red if positive, green if negative
+      fill: bubble_adj >= 0 ? "#ef4444" : "#10B981", // red if positive, green if negative
     },
     {
       name: "Extended Adj",
       value: extended_data_adj,
-      fill: extended_data_adj >= 0 ? "#f85149" : "#3fb950", // red if positive, green if negative
+      fill: extended_data_adj >= 0 ? "#ef4444" : "#10B981", // red if positive, green if negative
     },
   ];
 
@@ -55,9 +55,9 @@ export function RiskBreakdownChart({
       const value = payload[0].value;
       const sign = value >= 0 ? "+" : "";
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-3 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-3 rounded-md shadow-lg">
           <p className="text-white font-semibold">{payload[0].payload.name}</p>
-          <p className="text-[#58a6ff]">
+          <p className="text-primary-400">
             {sign}
             {value.toFixed(1)}
           </p>
@@ -68,7 +68,7 @@ export function RiskBreakdownChart({
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white">Risk Score Breakdown</CardTitle>
       </CardHeader>
@@ -112,13 +112,13 @@ export function RiskBreakdownChart({
         </ResponsiveContainer>
         <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-[#58a6ff] rounded"></div>
+            <div className="w-3 h-3 bg-primary-400 rounded"></div>
             <span className="text-gray-400">Base: {base_risk.toFixed(1)}</span>
           </div>
           <div className="flex items-center gap-2">
             <div
               className={`w-3 h-3 rounded ${
-                microstructure_adj >= 0 ? "bg-[#f85149]" : "bg-[#3fb950]"
+                microstructure_adj >= 0 ? "bg-red-500" : "bg-secondary"
               }`}
             ></div>
             <span className="text-gray-400">
@@ -128,7 +128,7 @@ export function RiskBreakdownChart({
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded ${
-                bubble_adj >= 0 ? "bg-[#f85149]" : "bg-[#3fb950]"
+                bubble_adj >= 0 ? "bg-red-500" : "bg-secondary"
               }`}></div>
             <span className="text-gray-400">
               Bubble: {bubble_adj >= 0 ? "+" : ""}{bubble_adj.toFixed(1)}
@@ -136,7 +136,7 @@ export function RiskBreakdownChart({
           </div>
           <div className="flex items-center gap-2">
             <div className={`w-3 h-3 rounded ${
-                extended_data_adj >= 0 ? "bg-[#f85149]" : "bg-[#3fb950]"
+                extended_data_adj >= 0 ? "bg-red-500" : "bg-secondary"
               }`}></div>
             <span className="text-gray-400">
               Extended: {extended_data_adj >= 0 ? "+" : ""}{extended_data_adj.toFixed(1)}

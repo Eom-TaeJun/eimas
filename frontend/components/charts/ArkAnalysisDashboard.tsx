@@ -36,7 +36,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
             const isIncrease = d.originalValue === undefined ? true : d.originalValue > 0
 
             return (
-                <div className="bg-[#1c2128] border border-[#30363d] p-3 rounded-lg shadow-xl text-xs">
+                <div className="bg-surface-overlay border border-border p-3 rounded-lg shadow-xl text-xs">
                     <p className="font-bold text-gray-200 mb-1">{d.fullData.company} ({label})</p>
                     <div className="space-y-1">
                         <p className="text-gray-400">Sector: <span className="text-gray-300">{d.sector}</span></p>
@@ -52,7 +52,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
     }
 
     return (
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
@@ -69,7 +69,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
             <CardContent className="space-y-6">
                 {/* Consensus Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2 bg-[#0d1117] p-4 rounded-lg border border-[#30363d]">
+                    <div className="space-y-2 bg-surface p-4 rounded-lg border border-border">
                         <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
                             <TrendingUp className="w-4 h-4 text-green-400" /> Consensus Buys
                         </h3>
@@ -86,7 +86,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
                         </div>
 
                         {data.new_positions.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-[#30363d]">
+                            <div className="mt-3 pt-3 border-t border-border">
                                 <h4 className="text-xs font-medium text-gray-500 mb-2">New Positions</h4>
                                 <div className="flex flex-wrap gap-2">
                                     {data.new_positions.map(ticker => (
@@ -99,7 +99,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
                         )}
                     </div>
 
-                    <div className="space-y-2 bg-[#0d1117] p-4 rounded-lg border border-[#30363d]">
+                    <div className="space-y-2 bg-surface p-4 rounded-lg border border-border">
                         <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2">
                             <TrendingDown className="w-4 h-4 text-red-400" /> Consensus Sells
                         </h3>
@@ -169,7 +169,7 @@ export function ArkAnalysisDashboard({ data }: ArkAnalysisDashboardProps) {
                                     <Tooltip cursor={{ fill: '#1c2128' }} content={<CustomTooltip />} />
                                     <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                                         {decreasesData.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill="#da3633" />
+                                            <Cell key={`cell-${index}`} fill="#dc2626" />
                                         ))}
                                     </Bar>
                                 </BarChart>

@@ -52,7 +52,7 @@ export function VolumeAnomalies() {
 
       <div className="grid gap-3 md:grid-cols-2">
         {anomalies.map((anomaly, idx) => (
-          <Card key={idx} className="bg-[#161b22] border-[#30363d]">
+          <Card key={idx} className="bg-surface-card border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

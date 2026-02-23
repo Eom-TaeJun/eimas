@@ -33,7 +33,7 @@ export function SignalsTable() {
   }
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-card border-border">
       <CardHeader>
         <CardTitle className="text-gray-200">Live Signals</CardTitle>
         <p className="text-sm text-gray-400">Auto-refreshing every 60 seconds</p>
@@ -44,10 +44,10 @@ export function SignalsTable() {
         ) : !signals || !Array.isArray(signals) ? (
           <p className="text-sm text-gray-400">Loading signals...</p>
         ) : (
-          <div className="rounded-md border border-[#30363d]">
+          <div className="rounded-md border border-border">
             <Table>
               <TableHeader>
-                <TableRow className="border-[#30363d] hover:bg-[#1c2128]">
+                <TableRow className="border-border hover:bg-surface-overlay">
                   <TableHead className="text-gray-400">Source</TableHead>
                   <TableHead className="text-gray-400">Action</TableHead>
                   <TableHead className="text-gray-400">Ticker</TableHead>
@@ -64,7 +64,7 @@ export function SignalsTable() {
                   </TableRow>
                 ) : (
                   signals.map((signal, index) => (
-                    <TableRow key={index} className="border-[#30363d] hover:bg-[#1c2128]">
+                    <TableRow key={index} className="border-border hover:bg-surface-overlay">
                       <TableCell className="font-medium text-gray-300">{signal.source}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getActionColor(signal.action)}>

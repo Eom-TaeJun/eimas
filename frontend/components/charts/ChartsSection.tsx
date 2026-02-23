@@ -54,7 +54,7 @@ export function ChartsSection() {
           {[...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-[#0d1117] border border-[#30363d] rounded-lg p-8"
+              className="bg-surface border border-border rounded-lg p-8"
             >
               <div className="animate-pulse space-y-2">
                 <div className="h-8 bg-gray-700 rounded"></div>
@@ -170,7 +170,7 @@ export function ChartsSection() {
             <PortfolioChart weights={data.portfolio_weights} />
           </div>
         ) : (
-          <div className="lg:col-span-2 bg-[#0d1117] border border-[#30363d] rounded-lg p-8 flex items-center justify-center">
+          <div className="lg:col-span-2 bg-surface border border-border rounded-lg p-8 flex items-center justify-center">
             <p className="text-gray-400">No portfolio data available</p>
           </div>
         )}
@@ -191,7 +191,7 @@ export function ChartsSection() {
             final_risk={data.risk_score}
           />
         ) : (
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-8 flex items-center justify-center">
+          <div className="bg-surface border border-border rounded-lg p-8 flex items-center justify-center">
             <p className="text-gray-400">No risk data available</p>
           </div>
         )}
@@ -207,7 +207,7 @@ export function ChartsSection() {
             modes_agree={data.modes_agree}
           />
         ) : (
-          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-8 flex items-center justify-center">
+          <div className="bg-surface border border-border rounded-lg p-8 flex items-center justify-center">
             <p className="text-gray-400">No debate data available</p>
           </div>
         )}

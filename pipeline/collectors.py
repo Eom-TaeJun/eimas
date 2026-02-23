@@ -940,6 +940,40 @@ def collect_market_indicators() -> IndicatorsSummary:
         return IndicatorsSummary(timestamp=datetime.now().isoformat())
 
 
+def collect_korea_savings_bank_indicators():
+    """한국 저축은행 건전성 지표 수집 및 DB 저장 (NPL, BIS, ROA)."""
+    print("\n[1.6] Collecting Korea Savings Bank Indicators...")
+    try:
+        from lib.korea_savings_bank import (
+            KoreaSavingsBankIndicators,
+            collect_korea_savings_bank_indicators as _collect,
+        )
+        result = _collect()
+
+        # DB 저장 — DatabaseManager 기존 패턴 사용
+        try:
+            from core.database import DatabaseManager
+            db = DatabaseManager()
+            db.save_korea_savings_bank(result.to_dict())
+        except Exception as db_exc:
+            log_error(logger, "Korea savings bank DB save failed", db_exc)
+
+        print(
+            f"      ✓ NPL={result.npl_ratio:.1f}%  "
+            f"BIS={result.bis_capital_ratio:.1f}%  "
+            f"ROA={result.roa:.2f}%  [{result.data_source}]"
+        )
+        return result
+    except Exception as e:
+        log_error(logger, "Korea savings bank indicators collection failed", e)
+        from lib.korea_savings_bank import KoreaSavingsBankIndicators
+        return KoreaSavingsBankIndicators(
+            timestamp=datetime.now().isoformat(),
+            is_valid=False,
+            error_msg=str(e),
+        )
+
+
 def collect_company_ra_analysis(lookback_days: int = 365) -> Dict[str, Any]:
     """RA-focused company accounting + valuation analysis (financial_indicators bridge)."""
     print("\n[1.5] Collecting RA Company Analysis...")

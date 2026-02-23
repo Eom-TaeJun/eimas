@@ -23,7 +23,7 @@ interface BubbleRiskChartProps {
 export function BubbleRiskChart({ bubbleRisk }: BubbleRiskChartProps) {
   if (!bubbleRisk) {
     return (
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-card border-border">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-400">Bubble Risk Analysis</CardTitle>
         </CardHeader>
@@ -67,7 +67,7 @@ export function BubbleRiskChart({ bubbleRisk }: BubbleRiskChartProps) {
     }))
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-card border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

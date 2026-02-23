@@ -75,7 +75,7 @@ export function EventFeed() {
           return (
             <Card
               key={idx}
-              className="bg-[#161b22] border-[#30363d] hover:border-[#484f58] transition-colors cursor-pointer"
+              className="bg-surface-card border-border hover:border-border transition-colors cursor-pointer"
               onClick={() => toggleExpand(idx)}
             >
               <CardContent className="pt-4">

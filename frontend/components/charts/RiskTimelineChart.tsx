@@ -96,7 +96,7 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-4 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-4 rounded-md shadow-lg">
           <p className="text-white font-semibold mb-2">{data.timestamp}</p>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -136,7 +136,7 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
           <Shield className="w-5 h-5 text-blue-400" />
@@ -149,7 +149,7 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
       <CardContent>
         {/* Summary Stats */}
         <div className="grid grid-cols-4 gap-4 mb-6">
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Current</div>
             <div className="flex items-center gap-2">
               <Badge
@@ -164,19 +164,19 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
               {latestRisk.risk_score.toFixed(1)}
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Average</div>
             <div className="text-lg font-bold text-white">
               {avgRisk.toFixed(1)}
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Peak</div>
             <div className="text-lg font-bold text-red-400">
               {maxRisk.toFixed(1)}
             </div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400 mb-1">Low</div>
             <div className="text-lg font-bold text-green-400">
               {minRisk.toFixed(1)}
@@ -189,8 +189,8 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
           <ComposedChart data={chartData}>
             <defs>
               <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f85149" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#f85149" stopOpacity={0} />
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#30363d" />
@@ -217,23 +217,23 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
             {/* Risk level threshold lines */}
             <ReferenceLine
               y={45}
-              stroke="#d29922"
+              stroke="#d97706"
               strokeDasharray="3 3"
               label={{
                 value: "Medium Risk",
                 position: "right",
-                fill: "#d29922",
+                fill: "#d97706",
                 fontSize: 10,
               }}
             />
             <ReferenceLine
               y={65}
-              stroke="#f85149"
+              stroke="#ef4444"
               strokeDasharray="3 3"
               label={{
                 value: "High Risk",
                 position: "right",
-                fill: "#f85149",
+                fill: "#ef4444",
                 fontSize: 10,
               }}
             />
@@ -243,8 +243,8 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
               type="monotone"
               dataKey="base_risk"
               stackId="1"
-              stroke="#58a6ff"
-              fill="#58a6ff"
+              stroke="#60A5FA"
+              fill="#60A5FA"
               fillOpacity={0.6}
               name="Base Risk"
             />
@@ -253,7 +253,7 @@ export function RiskTimelineChart({ data }: RiskTimelineProps) {
             <Line
               type="monotone"
               dataKey="risk_score"
-              stroke="#f85149"
+              stroke="#ef4444"
               strokeWidth={3}
               dot={false}
               name="Total Risk Score"

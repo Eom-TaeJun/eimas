@@ -32,7 +32,7 @@ function ReportButtons() {
       <Button
         variant="outline"
         onClick={() => setShowExport(true)}
-        className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white flex gap-2"
+        className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white hover:border-secondary flex gap-2 transition-colors"
       >
         <Download className="w-4 h-4" />
         Export Report
@@ -42,7 +42,7 @@ function ReportButtons() {
         <Button
           variant="outline"
           onClick={() => window.open(reportUrl, "_blank")}
-          className="bg-[#238636] text-white border-none hover:bg-[#2ea043] flex gap-2"
+          className="bg-secondary text-white border-none hover:bg-secondary-600 flex gap-2 transition-colors"
         >
           <FileText className="w-4 h-4" />
           View Latest Report
@@ -62,7 +62,7 @@ function ReportButtons() {
 
 export default function DashboardPage() {
   return (
-    <div className="min-h-screen bg-[#0d1117]">
+    <div className="min-h-screen bg-surface">
       <Navbar />
       <main className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">

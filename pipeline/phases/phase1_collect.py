@@ -35,6 +35,7 @@ from pipeline.collectors import (
     collect_crypto_data,
     collect_market_indicators,
     collect_company_ra_analysis,
+    collect_korea_savings_bank_indicators,
 )
 from pipeline.phase1_utils import (
     env_flag,
@@ -388,6 +389,25 @@ async def collect_data(result: EIMASResult, quick_mode: bool) -> Dict[str, Any]:
 
         # Keep korea data inside market_data for downstream computations.
         market_data["korea_data"] = korea_result["data"]
+
+    # ── Phase 1.5: Korea Savings Bank Indicators ─────────────────────────────
+    skip_ksb = os.getenv(
+        "EIMAS_SKIP_KOREA_SAVINGS_BANK", "false"
+    ).strip().lower() in {"1", "true", "yes", "on"}
+    if skip_ksb:
+        result.korea_savings_bank = {}
+        phase1_component_timings["korea_savings_bank"] = {
+            "duration_sec": 0.0,
+            "status": "skipped_env",
+        }
+        print("\n[Phase 1.5] Korea Savings Bank skipped by EIMAS_SKIP_KOREA_SAVINGS_BANK")
+    else:
+        print("\n[Phase 1.5] Collecting Korea Savings Bank Indicators...")
+        ksb_started = perf_counter()
+        ksb_result = collect_korea_savings_bank_indicators()
+        _record_component_timing("korea_savings_bank", ksb_started, status="ok")
+        result.korea_savings_bank = ksb_result.to_dict()
+        print(f"  ✓ Korea savings bank indicators [{ksb_result.data_source}]")
 
     phase_elapsed = round(perf_counter() - phase_started, 3)
     result.audit_metadata["phase1_component_timings"] = phase1_component_timings

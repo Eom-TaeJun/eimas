@@ -123,7 +123,7 @@ export function RechartsCorrelationHeatmap({
     if (active && payload && payload[0]) {
       const data = payload[0].payload;
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-3 rounded-md shadow-xl">
+        <div className="bg-surface-card border border-border p-3 rounded-md shadow-xl">
           <p className="text-xs text-gray-400 mb-1">{data.pair}</p>
           <p className="text-lg font-bold text-white">{data.value.toFixed(3)}</p>
           <p className="text-xs text-gray-400 mt-1">{getCorrelationStrength(data.value)}</p>
@@ -134,7 +134,7 @@ export function RechartsCorrelationHeatmap({
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -152,7 +152,7 @@ export function RechartsCorrelationHeatmap({
             variant="outline"
             size="sm"
             onClick={exportData}
-            className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+            className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
           >
             <Download className="w-4 h-4 mr-1" />
             CSV
@@ -162,26 +162,26 @@ export function RechartsCorrelationHeatmap({
       <CardContent>
         {/* Statistics */}
         <div className="grid grid-cols-4 gap-3 mb-6">
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400">Avg</div>
             <div className="text-xl font-bold text-white">{avgCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400">Max</div>
             <div className="text-xl font-bold text-green-400">{maxCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400">Min</div>
             <div className="text-xl font-bold text-blue-400">{minCorrelation.toFixed(3)}</div>
           </div>
-          <div className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+          <div className="bg-surface-card rounded-lg p-3 border border-border">
             <div className="text-xs text-gray-400">Strong (|r| &gt; 0.7)</div>
             <div className="text-xl font-bold text-orange-400">{strongCorrelations}</div>
           </div>
         </div>
 
         {/* Heatmap */}
-        <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+        <div className="bg-surface-card rounded-lg p-4 border border-border">
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart
               margin={{ top: 20, right: 20, bottom: 60, left: 60 }}

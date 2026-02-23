@@ -39,7 +39,7 @@ export function ConsensusComparisonChart({
   const refStyle = POSITION_STYLES[reference_mode];
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white">AI Debate Consensus</CardTitle>
       </CardHeader>
@@ -90,7 +90,7 @@ export function ConsensusComparisonChart({
           </div>
 
           {/* Interpretation */}
-          <div className="mt-4 p-4 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="mt-4 p-4 bg-surface-card rounded-lg border border-border">
             <p className="text-sm text-gray-400">
               {modes_agree ? (
                 <>

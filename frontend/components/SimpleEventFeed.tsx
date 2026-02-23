@@ -14,7 +14,7 @@ export function SimpleEventFeed() {
 
   if (error || !analysis) {
     return (
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-card border-border">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Activity className="w-5 h-5" />
@@ -32,7 +32,7 @@ export function SimpleEventFeed() {
 
   if (events.length === 0) {
     return (
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-card border-border">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Activity className="w-5 h-5" />
@@ -94,7 +94,7 @@ export function SimpleEventFeed() {
   }
 
   return (
-    <Card className="bg-[#161b22] border-[#30363d]">
+    <Card className="bg-surface-card border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-white flex items-center gap-2">
@@ -115,7 +115,7 @@ export function SimpleEventFeed() {
             return (
               <div
                 key={idx}
-                className="bg-[#0d1117] rounded-lg p-4 border border-[#30363d] hover:border-[#484f58] transition-colors"
+                className="bg-surface rounded-lg p-4 border border-border hover:border-border transition-colors"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between mb-2">

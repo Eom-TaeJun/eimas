@@ -32,7 +32,7 @@ export function MarketSentimentGauge({ sentiment, hft }: MarketSentimentGaugePro
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Fear & Greed Gauge */}
-            <Card className="bg-[#161b22] border-[#30363d]">
+            <Card className="bg-surface-card border-border">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                         <Gauge className="w-5 h-5 text-yellow-400" />
@@ -82,7 +82,7 @@ export function MarketSentimentGauge({ sentiment, hft }: MarketSentimentGaugePro
             </Card>
 
             {/* HFT Pressure */}
-            <Card className="bg-[#161b22] border-[#30363d]">
+            <Card className="bg-surface-card border-border">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-lg font-bold text-white flex items-center gap-2">
                         <Activity className="w-5 h-5 text-cyan-400" />
@@ -101,7 +101,7 @@ export function MarketSentimentGauge({ sentiment, hft }: MarketSentimentGaugePro
                                 </span>
                                 <span className="text-white font-mono">{buyRatio.toFixed(1)}%</span>
                             </div>
-                            <div className="h-2 w-full bg-[#0d1117] rounded-full overflow-hidden border border-[#30363d]">
+                            <div className="h-2 w-full bg-surface rounded-full overflow-hidden border border-border">
                                 <div
                                     className="h-full bg-green-500 transition-all duration-500"
                                     style={{ width: `${buyRatio}%` }}
@@ -116,7 +116,7 @@ export function MarketSentimentGauge({ sentiment, hft }: MarketSentimentGaugePro
                                 </span>
                                 <span className="text-white font-mono">{sellRatio.toFixed(1)}%</span>
                             </div>
-                            <div className="h-2 w-full bg-[#0d1117] rounded-full overflow-hidden border border-[#30363d]">
+                            <div className="h-2 w-full bg-surface rounded-full overflow-hidden border border-border">
                                 <div
                                     className="h-full bg-red-500 transition-all duration-500"
                                     style={{ width: `${sellRatio}%` }}
@@ -125,7 +125,7 @@ export function MarketSentimentGauge({ sentiment, hft }: MarketSentimentGaugePro
                         </div>
                     </div>
 
-                    <div className="pt-4 border-t border-[#30363d]">
+                    <div className="pt-4 border-t border-border">
                         <div className="flex justify-between items-center text-xs text-gray-400">
                             <span>Dominance</span>
                             <span className={`px-2 py-1 rounded border ${buyRatio > sellRatio

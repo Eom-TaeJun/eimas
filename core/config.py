@@ -78,11 +78,17 @@ class APIConfig:
 
 # 모델 설정
 MODELS = {
-    'orchestrator': 'gpt-4o',
-    'code_gen': 'claude-sonnet-4-20250514',
-    'analysis': 'claude-sonnet-4-20250514',
+    'orchestrator': 'gpt-5.3-codex',
+    'code_gen': 'claude-sonnet-4-6',
+    'analysis': 'claude-sonnet-4-6',
     'search': 'sonar-pro',
-    'summary': 'claude-sonnet-4-20250514'
+    'summary': 'claude-sonnet-4-6',
+    # 역할별 모델 명시 (v2.0 추가)
+    'claude_opus': 'claude-opus-4-6',
+    'claude_sonnet': 'claude-sonnet-4-6',
+    'claude_haiku': 'claude-haiku-4-5',
+    'openai': 'gpt-5.3-codex',
+    'gemini': 'gemini-3.1-pro',
 }
 
 # 에이전트 설정

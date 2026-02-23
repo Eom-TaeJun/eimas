@@ -57,7 +57,7 @@ export function TabbedDashboard() {
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <Card className="bg-[#0d1117] border-[#30363d]">
+      <Card className="bg-surface border-border">
         <CardContent className="p-0">
           <div className="flex overflow-x-auto">
             {tabs.map((tab) => (
@@ -66,14 +66,14 @@ export function TabbedDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-6 py-4 border-b-2 transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? "border-[#238636] text-white bg-[#161b22]"
-                    : "border-transparent text-gray-400 hover:text-white hover:bg-[#161b22]/50"
+                    ? "border-secondary text-white bg-surface-card"
+                    : "border-transparent text-gray-400 hover:text-white hover:bg-surface-card/50"
                 }`}
               >
                 {tab.icon}
                 <span className="font-medium">{tab.label}</span>
                 {tab.badge && (
-                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-400 border-green-500/20">
+                  <Badge variant="outline" className="text-xs bg-secondary/10 text-secondary border-secondary/20">
                     {tab.badge}
                   </Badge>
                 )}

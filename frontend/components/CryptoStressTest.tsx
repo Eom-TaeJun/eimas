@@ -24,7 +24,7 @@ export function CryptoStressTest() {
           <Shield className="w-6 h-6 text-orange-400" />
           <h2 className="text-xl font-bold text-white">Crypto Stress Test</h2>
         </div>
-        <Card className="bg-[#161b22] border-[#30363d]">
+        <Card className="bg-surface-card border-border">
           <CardHeader>
             <CardTitle className="text-sm font-medium text-gray-400">
               Depeg Scenario Analysis
@@ -69,7 +69,7 @@ export function CryptoStressTest() {
       </div>
 
       {/* Summary Card */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-card border-border">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-400">
             Depeg Scenario Analysis
@@ -107,7 +107,7 @@ export function CryptoStressTest() {
       {/* Breakdown by Coin */}
       <div className="grid gap-3 md:grid-cols-3">
         {test.breakdown_by_coin?.map((coin, idx) => (
-          <Card key={idx} className="bg-[#161b22] border-[#30363d]">
+          <Card key={idx} className="bg-surface-card border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-white">{coin.ticker}</CardTitle>

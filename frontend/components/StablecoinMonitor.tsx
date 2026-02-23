@@ -78,7 +78,7 @@ export function StablecoinMonitor() {
       </div>
 
       {/* Overall Summary */}
-      <Card className="bg-[#161b22] border-[#30363d]">
+      <Card className="bg-surface-card border-border">
         <CardHeader>
           <CardTitle className="text-sm font-medium text-gray-400">
             Total Stablecoin Market
@@ -122,7 +122,7 @@ export function StablecoinMonitor() {
       {/* Individual Stablecoins */}
       <div className="grid gap-4 md:grid-cols-3">
         {Object.entries(components).map(([coin, data]: [string, any]) => (
-          <Card key={coin} className="bg-[#161b22] border-[#30363d]">
+          <Card key={coin} className="bg-surface-card border-border">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium text-gray-400">{coin}</CardTitle>

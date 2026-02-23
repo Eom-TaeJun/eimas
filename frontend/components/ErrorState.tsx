@@ -75,7 +75,7 @@ export function ErrorState({
   const displayTitle = title || config.title;
 
   return (
-    <Card className={`bg-[#0d1117] border-2 ${config.borderColor}`}>
+    <Card className={`bg-surface border-2 ${config.borderColor}`}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Icon className={`w-6 h-6 ${config.color}`} />
@@ -136,7 +136,7 @@ export function ErrorState({
           {onRetry && (
             <Button
               onClick={onRetry}
-              className="bg-[#238636] hover:bg-[#2ea043] text-white"
+              className="bg-secondary hover:bg-secondary-600 text-white"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Retry
@@ -145,7 +145,7 @@ export function ErrorState({
           <Button
             variant="outline"
             onClick={() => window.open("http://localhost:8000/docs", "_blank")}
-            className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-[#238636] hover:text-white"
+            className="bg-surface-card border-border text-gray-300 hover:bg-secondary hover:text-white"
           >
             <Settings className="w-4 h-4 mr-2" />
             API Docs

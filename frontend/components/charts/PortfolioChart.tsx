@@ -8,13 +8,13 @@ interface PortfolioChartProps {
 }
 
 const COLORS = [
-  "#3fb950", // green
-  "#58a6ff", // blue
-  "#d29922", // yellow
-  "#f85149", // red
+  "#10B981", // green
+  "#60A5FA", // blue
+  "#d97706", // yellow
+  "#ef4444", // red
   "#a371f7", // purple
-  "#da3633", // dark red
-  "#e3b341", // gold
+  "#dc2626", // dark red
+  "#fbbf24", // gold
   "#f778ba", // pink
 ];
 
@@ -41,9 +41,9 @@ export function PortfolioChart({ weights }: PortfolioChartProps) {
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-3 rounded-md shadow-lg">
+        <div className="bg-surface-card border border-border p-3 rounded-md shadow-lg">
           <p className="text-white font-semibold">{payload[0].name}</p>
-          <p className="text-[#58a6ff]">{payload[0].value.toFixed(1)}%</p>
+          <p className="text-primary-400">{payload[0].value.toFixed(1)}%</p>
         </div>
       );
     }
@@ -51,7 +51,7 @@ export function PortfolioChart({ weights }: PortfolioChartProps) {
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white">Portfolio Allocation</CardTitle>
       </CardHeader>

@@ -29,7 +29,7 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
 
   if (!data) {
     return (
-      <Card className="bg-[#0d1117] border-[#30363d]">
+      <Card className="bg-surface border-border">
         <CardContent className="p-8 text-center text-gray-400">
           <FileText className="w-12 h-12 mx-auto mb-4 text-gray-600" />
           <p>No data available for export</p>
@@ -195,7 +195,7 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-white flex items-center gap-2">
@@ -229,18 +229,18 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
                   onClick={() => setSelectedFormat(format.id)}
                   className={`p-4 rounded-lg border-2 transition-all text-left ${
                     isSelected
-                      ? "border-[#238636] bg-[#238636]/10"
-                      : "border-[#30363d] hover:border-gray-600"
+                      ? "border-secondary bg-secondary/10"
+                      : "border-border hover:border-gray-600"
                   }`}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <Icon
                       className={`w-6 h-6 ${
-                        isSelected ? "text-[#238636]" : "text-gray-400"
+                        isSelected ? "text-secondary" : "text-gray-400"
                       }`}
                     />
                     <span className="font-semibold text-white">{format.name}</span>
-                    {isSelected && <CheckCircle className="w-4 h-4 text-[#238636] ml-auto" />}
+                    {isSelected && <CheckCircle className="w-4 h-4 text-secondary ml-auto" />}
                   </div>
                   <p className="text-xs text-gray-400">{format.description}</p>
                 </button>
@@ -249,7 +249,7 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
           </div>
         </div>
 
-        <div className="bg-[#161b22] rounded-lg p-4 border border-[#30363d]">
+        <div className="bg-surface-card rounded-lg p-4 border border-border">
           <h4 className="text-sm font-semibold text-gray-300 mb-3">Export Contents:</h4>
           <ul className="space-y-2 text-sm text-gray-400">
             <li className="flex items-center gap-2">
@@ -279,7 +279,7 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
           <Button
             onClick={handleExport}
             disabled={exporting || exported}
-            className="flex-1 bg-[#238636] hover:bg-[#2ea043] text-white"
+            className="flex-1 bg-secondary hover:bg-secondary-600 text-white"
           >
             {exporting ? (
               <>
@@ -302,7 +302,7 @@ export function ExportReportDialog({ data, onClose }: ExportReportDialogProps) {
             <Button
               variant="outline"
               onClick={onClose}
-              className="bg-[#161b22] border-[#30363d] text-gray-300 hover:bg-gray-800"
+              className="bg-surface-card border-border text-gray-300 hover:bg-gray-800"
             >
               Cancel
             </Button>

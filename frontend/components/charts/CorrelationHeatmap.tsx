@@ -63,7 +63,7 @@ export function CorrelationHeatmap({
   const matrix = correlationMatrix || generateMockCorrelation(tickers);
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <CardTitle className="text-white">Asset Correlation Heatmap</CardTitle>
         <p className="text-xs text-gray-400 mt-2">
@@ -90,7 +90,7 @@ export function CorrelationHeatmap({
             {tickers.map((ticker, i) => (
               <div key={`row-${i}`} className="flex">
                 {/* Row label */}
-                <div className="w-16 h-16 flex items-center justify-center text-xs font-medium text-gray-300 border-r border-[#30363d]">
+                <div className="w-16 h-16 flex items-center justify-center text-xs font-medium text-gray-300 border-r border-border">
                   {ticker}
                 </div>
 
@@ -98,7 +98,7 @@ export function CorrelationHeatmap({
                 {tickers.map((_, j) => (
                   <div
                     key={`cell-${i}-${j}`}
-                    className={`w-16 h-16 flex items-center justify-center text-xs font-bold border border-[#30363d] cursor-pointer transition-all duration-200 ${getCorrelationColor(matrix[i][j])} ${getTextColor(matrix[i][j])} hover:scale-110 hover:z-10 hover:shadow-lg`}
+                    className={`w-16 h-16 flex items-center justify-center text-xs font-bold border border-border cursor-pointer transition-all duration-200 ${getCorrelationColor(matrix[i][j])} ${getTextColor(matrix[i][j])} hover:scale-110 hover:z-10 hover:shadow-lg`}
                     onMouseEnter={() => setHoveredCell({ i, j })}
                     onMouseLeave={() => setHoveredCell(null)}
                   >
@@ -112,7 +112,7 @@ export function CorrelationHeatmap({
 
         {/* Tooltip showing hovered correlation */}
         {hoveredCell && (
-          <div className="mt-4 p-3 bg-[#161b22] rounded-lg border border-[#30363d]">
+          <div className="mt-4 p-3 bg-surface-card rounded-lg border border-border">
             <p className="text-sm text-white">
               <span className="font-bold">{tickers[hoveredCell.i]}</span>
               {" ↔ "}

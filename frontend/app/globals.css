@@ -2,24 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design System CSS Variables (EIMAS Dark Theme) ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surface */
+  --background:    #0d1117;
+  --surface-card:  #161b22;
+  --surface-overlay: #21262d;
+
+  /* Border */
+  --border:        #30363d;
+  --border-subtle: #21262d;
+
+  /* Text */
+  --foreground:    #e6edf3;
+  --foreground-muted: #8b949e;
+
+  /* Design System Colors */
+  --primary:       #2563EB;
+  --primary-hover: #1D4ED8;
+  --secondary:     #10B981;
+  --secondary-hover: #059669;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0d1117;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base Styles ── */
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

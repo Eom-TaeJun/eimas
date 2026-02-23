@@ -24,8 +24,8 @@ interface PortfolioAllocationEvolutionProps {
 
 // Color palette for assets
 const ASSET_COLORS = [
-  "#3fb950", "#58a6ff", "#d29922", "#f85149", "#a371f7",
-  "#da3633", "#e3b341", "#f778ba", "#56d4dd", "#7ee787",
+  "#10B981", "#60A5FA", "#d97706", "#ef4444", "#a371f7",
+  "#dc2626", "#fbbf24", "#f778ba", "#56d4dd", "#7ee787",
 ];
 
 // Generate mock allocation history
@@ -108,7 +108,7 @@ export function PortfolioAllocationEvolution({ data }: PortfolioAllocationEvolut
     if (active && payload && payload.length) {
       const date = payload[0].payload.timestamp;
       return (
-        <div className="bg-[#161b22] border border-[#30363d] p-4 rounded-md shadow-lg max-w-xs">
+        <div className="bg-surface-card border border-border p-4 rounded-md shadow-lg max-w-xs">
           <p className="text-white font-semibold mb-2">{date}</p>
           <div className="space-y-1 text-xs">
             {payload
@@ -133,7 +133,7 @@ export function PortfolioAllocationEvolution({ data }: PortfolioAllocationEvolut
   };
 
   return (
-    <Card className="bg-[#0d1117] border-[#30363d]">
+    <Card className="bg-surface border-border">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -168,8 +168,8 @@ export function PortfolioAllocationEvolution({ data }: PortfolioAllocationEvolut
                   onClick={() => toggleAsset(ticker)}
                   className={`px-3 py-1 text-xs rounded-lg border transition-all ${
                     isSelected
-                      ? "bg-[#238636] text-white border-[#238636]"
-                      : "bg-[#161b22] text-gray-400 border-[#30363d] hover:border-gray-500"
+                      ? "bg-secondary text-white border-secondary"
+                      : "bg-surface-card text-gray-400 border-border hover:border-gray-500"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export function PortfolioAllocationEvolution({ data }: PortfolioAllocationEvolut
             const change = latest - first;
 
             return (
-              <div key={ticker} className="bg-[#161b22] rounded-lg p-3 border border-[#30363d]">
+              <div key={ticker} className="bg-surface-card rounded-lg p-3 border border-border">
                 <div className="flex items-center gap-2 mb-1">
                   <div
                     className="w-2 h-2 rounded-full"

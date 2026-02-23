@@ -40,6 +40,9 @@ except ImportError:
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from core.schemas import AgentOutputs, DebateResults, VerificationResults
 
+# Korea savings bank indicators schema (defined in lib, re-exported here)
+from lib.korea_savings_bank import KoreaSavingsBankIndicators  # noqa: F401
+
 
 @dataclass
 class FREDSummary:
@@ -298,6 +301,7 @@ class EIMASResult:
     crypto_data_count: int = 0
     korea_data: Dict = field(default_factory=dict)
     korea_summary: Dict = field(default_factory=dict)
+    korea_savings_bank: Dict = field(default_factory=dict)   # KoreaSavingsBankIndicators.to_dict()
 
     # 분석 결과
     regime: Dict = field(default_factory=dict)
