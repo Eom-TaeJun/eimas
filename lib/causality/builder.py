@@ -11,9 +11,15 @@ Class:
 
 import pandas as pd
 import numpy as np
-import networkx as nx
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+
+try:
+    import networkx as nx
+    NETWORKX_AVAILABLE = True
+except ImportError:
+    nx = None  # type: ignore[assignment]
+    NETWORKX_AVAILABLE = False
 
 from .enums import CausalDirection
 from .schemas import GrangerTestResult, CausalEdge, CausalityPath

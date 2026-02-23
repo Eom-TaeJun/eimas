@@ -43,7 +43,11 @@ from pipeline.exceptions import get_logger, log_error, CollectionError
 
 logger = get_logger("collectors")
 
-_FI_MARKET_TICKERS = ["SPY", "QQQ", "IWM", "DIA", "TLT", "GLD", "USO", "UUP", "^VIX"]
+_FI_MARKET_TICKERS = [
+    "SPY", "QQQ", "IWM", "DIA", "TLT", "GLD", "USO", "UUP", "^VIX",
+    # CriticalPath aggregator requires these (lib/critical_path/aggregator.py)
+    "HYG", "LQD", "XLY", "XLP", "XLF", "SMH", "NVDA", "EEM",
+]
 _FI_MARKET_CRYPTO_TICKERS = ["BTC-USD", "ETH-USD"]
 _FI_CRYPTO_TICKERS = ["BTC-USD", "ETH-USD", "SOL-USD"]
 _FI_RA_COMPANY_TICKERS = ["AAPL", "MSFT", "NVDA", "JPM", "XOM"]

@@ -98,12 +98,16 @@ class AssetClassBounds:
 
     @classmethod
     def moderate(cls) -> 'AssetClassBounds':
-        """중립적 프로파일"""
+        """중립적 프로파일
+        Note: cash_min=0.0 — HRP 최적화가 SHV/BIL 등 현금 ETF를 포함하지 않으면
+              cash 비중은 항상 0%가 되므로 실제 구성에 맞게 설정.
+              commodity_max=0.20 — GLD+USO 합산이 15% 초과하는 경우를 허용.
+        """
         return cls(
             equity_min=0.4, equity_max=0.6,
             bond_min=0.2, bond_max=0.4,
-            cash_min=0.05, cash_max=0.15,
-            commodity_min=0.0, commodity_max=0.15,
+            cash_min=0.0, cash_max=0.15,
+            commodity_min=0.0, commodity_max=0.20,
             crypto_min=0.0, crypto_max=0.05
         )
 
