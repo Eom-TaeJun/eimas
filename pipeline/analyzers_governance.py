@@ -161,7 +161,8 @@ def run_allocation_engine(
     market_data: Dict[str, pd.DataFrame],
     strategy: str = "risk_parity",
     constraints: Dict = None,
-    current_weights: Dict[str, float] = None
+    current_weights: Dict[str, float] = None,
+    market_signals: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     비중 산출 엔진 실행
@@ -171,6 +172,7 @@ def run_allocation_engine(
         strategy: 배분 전략 (risk_parity, mvo_max_sharpe, hrp, equal_weight, inverse_vol)
         constraints: 제약 조건 (min_weight, max_weight, asset_limits)
         current_weights: 현재 비중 (리밸런싱용)
+        market_signals: DynamicBoundsEngine용 시장 신호 (debate_signal, risk_score 등)
 
     Returns:
         Dict with allocation_result and rebalance_decision
@@ -261,7 +263,8 @@ def run_allocation_engine(
         if current_weights:
             result['rebalance_decision'] = run_rebalancing_policy(
                 current_weights=current_weights,
-                target_weights=allocation.weights
+                target_weights=allocation.weights,
+                market_signals=market_signals,
             )
 
     except Exception as e:
@@ -277,7 +280,8 @@ def run_rebalancing_policy(
     target_weights: Dict[str, float],
     last_rebalance_date: datetime = None,
     market_data_quality: str = "COMPLETE",
-    config: Dict = None
+    config: Dict = None,
+    market_signals: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     리밸런싱 정책 평가
@@ -287,10 +291,20 @@ def run_rebalancing_policy(
         target_weights: 목표 비중
         last_rebalance_date: 마지막 리밸런싱 일자
         market_data_quality: 데이터 품질 상태
-        config: 리밸런싱 설정
+        config: 리밸런싱 설정 (None이면 DynamicBoundsEngine 사용)
+        market_signals: AI 분석/토론 결과 신호 dict
+            {
+              'debate_signal'    : 'BULLISH'|'BEARISH'|'NEUTRAL',
+              'confidence'       : float 0~1,
+              'risk_score'       : float 0~100,
+              'regime'           : 'BULL'|'BEAR'|'NEUTRAL',
+              'vix'              : float,
+              'liquidity_regime' : 'Tight'|'Normal'|'Loose',
+              'base_profile'     : 'moderate'|'conservative'|'aggressive',
+            }
 
     Returns:
-        RebalanceDecision dict
+        RebalanceDecision dict  (+ 'bounds_adjustment_log' 필드 추가)
     """
     print("\n[2.12] Evaluating Rebalancing Policy...")
 
@@ -299,18 +313,36 @@ def run_rebalancing_policy(
         if config:
             rebal_config = RebalanceConfig.from_dict(config)
         else:
+            # ── DynamicBoundsEngine: 시장 신호 → 5% 단위 경계 조정 ──
+            from lib.rebalancing_policy import DynamicBoundsEngine
+            sig = market_signals or {}
+            engine = DynamicBoundsEngine()
+            dynamic_bounds, bounds_log = engine.compute(
+                base_profile    = sig.get("base_profile", "moderate"),
+                debate_signal   = sig.get("debate_signal", "NEUTRAL"),
+                confidence      = float(sig.get("confidence", 0.5)),
+                risk_score      = float(sig.get("risk_score", 50.0)),
+                regime          = sig.get("regime", "NEUTRAL"),
+                vix             = float(sig.get("vix", 20.0)),
+                liquidity_regime= sig.get("liquidity_regime", "Normal"),
+            )
+            if bounds_log.rules_applied and bounds_log.rules_applied[0] != "no_adjustment (NEUTRAL + normal signals)":
+                print(f"      ↳ DynamicBounds rules: {', '.join(bounds_log.rules_applied)}")
+            else:
+                print(f"      ↳ DynamicBounds: no adjustment (all signals neutral)")
+
             rebal_config = RebalanceConfig(
                 policy=RebalancePolicy.HYBRID,
                 frequency=RebalanceFrequency.MONTHLY,
-                drift_threshold=0.05,       # 5%
-                turnover_cap=0.30,          # 30%
-                min_trade_size=0.01,        # 1%
+                drift_threshold=0.05,
+                turnover_cap=0.30,
+                min_trade_size=0.01,
                 cost_model=TradingCostModel(
-                    commission_rate=0.001,  # 0.1%
-                    spread_cost=0.0005,     # 0.05%
+                    commission_rate=0.001,
+                    spread_cost=0.0005,
                     market_impact=0.001
                 ),
-                asset_bounds=AssetClassBounds.moderate()
+                asset_bounds=dynamic_bounds,
             )
 
         # 정책 매니저 생성
@@ -333,7 +365,14 @@ def run_rebalancing_policy(
             print(f"      ✓ Turnover: {decision.turnover:.2%}")
             print(f"      ✓ Estimated Cost: {decision.estimated_cost:.4f}")
 
-        return decision.to_dict()
+        result_dict = decision.to_dict()
+        # 동적 경계 조정 내역 첨부 (감사 추적용)
+        if not config and market_signals is not None:
+            try:
+                result_dict["bounds_adjustment_log"] = bounds_log.to_dict()
+            except NameError:
+                pass
+        return result_dict
 
     except Exception as e:
         log_error(logger, "Rebalancing policy failed", e)

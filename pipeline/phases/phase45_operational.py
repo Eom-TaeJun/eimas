@@ -23,7 +23,36 @@ Architecture:
 from typing import Dict, Optional
 
 from lib.adapters import generate_operational_bundle
+from pipeline.analyzers import run_rebalancing_policy
 from pipeline.schemas import EIMASResult
+
+
+def _refresh_rebalance_with_debate_signals(result: EIMASResult) -> None:
+    """Phase 3 토론 결과로 리밸런싱 경계를 재평가 (DynamicBoundsEngine 재실행)."""
+    current_weights = result.portfolio_weights or {}
+    target_weights = (result.allocation_result or {}).get("weights", {})
+    if not current_weights or not target_weights:
+        return
+
+    # HOLD는 NEUTRAL로 변환
+    final_rec = result.final_recommendation or "HOLD"
+    debate_signal = final_rec if final_rec in ("BULLISH", "BEARISH") else "NEUTRAL"
+
+    market_signals = {
+        "regime": result.regime.get("regime", "NEUTRAL") if isinstance(result.regime, dict) else "NEUTRAL",
+        "risk_score": float(result.risk_score or 50.0),
+        "vix": float((result.market_indicators or {}).get("vix_current", 20.0)),
+        "liquidity_regime": (result.fred_summary or {}).get("liquidity_regime", "Normal"),
+        "debate_signal": debate_signal,
+        "confidence": float(result.confidence or 0.5),
+    }
+
+    result.rebalance_decision = run_rebalancing_policy(
+        current_weights=current_weights,
+        target_weights=target_weights,
+        market_signals=market_signals,
+    )
+    print(f"      ↳ Post-debate rebalance: signal={debate_signal}, conf={market_signals['confidence']:.0%}")
 
 
 def generate_operational_report(result: EIMASResult, current_weights: Optional[Dict] = None):
@@ -31,6 +60,9 @@ def generate_operational_report(result: EIMASResult, current_weights: Optional[D
     print("\n[Phase 4.5] Generating Operational Report...")
 
     try:
+        # Phase 3 토론 결과로 리밸런싱 경계 재평가 (allocation_result가 있을 때만)
+        _refresh_rebalance_with_debate_signals(result)
+
         eimas_data = result.to_dict()
         if current_weights is None:
             current_weights = result.portfolio_weights or {}

@@ -366,10 +366,21 @@ def set_allocation_result(result: EIMASResult, market_data: Dict[str, Any]):
     """[Phase 2.11-2.12] Run allocation engine and rebalancing decision."""
     current_weights = result.portfolio_weights if result.portfolio_weights else None
 
+    # Phase 2 시점 시장 신호 추출 (토론 전이므로 debate_signal=NEUTRAL)
+    market_signals = {
+        "regime": result.regime.get("regime", "NEUTRAL") if isinstance(result.regime, dict) else "NEUTRAL",
+        "risk_score": float(result.risk_score or 50.0),
+        "vix": float((result.market_indicators or {}).get("vix_current", 20.0)),
+        "liquidity_regime": (result.fred_summary or {}).get("liquidity_regime", "Normal"),
+        "debate_signal": "NEUTRAL",
+        "confidence": float(result.confidence or 0.5),
+    }
+
     alloc_result = run_allocation_engine(
         market_data=market_data,
         strategy="risk_parity",
         current_weights=current_weights,
+        market_signals=market_signals,
     )
 
     result.allocation_result = alloc_result.get("allocation_result", {})
@@ -382,6 +393,7 @@ def set_allocation_result(result: EIMASResult, market_data: Dict[str, Any]):
         result.rebalance_decision = run_rebalancing_policy(
             current_weights=current_weights,
             target_weights=alloc_result["allocation_result"]["weights"],
+            market_signals=market_signals,
         )
 
     if alloc_result.get("warnings"):
