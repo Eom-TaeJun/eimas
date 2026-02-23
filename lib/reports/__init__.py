@@ -14,6 +14,7 @@ from lib.report_generator import ReportGenerator
 from lib.whitening_engine import WhiteningEngine
 from lib.json_to_html_converter import convert_json_to_html
 from lib.json_to_md_converter import convert_json_to_md
+from lib.reports.business_summary import generate_business_summary, BusinessSummary
 
 __all__ = [
     'AIReportGenerator',
@@ -23,4 +24,6 @@ __all__ = [
     'WhiteningEngine',
     'convert_json_to_html',
     'convert_json_to_md',
+    'generate_business_summary',
+    'BusinessSummary',
 ]

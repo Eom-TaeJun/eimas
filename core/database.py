@@ -2,7 +2,11 @@
 """
 EIMAS Database Manager
 ======================
-SQLite 기반 분석 결과 저장소
+SQLite(개발) / PostgreSQL(운영) 이중 지원 분석 결과 저장소
+
+환경변수 EIMAS_DB_URL에 따라 백엔드 자동 전환:
+    EIMAS_DB_URL=sqlite:///data/eimas.db        # 개발 (기본값)
+    EIMAS_DB_URL=postgresql://user:pw@host/db   # 운영
 
 Tables (Core):
 - ark_holdings: ARK ETF 일별 보유종목
@@ -33,6 +37,8 @@ from pathlib import Path
 from dataclasses import dataclass, asdict
 from contextlib import contextmanager
 
+from core.db_adapter import create_adapter, DBAdapter, EIMAS_DB_URL
+
 # 기본 DB 경로
 DEFAULT_DB_PATH = Path(__file__).parent.parent / "data" / "eimas.db"
 
@@ -55,28 +61,44 @@ class DatabaseManager:
         signals_by_regime = db.get_signals_by_regime("RISK_ON")
     """
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: str = None, db_url: str = None):
         """
         Args:
-            db_path: DB 파일 경로 (기본: data/eimas.db)
+            db_path: SQLite DB 파일 경로 (레거시 — db_url 미지정 시 사용)
+            db_url: DB URL (EIMAS_DB_URL 환경변수 > db_path > 기본 SQLite 순으로 적용)
+                   예) sqlite:///data/eimas.db  또는  postgresql://user:pw@host/db
+
+        환경변수:
+            EIMAS_DB_URL=sqlite:///data/eimas.db        # 개발 (기본값)
+            EIMAS_DB_URL=postgresql://user:pw@host/db   # 운영
         """
-        self.db_path = Path(db_path) if db_path else DEFAULT_DB_PATH
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        import os
+        # db_url 우선순위: 명시적 인자 > 환경변수 > db_path 레거시 > 기본값
+        resolved_url = (
+            db_url
+            or os.getenv(EIMAS_DB_URL)
+            or (f"sqlite:///{db_path}" if db_path else None)
+        )
+        self._adapter: DBAdapter = create_adapter(resolved_url)
+
+        # 레거시 호환성: self.db_path 속성 유지 (SQLite일 때만 유효)
+        if self._adapter.backend == "sqlite":
+            self.db_path = Path(self._adapter._db_path)
+        else:
+            self.db_path = None  # PostgreSQL에서는 None
+
         self._init_tables()
 
     @contextmanager
     def _get_connection(self):
-        """컨텍스트 매니저로 연결 관리"""
-        conn = sqlite3.connect(str(self.db_path))
-        conn.row_factory = sqlite3.Row
-        try:
+        """컨텍스트 매니저로 연결 관리 (SQLite / PostgreSQL 어댑터 위임)."""
+        with self._adapter.connection() as conn:
             yield conn
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
+
+    @property
+    def backend(self) -> str:
+        """현재 DB 백엔드 ('sqlite' | 'postgresql')"""
+        return self._adapter.backend
 
     def _init_tables(self):
         """테이블 초기화"""
