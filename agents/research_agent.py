@@ -77,6 +77,13 @@ class ResearchAgent(BaseAgent):
     - Top-Down 분석에 필요한 거시/산업/기업 정보 제공
     """
 
+    # 기관 관점 프리셋 (토론 다양성 확보)
+    INSTITUTIONAL_PROFILES = {
+        "gs_style":      {"risk_tolerance": 0.7, "growth_bias": 0.3},   # GS: 성장/공격적
+        "mirae_style":   {"risk_tolerance": 0.5, "growth_bias": 0.0},   # 미래에셋: 가치/중립
+        "shinhan_style": {"risk_tolerance": 0.3, "growth_bias": -0.2},  # 신한: 방어/보수
+    }
+
     # Perplexity 모델
     PERPLEXITY_MODELS = {
         "online": "sonar",
@@ -143,7 +150,8 @@ class ResearchAgent(BaseAgent):
         self,
         config: Optional[AgentConfig] = None,
         perplexity_api_key: Optional[str] = None,
-        model: str = "online"
+        model: str = "online",
+        institutional_bias: Optional[str] = None,
     ):
         """
         Parameters:
@@ -154,6 +162,8 @@ class ResearchAgent(BaseAgent):
             Perplexity API 키. None이면 환경변수에서 로드
         model : str
             사용할 모델 ("online", "large_online", "chat")
+        institutional_bias : str
+            기관 관점 프리셋 키 ("gs_style", "mirae_style", "shinhan_style")
         """
         if config is None:
             config = AgentConfig(
@@ -162,6 +172,12 @@ class ResearchAgent(BaseAgent):
                 model="perplexity-online"
             )
         super().__init__(config)
+
+        # 기관 관점 편향 설정
+        profile = self.INSTITUTIONAL_PROFILES.get(institutional_bias or "", {})
+        self.growth_bias: float = profile.get("growth_bias", 0.0)
+        self.risk_tolerance: float = profile.get("risk_tolerance", 0.5)
+        self.institutional_bias = institutional_bias
 
         self.api_key = perplexity_api_key or os.getenv("PERPLEXITY_API_KEY")
         self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -525,22 +541,70 @@ class ResearchAgent(BaseAgent):
         )
 
     def _determine_stance_from_context(self, topic: str, context: Dict[str, Any]) -> str:
-        """컨텍스트 기반 stance 결정"""
+        """컨텍스트 기반 stance 결정 (institutional_bias 반영)"""
         risk_score = context.get('total_risk_score', 50)
         regime = context.get('current_regime', 'UNKNOWN').upper()
+        bias_shift = self.growth_bias * 30  # [-9 ~ +9] 포인트
 
         if topic == "market_outlook":
-            if risk_score < 40 and regime in ['BULL', 'EXPANSION']:
+            bull_threshold = 40 - bias_shift
+            bear_threshold = 60 - bias_shift
+            if risk_score < bull_threshold and regime in ['BULL', 'EXPANSION']:
                 return "BULLISH"
-            elif risk_score > 60 or regime in ['BEAR', 'CONTRACTION']:
+            elif risk_score > bear_threshold or regime in ['BEAR', 'CONTRACTION']:
                 return "BEARISH"
             return "NEUTRAL"
+
         elif topic == "primary_risk":
-            if risk_score > 60:
+            # bias: GS는 HIGH_RISK 기준 높임(덜 보수적), 신한은 낮춤(더 보수적)
+            high_threshold = 60 - bias_shift
+            low_threshold = 40 - bias_shift
+            if risk_score > high_threshold:
                 return "HIGH_RISK"
-            elif risk_score < 40:
+            elif risk_score < low_threshold:
                 return "LOW_RISK"
             return "MODERATE_RISK"
+
+        elif topic == "regime_stability":
+            trans_prob = context.get('transition_probability', 0)
+            if trans_prob > 1:
+                trans_prob /= 100
+            # 보수적 기관(growth_bias<0)은 낮은 전이확률에도 불안정으로 봄
+            unstable_threshold = 0.35 + self.growth_bias * 0.15  # GS: 0.39, 신한: 0.32
+            if trans_prob > unstable_threshold:
+                return "UNSTABLE"
+            elif regime in ['BEAR', 'CONTRACTION']:
+                return "UNSTABLE"
+            return "STABLE"
+
+        elif topic == "crypto_correlation":
+            crypto_corr = context.get('crypto_equity_correlation', 0.5)
+            # 공격적 기관(GS)은 높은 상관성을 기회로, 보수적(신한)은 위험으로 봄
+            if crypto_corr > 0.7:
+                return "BEARISH" if self.growth_bias < 0 else "HIGH_CORRELATION"
+            elif crypto_corr < 0.3:
+                return "BULLISH" if self.growth_bias > 0 else "LOW_CORRELATION"
+            return "NEUTRAL"
+
+        elif topic == "rate_direction":
+            fed_rate = context.get('fed_funds_rate', 4.5)
+            inflation = context.get('core_pce', 2.7)
+            # 실질금리 기반 판단: 공격적 기관은 금리 인하 기대, 보수적은 동결 예상
+            real_rate = fed_rate - inflation
+            if real_rate > 2.0 and self.growth_bias > 0:
+                return "DOVISH"   # 금리 인하 기대 (GS: 성장 중시)
+            elif real_rate < 0.5 and self.growth_bias < 0:
+                return "HAWKISH"  # 금리 동결/인상 예상 (신한: 인플레 우려)
+            return "NEUTRAL"
+
+        elif topic == "rate_magnitude":
+            # 기관 성향에 따라 금리 변화 전망 차별화
+            if self.growth_bias > 0.2:
+                return "CUT_LARGE"    # GS: 공격적 인하 기대
+            elif self.growth_bias < -0.1:
+                return "HOLD_OR_HIKE" # 신한: 동결 또는 인상
+            return "CUT_SMALL"
+
         return "NEUTRAL"
 
     def _calculate_confidence_from_context(self, context: Dict[str, Any]) -> float:

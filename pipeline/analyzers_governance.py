@@ -110,18 +110,38 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
 
         manager = ValidationAgentManager()
 
-        # 검증 실행
+        # 검증 실행 — agent_decision에 충분한 컨텍스트 포함
+        alloc = result_data.get('portfolio_weights') or result_data.get('allocation_result', {})
+        final_rec = result_data.get('final_recommendation', 'HOLD')
         agent_decision = {
-            'recommendation': result_data.get('final_recommendation', 'HOLD'),
+            'agent_type': 'EIMAS_QuantSystem',
+            'recommendation': final_rec,
+            'decision': final_rec,
+            'action': final_rec,          # _build_prompt이 'action' 키 사용
             'confidence': result_data.get('confidence', 0.5),
             'risk_level': result_data.get('risk_level', 'MEDIUM'),
+            'allocations': alloc if isinstance(alloc, dict) else {},
+            'regime': result_data.get('regime', {}).get('regime', 'UNKNOWN') if isinstance(result_data.get('regime'), dict) else str(result_data.get('regime', 'UNKNOWN')),
+            'risk_score': result_data.get('risk_score', 50),
+            'rationale': f"{final_rec} — regime={result_data.get('regime', {}).get('regime', 'UNKNOWN') if isinstance(result_data.get('regime'), dict) else 'UNKNOWN'}, risk={result_data.get('risk_score', 50):.1f}/100",
         }
         market_condition = {
             'regime': result_data.get('regime', {}),
             'risk_score': result_data.get('risk_score', 50),
+            'vix': result_data.get('market_indicators', {}).get('vix_current', 20) if isinstance(result_data.get('market_indicators'), dict) else 20,
         }
 
         consensus = manager.validate_all(agent_decision, market_condition)
+
+        # 개별 LLM 결과 추출
+        per_llm = {
+            name: {
+                'result': v.result.value,
+                'confidence': v.confidence,
+                'reasoning': v.reasoning[:300] if v.reasoning else '',
+            }
+            for name, v in consensus.validations.items()
+        }
 
         validation_result = {
             'final_result': consensus.final_result.value,
@@ -130,6 +150,7 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
             'key_concerns': consensus.key_concerns,
             'action_items': consensus.action_items,
             'summary': consensus.summary,
+            'per_llm_results': per_llm,
             'validation_runtime_stats': consensus.validation_runtime_stats,
         }
 
@@ -146,6 +167,11 @@ def run_ai_validation(result_data: Dict, use_cache: bool = True) -> Dict[str, An
             except Exception:
                 pass
 
+        # 각 LLM 시각 먼저 출력
+        print("\n      [개별 LLM 판단]")
+        for name, v in per_llm.items():
+            print(f"        {name:12s}: {v['result']:10s} (신뢰도 {v['confidence']:.0f}%)")
+        print(f"\n      [최종 합의]")
         print(f"      ✓ AI Consensus: {consensus.final_result.value}")
         print(f"      ✓ Agreement: {consensus.agreement_ratio:.0%}")
         total_retries = consensus.validation_runtime_stats.get('total_retries', 0)

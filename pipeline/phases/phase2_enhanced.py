@@ -371,7 +371,7 @@ def set_allocation_result(result: EIMASResult, market_data: Dict[str, Any]):
         "regime": result.regime.get("regime", "NEUTRAL") if isinstance(result.regime, dict) else "NEUTRAL",
         "risk_score": float(result.risk_score or 50.0),
         "vix": float((result.market_indicators or {}).get("vix_current", 20.0)),
-        "liquidity_regime": (result.fred_summary or {}).get("liquidity_regime", "Normal"),
+        "liquidity_regime": result.fred_summary.liquidity_regime if result.fred_summary else "Normal",
         "debate_signal": "NEUTRAL",
         "confidence": float(result.confidence or 0.5),
     }

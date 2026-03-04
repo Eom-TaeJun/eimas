@@ -68,8 +68,10 @@ class MetaOrchestrator:
         # 에이전트 초기화
         self.analysis_agent = AnalysisAgent()
         self.forecast_agent = ForecastAgent()
-        self.research_agent = ResearchAgent()
-        self.strategy_agent = StrategyAgent()
+        # 토론 다양성 확보: 각 에이전트에 기관별 관점 편향 부여
+        # research_agent(미래에셋:중립), strategy_agent(GS:공격), verification_agent(신한:보수)
+        self.research_agent = ResearchAgent(institutional_bias="mirae_style")
+        self.strategy_agent = StrategyAgent(institutional_bias="gs_style")
         self.verification_agent = VerificationAgent()
 
         # Phase 2 에이전트 (Multi-LLM Debate)

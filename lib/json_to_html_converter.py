@@ -132,27 +132,38 @@ HTML_HEADER = """<!DOCTYPE html>
         }
 
         /* Tables */
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 15px 0;
+        }
         table {
             width: 100%;
+            min-width: 400px;
             border-collapse: collapse;
-            margin: 15px 0;
             background: var(--bg-tertiary);
             border-radius: 8px;
-            overflow: hidden;
+            table-layout: auto;
+            word-wrap: break-word;
         }
         thead {
             background: var(--bg-primary);
         }
         th {
-            padding: 12px;
+            padding: 10px 12px;
             text-align: left;
             font-weight: 600;
             color: var(--accent-blue);
             border-bottom: 2px solid var(--border);
+            word-break: break-word;
+            max-width: 280px;
         }
         td {
-            padding: 10px 12px;
+            padding: 8px 12px;
             border-bottom: 1px solid var(--border);
+            word-break: break-word;
+            max-width: 280px;
         }
         tr:hover {
             background: rgba(56, 139, 253, 0.1);
@@ -180,15 +191,22 @@ HTML_HEADER = """<!DOCTYPE html>
             display: flex;
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
+            gap: 12px;
         }
         .kv-key {
-            flex: 0 0 200px;
+            flex: 0 0 auto;
+            min-width: 120px;
+            max-width: 220px;
+            width: 180px;
             font-weight: 600;
             color: var(--text-secondary);
+            word-break: break-word;
         }
         .kv-value {
             flex: 1;
+            min-width: 0;
             color: var(--text-primary);
+            word-break: break-word;
         }
 
         /* Badges */
@@ -216,6 +234,44 @@ HTML_HEADER = """<!DOCTYPE html>
 
         /* Empty state */
         .empty { color: var(--text-secondary); font-style: italic; }
+
+        /* Print / PDF */
+        @media print {
+            body {
+                background: #ffffff;
+                color: #1a1a1a;
+                padding: 0;
+            }
+            .container { max-width: 100%; }
+            .section {
+                background: #ffffff;
+                border: 1px solid #cccccc;
+                page-break-inside: avoid;
+            }
+            .exec-summary {
+                background: #f5f5f5;
+                border: 1px solid #cccccc;
+            }
+            table {
+                background: #ffffff;
+                page-break-inside: auto;
+            }
+            thead { background: #e8e8e8; display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            th { color: #1a5fa8; border-bottom: 2px solid #cccccc; }
+            td { border-bottom: 1px solid #cccccc; }
+            .table-wrapper { overflow-x: visible; }
+            .metric-card { background: #f0f4f8; border: 1px solid #cccccc; }
+            .badge-success { background: #d4f0da; color: #1a7a30; }
+            .badge-danger { background: #fde8e7; color: #c0392b; }
+            .badge-warning { background: #fef3cd; color: #856404; }
+            .badge-info { background: #dbeafe; color: #1a5fa8; }
+            :root {
+                --text-secondary: #555555;
+                --text-primary: #1a1a1a;
+                --accent-blue: #1a5fa8;
+            }
+        }
     </style>
 </head>
 <body>
@@ -309,7 +365,7 @@ def render_table(data: List[Dict[str, Any]], max_rows: int = 50) -> str:
                     f'... ({len(data) - max_rows}개 생략)</td></tr></tfoot>')
 
     lines.append('</table>')
-    return '\n'.join(lines)
+    return '<div class="table-wrapper">' + '\n'.join(lines) + '</div>'
 
 
 def render_dict(data: Dict[str, Any], indent: int = 0) -> str:

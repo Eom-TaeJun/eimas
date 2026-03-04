@@ -206,7 +206,10 @@ class LASSOForecaster:
                 with warnings.catch_warnings():
                     warnings.filterwarnings('ignore', category=UserWarning)
                     
+                    # alphas 범위 명시: 너무 강한 정규화 방지
+                    lasso_alphas = np.logspace(-4, 0, 50)  # 0.0001 ~ 1.0
                     self._fitted_model = LassoCV(
+                        alphas=lasso_alphas,
                         cv=self._cv,
                         max_iter=current_max_iter,
                         tol=self.config.tol,
@@ -249,6 +252,16 @@ class LASSOForecaster:
         
         # 9. 결과 로깅
         n_selected = len(self._selected_vars)
+        if n_selected == 0:
+            # fallback: 상위 3개 변수 강제 선택 (절대값 기준)
+            if len(coefficients) > 0:
+                top_idx = np.argsort(np.abs(coefficients))[-3:]
+                self._selected_vars = [self._feature_names[i] for i in top_idx if i < len(self._feature_names)]
+                coef_dict = {self._feature_names[i]: float(coefficients[i]) for i in top_idx if i < len(self._feature_names)}
+                n_selected = len(self._selected_vars)
+                logger.warning(f"Fallback: top-3 variables selected for horizon={horizon}: {self._selected_vars}")
+            else:
+                logger.warning(f"No variables available for horizon={horizon}")
         if n_selected == 0:
             logger.warning(f"No variables selected for horizon={horizon} (expected for VeryShort)")
         else:

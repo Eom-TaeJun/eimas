@@ -180,10 +180,18 @@ class StrategyAgent(BaseAgent):
         }
     }
 
+    # 기관 관점 프리셋 (토론 다양성 확보)
+    INSTITUTIONAL_PROFILES = {
+        "gs_style":      {"risk_tolerance": 0.7, "growth_bias": 0.3},
+        "mirae_style":   {"risk_tolerance": 0.5, "growth_bias": 0.0},
+        "shinhan_style": {"risk_tolerance": 0.3, "growth_bias": -0.2},
+    }
+
     def __init__(
         self,
         config: Optional[AgentConfig] = None,
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
+        institutional_bias: Optional[str] = None,
     ):
         if config is None:
             config = AgentConfig(
@@ -192,6 +200,12 @@ class StrategyAgent(BaseAgent):
                 model="claude-sonnet"
             )
         super().__init__(config)
+
+        # 기관 관점 편향 설정
+        profile = self.INSTITUTIONAL_PROFILES.get(institutional_bias or "", {})
+        self.growth_bias: float = profile.get("growth_bias", 0.0)
+        self.risk_tolerance: float = profile.get("risk_tolerance", 0.5)
+        self.institutional_bias = institutional_bias
 
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self._client = None
@@ -741,9 +755,13 @@ class StrategyAgent(BaseAgent):
         regime_upper = regime.upper() if isinstance(regime, str) else 'NEUTRAL'
 
         if topic == "market_outlook":
-            if risk_score < 40 and regime_upper in ['BULL', 'EXPANSION', 'EXPANSION_EARLY']:
+            # growth_bias에 따라 aggressive/defensive 기준 조정
+            bias_shift = self.growth_bias * 20  # [-4 ~ +6] 포인트
+            bull_threshold = 40 - bias_shift
+            bear_threshold = 60 - bias_shift
+            if risk_score < bull_threshold and regime_upper in ['BULL', 'EXPANSION', 'EXPANSION_EARLY']:
                 return "aggressive", f"Bullish outlook: Low risk ({risk_score:.1f}) in {regime} regime supports equity overweight"
-            elif risk_score > 60 or regime_upper in ['BEAR', 'CONTRACTION']:
+            elif risk_score > bear_threshold or regime_upper in ['BEAR', 'CONTRACTION']:
                 return "defensive", f"Bearish outlook: Elevated risk ({risk_score:.1f}) warrants defensive positioning"
             else:
                 return "neutral", f"Neutral outlook: Balanced risk ({risk_score:.1f}) in {regime} regime"
@@ -757,11 +775,39 @@ class StrategyAgent(BaseAgent):
                 return "neutral", f"Moderate risk ({risk_score:.1f}/100): Balanced approach recommended"
 
         elif topic == "regime_stability":
-            trans_prob = context.get('transition_probability', 0) if 'context' in dir() else 0
-            if trans_prob > 0.5:
-                return "defensive", f"High regime transition risk ({trans_prob:.1%}): Position for volatility"
+            # context는 form_opinion의 인자로 전달되지 않으므로 risk_score로 대리 판단
+            bias_shift = self.growth_bias * 20
+            unstable_threshold = 60 - bias_shift  # GS: 54, 신한: 64
+            if risk_score > unstable_threshold or regime_upper in ['BEAR', 'CONTRACTION']:
+                return "defensive", f"Regime instability risk: risk_score={risk_score:.1f} warrants caution"
+            elif risk_score < (40 - bias_shift) and regime_upper in ['BULL', 'EXPANSION']:
+                return "aggressive", f"Stable bullish regime: risk_score={risk_score:.1f} supports overweight"
             else:
                 return "neutral", f"Stable regime expected: Current positioning appropriate"
+
+        elif topic == "crypto_correlation":
+            # GS: 크립토 상관성 높아도 기회, 신한: 위험
+            if self.growth_bias > 0.2:
+                return "aggressive", "High crypto correlation creates tactical opportunities"
+            elif self.growth_bias < -0.1:
+                return "defensive", "High crypto correlation increases systemic risk"
+            return "neutral", "Crypto correlation within manageable range"
+
+        elif topic == "rate_direction":
+            bias_shift = self.growth_bias * 20
+            bear_threshold = 60 - bias_shift
+            if risk_score > bear_threshold:
+                return "defensive", f"Elevated risk ({risk_score:.1f}) suggests rates stay higher for longer"
+            elif risk_score < (40 - bias_shift):
+                return "aggressive", f"Low risk ({risk_score:.1f}) supports rate cut expectations"
+            return "neutral", f"Rate direction uncertain: balanced positioning"
+
+        elif topic == "rate_magnitude":
+            if self.growth_bias > 0.2:
+                return "aggressive", "Expect aggressive rate cuts: front-load duration exposure"
+            elif self.growth_bias < -0.1:
+                return "defensive", "Rates likely to stay elevated: avoid long duration"
+            return "neutral", "Moderate rate adjustment expected"
 
         return "neutral", f"Strategy assessment for {topic}: Balanced approach"
 

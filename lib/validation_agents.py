@@ -346,11 +346,14 @@ class PerplexityValidationAgent(BaseValidationAgent):
 
         start_time = datetime.now()
 
+        regime_val = market_condition.get('regime', 'Unknown')
+        if isinstance(regime_val, dict):
+            regime_val = regime_val.get('regime', 'Unknown')
         prompt = PERPLEXITY_MARKET_PROMPT.format(
             action=agent_decision.get('action', 'unknown'),
             risk_level=agent_decision.get('risk_level', 50),
-            regime=market_condition.get('regime', 'Unknown'),
-            vix=market_condition.get('vix_level', 20),
+            regime=regime_val,
+            vix=market_condition.get('vix', market_condition.get('vix_level', 20)),
             market_risk=market_condition.get('risk_score', 50)
         )
 
@@ -360,7 +363,7 @@ class PerplexityValidationAgent(BaseValidationAgent):
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a financial market analyst with access to real-time data. Validate trading decisions based on current market conditions."
+                        "content": "You are a financial market analyst. Validate trading decisions based on the provided market data. Always respond in valid JSON format only."
                     },
                     {"role": "user", "content": prompt}
                 ],
@@ -410,16 +413,45 @@ class PerplexityValidationAgent(BaseValidationAgent):
 class GeminiValidationAgent(BaseValidationAgent):
     """Gemini 기반 검증 에이전트 - 다각적 관점 (Gemini 2.5 Pro)"""
 
+    # 최신 모델 우선 fallback 순서
+    MODEL_CANDIDATES = [
+        "gemini-3.1-pro-preview",
+        "gemini-3-pro-preview",
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+    ]
+
     def __init__(self):
-        # Gemini 2.5 Pro - 최신 실험 모델 (Thinking 포함)
-        super().__init__("Gemini", "gemini-2.5-pro-exp-03-25")
+        super().__init__("Gemini", "gemini-2.5-flash")  # 초기값, _init_client에서 갱신
         self._init_client()
 
+    def _get_api_key(self) -> str:
+        # PRIVATE 키 우선 (GEMINI_API_KEY는 만료된 키일 수 있음)
+        return (
+            os.getenv('GEMINI_API_KEY_PRIVATE')
+            or os.getenv('GOOGLE_API_KEY')
+            or os.getenv('GEMINI_API_KEY')
+            or ""
+        )
+
     def _init_client(self):
-        api_key = os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY')
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.client = genai.GenerativeModel(self.model)
+        api_key = self._get_api_key()
+        if not api_key:
+            return
+        genai.configure(api_key=api_key)
+        # 사용 가능한 최신 모델로 자동 선택
+        for model_name in self.MODEL_CANDIDATES:
+            try:
+                test_model = genai.GenerativeModel(model_name)
+                test_model.generate_content("ping")
+                self.model = model_name
+                self.client = test_model
+                return
+            except Exception:
+                continue
+        # 모두 실패 시 기본값
+        self.client = genai.GenerativeModel(self.model)
 
     async def validate(
         self,
@@ -429,6 +461,11 @@ class GeminiValidationAgent(BaseValidationAgent):
         if not self.client:
             return self._error_validation("Gemini API key not configured")
 
+        # genai는 전역 상태 — 호출 시점마다 키 재설정하여 타 코드 override 방지
+        api_key = self._get_api_key()
+        if api_key:
+            genai.configure(api_key=api_key)
+
         start_time = datetime.now()
         prompt = self._build_prompt(agent_decision, market_condition)
 
@@ -437,13 +474,19 @@ class GeminiValidationAgent(BaseValidationAgent):
                 prompt,
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.2,
-                    max_output_tokens=2000
+                    max_output_tokens=8192,
+                    response_mime_type="application/json",
                 )
             )
 
             elapsed = (datetime.now() - start_time).total_seconds() * 1000
             raw_text = response.text
-            parsed = self._parse_json_response(raw_text)
+            # response_mime_type=json이면 직접 파싱, 아니면 블록 추출
+            try:
+                import json as _json
+                parsed = _json.loads(raw_text)
+            except Exception:
+                parsed = self._parse_json_response(raw_text)
 
             return AIValidation(
                 ai_name=self.name,
@@ -561,15 +604,16 @@ class ConsensusEngine:
     """AI 검증 결과 합의 도출"""
 
     def __init__(self):
+        # 가중 투표: Claude(P0) 메인 시스템으로 높은 가중치, 2:2 split 시 타이브레이커
         self.weights = {
-            'Claude': 0.30,      # 깊은 분석
-            'Perplexity': 0.25,  # 실시간 정보
-            'GPT': 0.25,         # 종합 판단
-            'Gemini': 0.20       # 다각적 관점
+            'Claude': 1.5,       # 메인 시스템, 전체 데이터 접근
+            'GPT': 1.2,          # 종합 판단
+            'Perplexity': 1.0,   # 실시간 정보
+            'Gemini': 1.0        # 다각적 관점
         }
 
     def reach_consensus(self, validations: Dict[str, AIValidation]) -> ConsensusResult:
-        """합의 도출"""
+        """합의 도출 (가중 투표 + Claude 타이브레이커)"""
         timestamp = datetime.now().isoformat()
 
         if not validations:
@@ -577,6 +621,16 @@ class ConsensusEngine:
                 timestamp=timestamp,
                 summary="No validations available"
             )
+
+        # NEEDS_INFO(오류/쿼터초과) 에이전트는 합의 계산에서 제외
+        active_validations = {
+            name: v for name, v in validations.items()
+            if v.result != ValidationResult.NEEDS_INFO
+        }
+        if not active_validations:
+            active_validations = validations  # 전부 실패 시 원본 유지
+
+        validations = active_validations
 
         # 1. 결과별 점수 계산
         result_scores = {
@@ -590,7 +644,7 @@ class ConsensusEngine:
         weighted_confidence = 0
 
         for ai_name, validation in validations.items():
-            weight = self.weights.get(ai_name, 0.2)
+            weight = self.weights.get(ai_name, 1.0)
             total_weight += weight
 
             # 결과에 가중치 적용
@@ -602,6 +656,13 @@ class ConsensusEngine:
         # 2. 최종 결과 결정
         best_result = max(result_scores.items(), key=lambda x: x[1])
         final_result = best_result[0]
+
+        # 2.5 타이브레이커: 동점 시 Claude 단독 판단 사용
+        sorted_scores = sorted(result_scores.items(), key=lambda x: x[1], reverse=True)
+        if len(sorted_scores) >= 2 and abs(sorted_scores[0][1] - sorted_scores[1][1]) < 0.01:
+            claude_validation = validations.get('Claude')
+            if claude_validation is not None:
+                final_result = claude_validation.result
 
         # 3. 동의 비율 계산
         agreed_count = sum(
@@ -771,8 +832,8 @@ class ValidationAgentManager:
             self.agents['Perplexity'] = PerplexityValidationAgent()
             print("[Validation] Perplexity agent initialized")
 
-        # Gemini
-        if os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY'):
+        # Gemini (PRIVATE 키 우선 확인)
+        if os.getenv('GEMINI_API_KEY_PRIVATE') or os.getenv('GOOGLE_API_KEY') or os.getenv('GEMINI_API_KEY'):
             self.agents['Gemini'] = GeminiValidationAgent()
             print("[Validation] Gemini agent initialized")
 
