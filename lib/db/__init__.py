@@ -6,18 +6,23 @@ Database interfaces for various data stores.
 Modules:
     - trading_db: Trading signals and paper trade database
     - event_db: Economic event database
-    - unified_store: Unified data storage
-    - predictions_db: Prediction history database
+    - ra_sql_store: RA analysis SQL storage (PostgreSQL)
 """
 
-from lib.trading_db import TradingDB
-from lib.event_db import EventDB
-from lib.unified_data_store import UnifiedDataStore
-from lib.predictions_db import PredictionsDB
+from .trading_db import TradingDB
+from .event_db import EventDatabase as EventDB
+from .ra_sql_store import (  # noqa: F401
+    RAResearchSQLStore,
+    save_ra_commentary_audit_log,
+    save_backtest_metrics_to_sql,
+    ingest_company_ra_analysis_to_sql,
+)
 
 __all__ = [
     'TradingDB',
-    'EventDB', 
-    'UnifiedDataStore',
-    'PredictionsDB',
+    'EventDB',
+    'RAResearchSQLStore',
+    'save_ra_commentary_audit_log',
+    'save_backtest_metrics_to_sql',
+    'ingest_company_ra_analysis_to_sql',
 ]
