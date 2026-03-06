@@ -1,1 +1,0 @@
-# Economic Analysis Plugin\n\nThis plugin focuses on economic analysis techniques and methodologies.\n
