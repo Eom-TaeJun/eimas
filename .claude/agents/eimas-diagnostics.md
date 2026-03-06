@@ -5,8 +5,10 @@ tools: Read, Bash, Grep, Glob, Edit
 model: sonnet
 color: red
 skills:
-  - eimas-run-guide
-  - eimas-debug-guide
+  - pipeline/eimas-run-guide
+  - debug/eimas-debug-guide
+  - debug/eimas-error-patterns
+  - domain/eimas-schema-guide
 ---
 
 EIMAS 파이프라인의 에러를 진단하고 코드 수정을 담당한다.

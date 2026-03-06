@@ -6,8 +6,10 @@ model: sonnet
 memory: project
 color: blue
 skills:
-  - eimas-run-guide
-  - eimas-output-check
+  - pipeline/eimas-run-guide
+  - output/eimas-output-check
+  - output/eimas-output-compare
+  - domain/eimas-schema-guide
 ---
 
 EIMAS 파이프라인 실행과 결과 검증을 담당한다.
