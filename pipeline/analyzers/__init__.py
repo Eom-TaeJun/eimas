@@ -32,7 +32,7 @@ Example:
 # ============================================================================
 # Core Market Analysis (6 functions)
 # ============================================================================
-from pipeline.analyzers_core import (
+from .core import (
     detect_regime,
     detect_events,
     analyze_liquidity,
@@ -44,7 +44,7 @@ from pipeline.analyzers_core import (
 # ============================================================================
 # Advanced Thematic/Graph Analysis (7 functions)
 # ============================================================================
-from pipeline.analyzers_advanced import (
+from .advanced import (
     analyze_genius_act,
     analyze_theme_etf,
     analyze_shock_propagation,
@@ -57,7 +57,7 @@ from pipeline.analyzers_advanced import (
 # ============================================================================
 # Quant & Microstructure Analysis (8 functions)
 # ============================================================================
-from pipeline.analyzers_quant import (
+from .quant import (
     analyze_hft_microstructure,
     analyze_volatility_garch,
     analyze_information_flow,
@@ -71,7 +71,7 @@ from pipeline.analyzers_quant import (
 # ============================================================================
 # Sentiment & Bubble Analysis (2 functions)
 # ============================================================================
-from pipeline.analyzers_sentiment import (
+from .sentiment import (
     analyze_bubble_risk,
     analyze_sentiment,
 )
@@ -79,7 +79,7 @@ from pipeline.analyzers_sentiment import (
 # ============================================================================
 # Governance & Execution (3 functions)
 # ============================================================================
-from pipeline.analyzers_governance import (
+from .governance import (
     run_ai_validation,
     run_allocation_engine,
     run_rebalancing_policy,
