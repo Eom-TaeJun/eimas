@@ -102,3 +102,14 @@ outputs/eimas_*.pdf
 outputs/full_pipeline_*/
 outputs/profile_runs_fastfail/
 outputs/smoke_*/
+
+# All outputs/ (runtime artifacts — keep only examples/)
+outputs/
+!examples/
+
+# Root-level PDFs and personal documents
+*.pdf
+엄태준_*.pdf
+
+# DB files at root/data
+*.db
