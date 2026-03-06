@@ -73,5 +73,33 @@ Phase 9   : 아티팩트 Export
 | 우선순위 | 문서 | 용도 |
 |----------|------|------|
 | **P0** | `command.md` | 실행 명령 단일 기준 |
-| **P1** | `CURRENT_STATUS.md` | 현재 상태 + 할 일 |
+| **P1** | `REFACTOR_PLAN.md` | 현재 진행 중인 작업 + TODO |
 | **P2** | `README.md` | 프로젝트 소개 |
+
+## Claude Code 통합 (.claude/)
+
+### 에이전트
+
+| 에이전트 | 색상 | 역할 |
+|----------|------|------|
+| `eimas-runner` | blue | 파이프라인 실행·결과 검증 전담 |
+| `eimas-diagnostics` | red | 에러 진단·최소 수정 전담 |
+| `eimas-analyst` | purple | 결과 해석·투자 코멘트 전담 |
+
+### 커맨드
+
+| 커맨드 | 설명 |
+|--------|------|
+| `/check` | 최신 실행 결과 요약 |
+| `/compare [file1] [file2]` | 두 실행 결과 비교 |
+| `/phase [N]` | Phase N 설명 (생략 시 전체) |
+
+### 스킬 구조
+
+```
+.claude/skills/
+  pipeline/  eimas-run-guide, eimas-phase-guide
+  output/    eimas-output-check, eimas-output-compare
+  debug/     eimas-debug-guide, eimas-error-patterns
+  domain/    eimas-schema-guide
+```

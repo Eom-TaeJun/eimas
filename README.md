@@ -187,6 +187,28 @@ eimas/
 
 ---
 
+## Claude Code 통합
+
+Claude Code로 작업할 때 아래 에이전트·커맨드를 사용할 수 있다.
+
+**에이전트** (자동 선택)
+
+| 에이전트 | 역할 |
+|----------|------|
+| `eimas-runner` | 파이프라인 실행, 결과 검증 |
+| `eimas-diagnostics` | 에러 진단, 코드 최소 수정 |
+| `eimas-analyst` | 결과 해석, 투자 관점 코멘트 |
+
+**커맨드**
+
+```bash
+/check                   # 최신 실행 결과 요약
+/compare [file1] [file2] # 두 실행 결과 비교
+/phase [N]               # Phase N 설명
+```
+
+---
+
 ## 관련 문서
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 상세 아키텍처 및 데이터 플로우

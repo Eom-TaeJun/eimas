@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.2] - 2026-03-06
+
+### Added
+- **Claude Code 통합 레이어** (`.claude/`):
+  - 에이전트 3개: `eimas-runner` (blue), `eimas-diagnostics` (red), `eimas-analyst` (purple, NEW)
+  - 스킬 7개: 도메인별 패키지 구조 (`pipeline/`, `output/`, `debug/`, `domain/`)
+  - 커맨드: `/check`, `/compare` (NEW), `/phase` (NEW)
+  - 참고 레포: phuryn/pm-skills, shanraisshan/claude-code-best-practice
+
+### Changed
+- **`lib/reports/` 패키지 완결화**: 7개 monolith 파일을 패키지 내부로 이동
+  - `ai_report_generator.py` (2574L), `final_report_agent.py` (3113L), `allocation_report_agent.py` (3192L) 등
+  - `lib/reports/__init__.py`: 절대 import → 상대 import
+  - lib/ root에 7개 backward-compat shim 유지
+- **`pipeline/analyzers/` 패키지화**: 6개 flat 파일 → 패키지 구조
+  - `analyzers_core/advanced/quant/sentiment/governance.py` → `pipeline/analyzers/` 패키지
+  - `pipeline/analyzers.py` facade → `pipeline/analyzers/__init__.py`
+  - 5개 shim 유지 (테스트 경로 포함 backward compat)
+
+### Removed
+- **`lib/backtest.py`**: `lib/backtest/` 패키지 완비로 dead code 확인 후 삭제
+- **`.claude/` 구형 레이어**: 15개 YAML 에이전트, `sync/` 폴더, 운영 문서 3개
+- **`docs/`** 1회성 리포트·로그·stale 로드맵 20+개, `archive/`, `session_artifacts/` 폴더
+
+---
+
 ## [2.3.1] - 2026-01-31
 
 ### Added
